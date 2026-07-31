@@ -1,0 +1,22 @@
+{
+  "name": "support-equipment-management",
+  "version": "1.0.0",
+  "private": true,
+  "author": "Meysam Ijadi <M.Ijadi@Hotmail.com>",
+  "description": "سامانه‌ی مدیریت تجهیزات و قطعات یدکی - Equipment & Spare Parts Management System",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n SERVER,CLIENT -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "install:all": "npm install",
+    "db:reset": "npm run db:reset -w server",
+    "build": "npm run build -w server && npm run build -w client"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

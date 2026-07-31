@@ -1,0 +1,27 @@
+# وابستگی‌ها و خروجی‌های بیلد محلی (در کانتینر از نو ساخته می‌شوند)
+node_modules
+**/node_modules
+server/dist
+client/dist
+server/data
+*.log
+npm-debug.log*
+
+# محیط و امنیت
+.env
+.env.*
+.git
+.gitignore
+.gitattributes
+
+# ویرایشگرها و سیستم‌عامل
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# مستندات و dockerfileهای خودشان
+*.md
+Dockerfile
+.dockerignore
+docker-compose.yml

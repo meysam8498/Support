@@ -1,0 +1,46 @@
+# ============================================================
+# docker compose up - build & run the Support Equipment Management system.
+# پلتفرم مدیریت پروژه و تجهیزات — طراح: میثم ایجادی / Meysam Ijadi
+#   ایمیل: M.Ijadi@Hotmail.com — تلفن: +98 902 296 4006
+#
+# یک کانتینر که هم API و هم فرانت‌اند بیلدشده را روی پورت 4000 سرو می‌کند.
+# داده‌های SQLite در volume با نام app-data ماندگار هستند.
+# ============================================================
+
+services:
+  app:
+    # برای build محلی؛ اگر image پابلیش‌شده دارید، خط build را حذف کنید
+    # و image را به‌روز کنید.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mijadi8498/support-equipment-management:latest
+    container_name: support-equipment-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-4000}:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DB_PATH=/app/server/data/app.db
+      # JWT: حتماً قبل از دیپلوی، JWT_SECRET را به یک رشته‌ی طولانی تصادفی تغییر دهید.
+      # می‌توانید آن را در فایل .env (که در گیت نادیده گرفته می‌شود) قرار دهید.
+      - JWT_SECRET=${JWT_SECRET:-please-change-this-secret-in-production-9f2a4c7e1b8d}
+      - JWT_EXPIRES_HOURS=${JWT_EXPIRES_HOURS:-12}
+      # کاربران پیش‌فرض (فقط در راه‌اندازی اولیه اعمال می‌شوند)
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - USER_USERNAME=${USER_USERNAME:-user}
+      - USER_PASSWORD=${USER_PASSWORD:-user123}
+    volumes:
+      - app-data:/app/server/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 8s
+      retries: 3
+
+volumes:
+  app-data:
+    driver: local

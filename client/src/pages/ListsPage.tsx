@@ -1,0 +1,192 @@
+// طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
+import React, { useEffect, useState } from 'react';
+import { api, type Lists, type SelectItem } from '../api/api';
+import { t } from '../i18n/fa';
+import Modal from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
+
+interface ItemDef {
+  key: keyof Lists;
+  label: string;
+  path: string;        // مسیر API
+  hasPhone?: boolean;
+  extraField?: 'brand_id'; // برای مدل‌ها
+  placeholder?: string;
+}
+
+const DEFS: ItemDef[] = [
+  { key: 'salesExperts',    label: t.manageSalesExperts,    path: 'sales-experts',    hasPhone: true },
+  { key: 'technicalExperts',label: t.manageTechExperts,     path: 'technical-experts',hasPhone: true },
+  { key: 'brands',          label: t.manageBrands,          path: 'brands' },
+  { key: 'deviceTypes',     label: t.manageDeviceTypes,     path: 'device-types' },
+  { key: 'deviceModels',    label: t.manageModels,          path: 'device-models',    extraField: 'brand_id' },
+  { key: 'projects',        label: t.manageProjects,        path: 'projects' },
+  { key: 'failureReasons',  label: t.manageFailureReasons,  path: 'failure-reasons' },
+];
+
+export default function ListsPage() {
+  const { isAdmin } = useAuth();
+  const [lists, setLists] = useState<Lists | null>(null);
+  const [active, setActive] = useState<ItemDef>(DEFS[0]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<{ name: string; phone: string; brand_id: string; contract_number: string; sales_expert_id: string }>({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '' });
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    try { setLists(await api.get<Lists>('/lists')); } catch { /* */ }
+  };
+  useEffect(() => { load(); }, []);
+
+  // کل این صفحه فقط برای ادمین قابل دسترس است
+  if (!isAdmin) {
+    return (
+      <div className="card text-center py-12">
+        <p className="text-gray-500 dark:text-slate-400">دسترسی به مدیریت لیست‌ها فقط برای کارشناس مجاز (ادمین) امکان‌پذیر است.</p>
+      </div>
+    );
+  }
+
+  const items: (SelectItem & { contract_number?: string; sales_expert_id?: number; brand_name?: string; brand_id?: number })[] =
+    (lists?.[active.key] as unknown[] as any) || [];
+
+  const openModal = () => {
+    setForm({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '' });
+    setModalOpen(true);
+  };
+
+  const save = async () => {
+    if (!form.name.trim() && !active.extraField) return;
+    setSaving(true);
+    try {
+      if (active.key === 'projects') {
+        await api.post(`/lists/projects`, { name: form.name, contract_number: form.contract_number || undefined, sales_expert_id: form.sales_expert_id ? Number(form.sales_expert_id) : undefined });
+      } else if (active.extraField) {
+        await api.post(`/lists/${active.path}`, { name: form.name, brand_id: Number(form.brand_id) });
+      } else if (active.hasPhone) {
+        await api.post(`/lists/${active.path}`, { name: form.name, phone: form.phone || undefined });
+      } else {
+        await api.post(`/lists/${active.path}`, { name: form.name });
+      }
+      setModalOpen(false);
+      await load();
+    } catch (e) { alert((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  const remove = async (id: number) => {
+    if (!confirm(t.confirmDelete)) return;
+    try { await api.delete(`/lists/${active.path}/${id}`); await load(); }
+    catch (e) { alert((e as Error).message); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-xl font-bold dark:text-slate-100">{t.navLists}</h1>
+
+      {/* تب‌ها */}
+      <div className="flex flex-wrap gap-2">
+        {DEFS.map((d) => (
+          <button
+            key={d.key}
+            onClick={() => setActive(d)}
+            className={`px-3 py-1.5 rounded-lg text-sm transition ${active.key === d.key ? 'bg-brand-600 text-white' : 'bg-white dark:bg-slate-800 border dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+          >
+            {d.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="card">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-base font-semibold dark:text-slate-100">{active.label}</h2>
+          <button onClick={openModal} className="btn-primary text-xs">{t.addItem}</button>
+        </div>
+
+        {items.length === 0 ? (
+          <p className="text-gray-400 dark:text-slate-500 text-sm">{t.noData}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
+                <th className="text-right px-3 py-2 font-medium">{t.name}</th>
+                {active.hasPhone && <th className="text-right px-3 py-2 font-medium">{t.phone}</th>}
+                {active.extraField && <th className="text-right px-3 py-2 font-medium">{t.brand}</th>}
+                {active.key === 'projects' && <th className="text-right px-3 py-2 font-medium">قرارداد / فروش</th>}
+                <th className="text-right px-3 py-2 font-medium">{t.actions}</th>
+              </tr></thead>
+              <tbody>
+                {items.map((it) => (
+                  <tr key={it.id} className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800">
+                    <td className="px-3 py-2 font-medium dark:text-slate-200">{it.name}</td>
+                    {active.hasPhone && <td className="px-3 py-2 fa-nums dark:text-slate-300" dir="ltr">{it.phone || '—'}</td>}
+                    {active.extraField && <td className="px-3 py-2 dark:text-slate-300">{it.brand_name || '—'}</td>}
+                    {active.key === 'projects' && (
+                      <td className="px-3 py-2 dark:text-slate-300">
+                        <span className="fa-nums" dir="ltr">{it.contract_number || '—'}</span>
+                        {lists?.salesExperts.find((s) => s.id === it.sales_expert_id) && (
+                          <span className="text-gray-400 dark:text-slate-500 text-xs mr-2">/ {lists.salesExperts.find((s) => s.id === it.sales_expert_id)?.name}</span>
+                        )}
+                      </td>
+                    )}
+                    <td className="px-3 py-2">
+                      <button onClick={() => remove(it.id)} className="text-red-500 hover:underline text-xs">{t.delete}</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={`${t.addItem} — ${active.label}`}>
+        <div className="space-y-4">
+          {active.key !== 'projects' && (
+            <div>
+              <label className="label">{t.name}</label>
+              <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            </div>
+          )}
+          {active.hasPhone && (
+            <div>
+              <label className="label">{t.phone}</label>
+              <input className="input" dir="ltr" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+          )}
+          {active.extraField && (
+            <div>
+              <label className="label">{t.brand}</label>
+              <select className="input" value={form.brand_id} onChange={(e) => setForm({ ...form, brand_id: e.target.value })}>
+                <option value="">انتخاب برند...</option>
+                {lists?.brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+          )}
+          {active.key === 'projects' && (
+            <>
+              <div>
+                <label className="label">{t.name} (پروژه/مشتری)</label>
+                <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+              </div>
+              <div>
+                <label className="label">شماره قرارداد</label>
+                <input className="input" dir="ltr" value={form.contract_number} onChange={(e) => setForm({ ...form, contract_number: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">{t.salesExpert}</label>
+                <select className="input" value={form.sales_expert_id} onChange={(e) => setForm({ ...form, sales_expert_id: e.target.value })}>
+                  <option value="">انتخاب...</option>
+                  {lists?.salesExperts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            </>
+          )}
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setModalOpen(false)} className="btn-secondary">{t.cancel}</button>
+            <button onClick={save} disabled={saving} className="btn-primary">{saving ? '...' : t.save}</button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
