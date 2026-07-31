@@ -147,6 +147,16 @@ router.post('/brands', (req, res) => {
     return res.status(409).json({ error: 'این برند قبلاً ثبت شده است.' });
   }
 });
+router.put('/brands/:id', (req, res) => {
+  const { name } = req.body as { name?: string };
+  if (!name?.trim()) return res.status(400).json({ error: 'نام الزامی است.' });
+  try {
+    getDb().prepare(`UPDATE brands SET name = ? WHERE id = ?`).run(name.trim(), Number(req.params.id));
+    res.json({ ok: true });
+  } catch {
+    res.status(409).json({ error: 'این برند قبلاً ثبت شده است.' });
+  }
+});
 router.delete('/brands/:id', (req, res) => {
   try {
     getDb().prepare(`DELETE FROM brands WHERE id = ?`).run(Number(req.params.id));
@@ -170,6 +180,16 @@ router.post('/device-types', (req, res) => {
     return res.status(201).json({ id: info.lastInsertRowid });
   } catch {
     return res.status(409).json({ error: 'این نوع قبلاً ثبت شده است.' });
+  }
+});
+router.put('/device-types/:id', (req, res) => {
+  const { name } = req.body as { name?: string };
+  if (!name?.trim()) return res.status(400).json({ error: 'نام الزامی است.' });
+  try {
+    getDb().prepare(`UPDATE device_types SET name = ? WHERE id = ?`).run(name.trim(), Number(req.params.id));
+    res.json({ ok: true });
+  } catch {
+    res.status(409).json({ error: 'این نوع قبلاً ثبت شده است.' });
   }
 });
 router.delete('/device-types/:id', (req, res) => {
@@ -200,6 +220,16 @@ router.post('/device-models', (req, res) => {
     return res.status(201).json({ id: info.lastInsertRowid });
   } catch {
     return res.status(409).json({ error: 'این مدل برای این برند قبلاً ثبت شده است.' });
+  }
+});
+router.put('/device-models/:id', (req, res) => {
+  const { name, brand_id } = req.body as { name?: string; brand_id?: number };
+  if (!name?.trim() || !brand_id) return res.status(400).json({ error: 'نام و برند الزامی است.' });
+  try {
+    getDb().prepare(`UPDATE device_models SET name = ?, brand_id = ? WHERE id = ?`).run(name.trim(), brand_id, Number(req.params.id));
+    res.json({ ok: true });
+  } catch {
+    res.status(409).json({ error: 'این مدل برای این برند قبلاً ثبت شده است.' });
   }
 });
 router.delete('/device-models/:id', (req, res) => {
@@ -266,6 +296,16 @@ router.post('/failure-reasons', (req, res) => {
     return res.status(201).json({ id: info.lastInsertRowid });
   } catch {
     return res.status(409).json({ error: 'این دلیل قبلاً ثبت شده است.' });
+  }
+});
+router.put('/failure-reasons/:id', (req, res) => {
+  const { name } = req.body as { name?: string };
+  if (!name?.trim()) return res.status(400).json({ error: 'نام الزامی است.' });
+  try {
+    getDb().prepare(`UPDATE failure_reasons SET name = ? WHERE id = ?`).run(name.trim(), Number(req.params.id));
+    res.json({ ok: true });
+  } catch {
+    res.status(409).json({ error: 'این دلیل قبلاً ثبت شده است.' });
   }
 });
 router.delete('/failure-reasons/:id', (req, res) => {
