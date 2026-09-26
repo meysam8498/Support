@@ -13,9 +13,10 @@ import { toFa } from '../lib/date';
 interface ImportSummary {
   file: string;
   projectId: number;
-  projectName?: string;
-  deviceId: number;
+  projectName?: string | null;
+  deviceId?: number | null;
   deviceMainSerial?: string | null;
+  devicesCreated?: number;
   columnsTotal: number;
   columnsMatched: number;
   columnsCreated: number;
@@ -25,9 +26,17 @@ interface ImportSummary {
   deviceSerialUpdated: boolean;
 }
 
+interface DescConflict {
+  partNumber: string;
+  title: string;
+  descriptions: string[];
+  note: string;
+}
+
 interface ImportResult {
   ok: boolean;
   summary: ImportSummary;
+  descConflicts?: DescConflict[];
   unmatchedPartNumbers: string[];
   skipped: { row: number; column: string; partNumber: string; reason: string }[];
 }
@@ -37,6 +46,7 @@ export default function SerialImportPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [projectId, setProjectId] = useState<number | ''>('');
   const [deviceId, setDeviceId] = useState<number | ''>('');
+  const [perRow, setPerRow] = useState(false); // هر ردیف = یک دستگاه جدید
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -75,7 +85,8 @@ export default function SerialImportPage() {
     setError('');
     setResult(null);
     if (!projectId) return setError('ابتدا پروژه‌ی مقصد را انتخاب کنید.');
-    if (!deviceId) return setError('ابتدا تجهیزِ مقصد را انتخاب کنید — آپلود بدون مقصد مجاز نیست.');
+    if (!deviceId && !perRow)
+      return setError('تجهیز مقصد را انتخاب کنید یا گزینه‌ی «هر ردیف = یک دستگاه» را فعال کنید.');
     if (!file) return setError('فایل اکسل را انتخاب کنید.');
 
     setBusy(true);
@@ -83,7 +94,8 @@ export default function SerialImportPage() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('project_id', String(projectId));
-      fd.append('device_id', String(deviceId));
+      if (deviceId) fd.append('device_id', String(deviceId));
+      if (perRow) fd.append('create_per_row', '1');
       const token = localStorage.getItem('token');
       const res = await fetch('/api/serial-import', {
         method: 'POST',
@@ -159,18 +171,15 @@ export default function SerialImportPage() {
             </select>
           </div>
           <div>
-            <label className="label">
-              ۲) تجهیز مقصد <span className="text-coral">*</span>
-            </label>
+            <label className="label">۲) تجهیز مقصد</label>
             <select
               className="input"
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value ? Number(e.target.value) : '')}
-              required
               disabled={projectId === ''}
             >
               <option value="">
-                {projectId === '' ? 'ابتدا پروژه را انتخاب کنید' : 'انتخاب تجهیز...'}
+                {projectId === '' ? 'ابتدا پروژه را انتخاب کنید' : 'انتخاب تجهیز (یا حالت پایین)...'}
               </option>
               {projectDevices.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -178,20 +187,42 @@ export default function SerialImportPage() {
                 </option>
               ))}
             </select>
+            <label className="flex items-center gap-2 mt-2 text-xs text-brand-600 dark:text-brand-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={perRow}
+                onChange={(e) => {
+                  setPerRow(e.target.checked);
+                  if (e.target.checked) setDeviceId('');
+                }}
+                className="w-4 h-4 accent-[#2BA8A2]"
+              />
+              هر ردیف اکسل = یک دستگاه جدید (برای فایل‌های چنددستگاهه مثل فهرست انبار)
+            </label>
           </div>
         </div>
 
         {/* نوار مقصد انتخاب‌شده */}
-        {selectedDevice && (
+        {(selectedDevice || perRow) && (
           <div className="rounded-2xl bg-brand-50 border-2 border-brand-200 px-4 py-3 text-sm text-brand-800 dark:bg-brand-900/40 dark:border-brand-700 dark:text-brand-100">
-            <span className="font-bold">مقصد:</span> {selectedProject?.name} ← {selectedDevice.device_type_name}
-            {selectedDevice.brand_name ? ` (${selectedDevice.brand_name})` : ''}
-            <span className="mx-2 text-brand-300">|</span>
-            سریال فعلی: <span dir="ltr" className="font-bold">{selectedDevice.main_serial || '—'}</span>
-            <span className="mx-2 text-brand-300">|</span>
-            <Link to={`/devices/${selectedDevice.id}`} className="underline text-brand-600 dark:text-brand-300">
-              مشاهده‌ی تجهیز
-            </Link>
+            <span className="font-bold">مقصد:</span> {selectedProject?.name}
+            {perRow ? (
+              <>
+                <span className="mx-2 text-brand-300">|</span>
+                حالت چنددستگاهه: ردیف‌های دارای سریال دستگاه (ستون Case) دستگاه جدید می‌سازند
+              </>
+            ) : (
+              <>
+                {' ← '}{selectedDevice!.device_type_name}
+                {selectedDevice!.brand_name ? ` (${selectedDevice!.brand_name})` : ''}
+                <span className="mx-2 text-brand-300">|</span>
+                سریال فعلی: <span dir="ltr" className="font-bold">{selectedDevice!.main_serial || '—'}</span>
+                <span className="mx-2 text-brand-300">|</span>
+                <Link to={`/devices/${selectedDevice!.id}`} className="underline text-brand-600 dark:text-brand-300">
+                  مشاهده‌ی تجهیز
+                </Link>
+              </>
+            )}
           </div>
         )}
 
@@ -215,7 +246,7 @@ export default function SerialImportPage() {
         <button
           type="submit"
           className="btn-primary"
-          disabled={busy || !file || !projectId || !deviceId}
+          disabled={busy || !file || !projectId || (!deviceId && !perRow)}
         >
           {busy ? 'در حال پردازش...' : 'آپلود و به‌روزرسانی سریال‌ها'}
         </button>
@@ -233,11 +264,32 @@ export default function SerialImportPage() {
             <Stat label="ردیف‌های سریال">{toFa(s.serialRows)}</Stat>
             <Stat label="سریال قطعات به‌روزرسانی‌شده">{toFa(s.partsUpdated)}</Stat>
             <Stat label="قطعات جدید ساخته‌شده">{toFa(s.partsCreated)}</Stat>
+            {(s.devicesCreated ?? 0) > 0 && (
+              <Stat label="دستگاه‌های جدید ساخته‌شده">{toFa(s.devicesCreated!)}</Stat>
+            )}
           </div>
           {s.deviceSerialUpdated && (
             <p className="text-sm text-brand-600 dark:text-brand-300">
               ★ سریال اصلی دستگاه نیز به‌روزرسانی شد.
             </p>
+          )}
+
+          {/* توضیحات چندگانه — برای انتخاب توضیح درست */}
+          {(result!.descConflicts?.length ?? 0) > 0 && (
+            <div className="rounded-2xl bg-gold/10 border-2 border-gold/40 px-4 py-3 text-sm space-y-2">
+              <p className="font-bold text-[#8a6d00] dark:text-gold-light">
+                ⚠ توضیحات متفاوت برای یک پارت‌نامبر ({toFa(result!.descConflicts!.length)}): همگی در
+                فیلد «مشخصات فنی» ذخیره شدند — در فهرست قطعات توضیح درست را انتخاب کنید.
+              </p>
+              <ul className="space-y-1 text-xs">
+                {result!.descConflicts!.map((dc) => (
+                  <li key={dc.partNumber}>
+                    <span dir="ltr" className="font-bold">{dc.partNumber}</span>{' '}({dc.title}):{' '}
+                    <span dir="auto">{dc.descriptions.join(' ⟷ ')}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {result!.unmatchedPartNumbers.length > 0 && (

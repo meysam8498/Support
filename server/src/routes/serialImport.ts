@@ -35,6 +35,9 @@ interface ColumnMatch {
   desc: string;
   partIds: number[]; // قطعات موجود با این پارت‌نامبر (به ترتیب id)
   isNew: boolean;    // در این import ساخته می‌شود
+  titleVariants: string[]; // عنوان‌های مختلف دیدده‌شده برای همین پارت‌نامبر
+  descVariants: string[];  // توضیحات مختلف دیدده‌شده (برای انتخاب کاربر)
+  perDeviceCounter: Map<number, number>; // مصرف رکوردها به تفکیک دستگاه مقصد
 }
 
 interface SerialCell {
@@ -172,10 +175,14 @@ function parseMultipart(
 function handleUpload(body: Buffer, contentType: string, req: Request, res: Response): void {
   const { file, fields } = parseMultipart(body, contentType);
 
-  // --- اعتبارسنجی مقصد: پروژه و دستگاه الزامی ---
+  // --- اعتبارسنجی مقصد: پروژه الزامی؛ دستگاه یا صریح یا «هر ردیف = یک دستگاه» ---
   const targetSchema = z.object({
     project_id: z.coerce.number().int().positive(),
-    device_id: z.coerce.number().int().positive(),
+    device_id: z.coerce.number().int().positive().optional(),
+    create_per_row: z
+      .enum(['1', '0', 'true', 'false'])
+      .optional()
+      .transform((v) => v === '1' || v === 'true'),
   });
   const parsedTarget = targetSchema.safeParse(fields);
   if (!parsedTarget.success) {
@@ -185,24 +192,33 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
     });
     return;
   }
-  const { project_id, device_id } = parsedTarget.data;
+  const { project_id, device_id, create_per_row } = parsedTarget.data;
 
   const db = getDb();
-  const device = db
-    .prepare(
-      `SELECT d.id, d.project_id, d.main_serial, d.part_number_1, d.part_number_2, p.name AS project_name
-       FROM devices d LEFT JOIN projects p ON p.id = d.project_id WHERE d.id = ?`
-    )
-    .get(device_id) as
+
+  // حالت «هر ردیف = یک دستگاه»: device_id اختیاری است؛ اگر داده شد باید به پروژه تعلق داشته باشد.
+  let device:
     | { id: number; project_id: number; main_serial: string | null; part_number_1: string | null; part_number_2: string | null; project_name: string | null }
     | undefined;
-
-  if (!device) {
-    res.status(404).json({ error: 'تجهیز مقصد یافت نشد.' });
-    return;
-  }
-  if (device.project_id !== project_id) {
-    res.status(400).json({ error: 'این تجهیز به پروژه‌ی انتخاب‌شده تعلق ندارد؛ پروژه و تجهیز باید هم‌خوان باشند.' });
+  if (device_id) {
+    device = db
+      .prepare(
+        `SELECT d.id, d.project_id, d.main_serial, d.part_number_1, d.part_number_2, p.name AS project_name
+         FROM devices d LEFT JOIN projects p ON p.id = d.project_id WHERE d.id = ?`
+      )
+      .get(device_id) as typeof device;
+    if (!device) {
+      res.status(404).json({ error: 'تجهیز مقصد یافت نشد.' });
+      return;
+    }
+    if (device.project_id !== project_id) {
+      res.status(400).json({ error: 'این تجهیز به پروژه‌ی انتخاب‌شده تعلق ندارد؛ پروژه و تجهیز باید هم‌خوان باشند.' });
+      return;
+    }
+  } else if (!create_per_row) {
+    res.status(400).json({
+      error: 'تجهیز مقصد را انتخاب کنید یا گزینه‌ی «هر ردیف = یک دستگاه» را فعال کنید — آپلود بی‌مقصد مجاز نیست.',
+    });
     return;
   }
 
@@ -246,20 +262,44 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
   const pnRow = rows[pnRowIndex];
 
   // --- ستون‌های قطعه از ردیف پارت‌نامبر ---
-  const devicePn = normalizePartNumber(device.part_number_1 || device.part_number_2 || '');
+  // اگر یک پارت‌نامبر در چند ستون تکرار شده باشد (مثلاً دو منبع تغذیه)،
+  // همه‌ی توضیحات/عنوان‌های دیدده‌شده جمع می‌شود تا «یکی» قطعه‌ی مرجع ساخته شود
+  // و توضیحات برای انتخاب کاربر در گزارش برگردد (ضدتکراری‌سازی).
+  const devicePn = device
+    ? normalizePartNumber(device.part_number_1 || device.part_number_2 || '')
+    : '';
   const columns: ColumnMatch[] = [];
+  const byPn = new Map<string, ColumnMatch>();
+  const duplicateColToPn = new Map<string, string>();
   for (const [letter, value] of Object.entries(pnRow)) {
     if (letter === 'A') continue;
     const pn = normalizePartNumber(value);
     if (!pn) continue;
-    columns.push({
+    const title = String(headerRow[letter] ?? '').trim() || pn;
+    const desc = String(descRow[letter] ?? '').trim();
+    const existing = byPn.get(pn);
+    if (existing) {
+      // ستون تکراری با پارت‌نامبر موجود → فقط توضیحات/عنوان متمایز را جمع کن
+      if (desc && !existing.descVariants.includes(desc)) existing.descVariants.push(desc);
+      if (title && !existing.titleVariants.includes(title)) existing.titleVariants.push(title);
+      // نقشه‌ی ستون تکراری به همان قطعه‌ی مرجع
+      duplicateColToPn.set(letter, pn);
+      continue;
+    }
+    const col: ColumnMatch = {
       colLetter: letter,
       partNumber: pn,
-      title: String(headerRow[letter] ?? '').trim() || pn,
-      desc: String(descRow[letter] ?? '').trim(),
+      title,
+      desc,
       partIds: [],
       isNew: false,
-    });
+      titleVariants: [title],
+      descVariants: desc ? [desc] : [],
+      perDeviceCounter: new Map(),
+    };
+    byPn.set(pn, col);
+    columns.push(col);
+    duplicateColToPn.set(letter, pn);
   }
 
   if (columns.length === 0) {
@@ -268,6 +308,8 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
   }
 
   // --- ردیف‌های سریال (پس از ردیف پارت‌نامبر) ---
+  // برای ستون‌های تکراری (هم‌پارت‌نامبر)، سریال‌ها به ترتیب پیدا شدن به قطعه‌ی مرجع
+  // وصل می‌شوند و اگر رکورد بیشتری لازم شد، قطعه‌ی جدید ساخته می‌شود.
   const serialRows: { rowNumber: number; serials: SerialCell[] }[] = [];
   for (let i = pnRowIndex + 1; i < rows.length; i++) {
     const r = rows[i];
@@ -275,6 +317,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
     for (const c of columns) {
       const v = r[c.colLetter];
       if (v) serials.push({ colLetter: c.colLetter, value: v });
+      // ستون‌های تکراری همیشه بعد از مرجع خودشان پردازش می‌شوند — ترتیب حفظ می‌شود
     }
     if (serials.length > 0) serialRows.push({ rowNumber: i + 1, serials });
   }
@@ -286,9 +329,11 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
 
   // --- تطبیق پارت‌نامبرها ---
   // ۱) داخل دستگاه هدف؛ ۲) کل سامانه؛ ۳) خودِ دستگاه (main_serial)؛ ۴) ساخت قطعه‌ی جدید
-  const partsOfDevice = db.prepare(
-    `SELECT id, part_number_1, part_number_2 FROM parts WHERE device_id = ? ORDER BY id`
-  ).all(device_id) as { id: number; part_number_1: string | null; part_number_2: string | null }[];
+  const partsOfDevice = device_id
+    ? (db.prepare(
+        `SELECT id, part_number_1, part_number_2 FROM parts WHERE device_id = ? ORDER BY id`
+      ).all(device_id) as { id: number; part_number_1: string | null; part_number_2: string | null }[])
+    : [];
 
   let matchedColumns = 0;
   let createdColumns = 0;
@@ -296,7 +341,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
 
   for (const c of columns) {
     // ستونِ پارت‌نامبرِ خودِ دستگاه → main_serial
-    if (devicePn && c.partNumber === devicePn) {
+    if (devicePn && device_id && c.partNumber === devicePn) {
       c.partIds = [-device_id]; // علامت منفی = سریال اصلی دستگاه
       matchedColumns++;
       continue;
@@ -312,21 +357,24 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
       matchedColumns++;
       continue;
     }
-    // کل سامانه (برای وصل‌کردن سریال به رکوردهای موجود در دستگاه‌های دیگر)
-    const anywhere = db.prepare(
-      `SELECT id FROM parts
-       WHERE UPPER(REPLACE(COALESCE(part_number_1,''), ' ', '')) = ?
-          OR UPPER(REPLACE(COALESCE(part_number_2,''), ' ', '')) = ?
-       ORDER BY id`
-    ).all(c.partNumber, c.partNumber) as { id: number }[];
-    if (anywhere.length > 0) {
-      c.partIds = anywhere.map((p) => p.id);
-      matchedColumns++;
-    } else {
-      // ساخته خواهد شد
-      c.isNew = true;
-      createdColumns++;
+    // کل سامانه — فقط در حالت دستگاه واحد؛ در حالت چنددستگاهه هر ردیفِ هر دستگاه
+    // همیشه قطعه‌ی مستقل خودش را می‌سازد (ضدتکراری روی (پارت‌نامبر، دستگاه)).
+    if (!create_per_row) {
+      const anywhere = db.prepare(
+        `SELECT id FROM parts
+         WHERE UPPER(REPLACE(COALESCE(part_number_1,''), ' ', '')) = ?
+            OR UPPER(REPLACE(COALESCE(part_number_2,''), ' ', '')) = ?
+         ORDER BY id`
+      ).all(c.partNumber, c.partNumber) as { id: number }[];
+      if (anywhere.length > 0) {
+        c.partIds = anywhere.map((p) => p.id);
+        matchedColumns++;
+        continue;
+      }
     }
+    // ساخته خواهد شد
+    c.isNew = true;
+    createdColumns++;
   }
 
   // --- آماده‌سازی دستورات ---
@@ -337,8 +385,8 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
   const applied: Applied[] = [];
   const skipped: { row: number; column: string; partNumber: string; reason: string }[] = [];
 
-  const perColumnCounter = new Map<string, number>();
   const updatePartStmt = db.prepare(`UPDATE parts SET part_serial_number = ? WHERE id = ?`);
+  let createdDevices = 0;
   const updateDeviceStmt = db.prepare(`UPDATE devices SET main_serial = ? WHERE id = ?`);
   const insertPartStmt = db.prepare(
     `INSERT INTO parts (device_id, title, tech_specs, part_number_1, part_serial_number, status, sold_at_jalali, sold_at_gregorian, created_by)
@@ -351,40 +399,148 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
   })();
   const todayG = new Date().toISOString().slice(0, 10);
 
+  // در حالت «هر ردیف = یک دستگاه»: ردیفِ دارای سریال دستگاه، دستگاه جدید می‌سازد.
+  // نوع/برند/مدل دستگاه جدید از دستگاه هدف (در صورت انتخاب) یا اولین دستگاه هم‌نوع در پروژه
+  // یا اولین نوع ثبت‌شده در سامانه کپی می‌شود (device_type_id در اسکیما NOT NULL است).
+  let deviceTemplate: { device_type_id: number; device_model_id: number | null; brand_id: number | null } | undefined;
+  if (create_per_row) {
+    deviceTemplate = device_id
+      ? (db.prepare(
+          `SELECT device_type_id, device_model_id, brand_id FROM devices WHERE id = ?`
+        ).get(device_id) as typeof deviceTemplate)
+      : (db.prepare(
+          `SELECT device_type_id, device_model_id, brand_id FROM devices WHERE project_id = ? ORDER BY id LIMIT 1`
+        ).get(project_id) as typeof deviceTemplate);
+    if (!deviceTemplate) {
+      const firstType = db.prepare(`SELECT id FROM device_types ORDER BY id LIMIT 1`).get() as { id: number } | undefined;
+      if (!firstType) {
+        res.status(400).json({ error: 'برای ساخت خودکار دستگاه، ابتدا حداقل یک «نوع تجهیز» در مدیریت لیست‌ها ثبت کنید.' });
+        return;
+      }
+      deviceTemplate = { device_type_id: firstType.id, device_model_id: null, brand_id: null };
+    }
+  }
+  const ensureDeviceForSerial = create_per_row
+    ? db.prepare(
+        `INSERT INTO devices (project_id, main_serial, device_type_id, device_model_id, brand_id, status, created_by)
+         VALUES (?, ?, ?, ?, ?, 'active', ?)`
+      )
+    : null;
+  const deviceByRow = new Map<number, number>(); // rowNumber → device_id
+  // ردیف‌های ادامه‌ای (بدون ستون سریال دستگاه) در فهرست انبار «چرخشی» هستند:
+  // هر ردیفِ ادامه‌ای، قطعه‌ی دوم/سومِ همان نوع روی دستگاه n-اُم است.
+  // پس با شمارنده‌ی چرخشی بین دستگاه‌های شناخته‌شده توزیع می‌شوند.
+  const knownDeviceIds: number[] = [];
+  let contRowCounter = 0;
+
   runTransaction(db, () => {
     for (const row of serialRows) {
+      // --- تعیین دستگاه مقصد این ردیف ---
+      let rowDeviceId: number = device_id ?? 0;
+      if (create_per_row) {
+        // ستونِ «سریال دستگاه» = ستونی که پارت‌نامبرش مال خود دستگاه است (Case در اکسل نمونه)
+        // یا اولین ستون داده‌ای وقتی پارت‌نامبرِ دستگاه تعریف نشده.
+        const deviceCol = devicePn
+          ? columns.find((c) => c.partNumber === devicePn)
+          : columns.find((c) => c.colLetter === 'B');
+        const hasDeviceSerial = !!deviceCol && row.serials.some((s) => s.colLetter === deviceCol.colLetter);
+        if (hasDeviceSerial) {
+          const devSerial = row.serials.find((s) => s.colLetter === deviceCol!.colLetter)!.value;
+          // ضدتکرار: اگر دستگاهی با همین main_serial در همین پروژه هست، همان استفاده می‌شود
+          const existing = db
+            .prepare(`SELECT id FROM devices WHERE project_id = ? AND main_serial = ?`)
+            .get(project_id, devSerial) as { id: number } | undefined;
+          rowDeviceId =
+            existing?.id ??
+            (ensureDeviceForSerial!.run(
+              project_id,
+              devSerial,
+              deviceTemplate!.device_type_id,
+              deviceTemplate!.device_model_id,
+              deviceTemplate!.brand_id,
+              req.user!.sub
+            ).lastInsertRowid as number);
+          createdDevices++;
+        } else {
+          // ردیف ادامه‌ای: توزیع چرخشی روی دستگاه‌های شناخته‌شده (الگوی فهرست انبار:
+          // ردیف‌های بعد از هر دستگاه، قطعات اضافه‌ی همان دستگاه به ترتیب هستند).
+          if (knownDeviceIds.length === 0) {
+            if (device_id) knownDeviceIds.push(device_id);
+            else {
+              const first = db
+                .prepare(`SELECT id FROM devices WHERE project_id = ? ORDER BY id LIMIT 1`)
+                .get(project_id) as { id: number } | undefined;
+              if (first) knownDeviceIds.push(first.id);
+              else {
+                rowDeviceId = ensureDeviceForSerial!.run(
+                  project_id,
+                  null,
+                  deviceTemplate!.device_type_id,
+                  deviceTemplate!.device_model_id,
+                  deviceTemplate!.brand_id,
+                  req.user!.sub
+                ).lastInsertRowid as number;
+                knownDeviceIds.push(rowDeviceId);
+              }
+            }
+          }
+          rowDeviceId = knownDeviceIds[contRowCounter % knownDeviceIds.length];
+          contRowCounter++;
+        }
+        if (hasDeviceSerial) {
+          // دستگاه جدید سریال‌دار → در چرخه‌ی توزیع قرار می‌گیرد
+          if (!knownDeviceIds.includes(rowDeviceId)) knownDeviceIds.push(rowDeviceId);
+          contRowCounter = 0; // پس از هر دستگاه، شمارنده از ابتدای چرخه شروع می‌شود
+        }
+        deviceByRow.set(row.rowNumber, rowDeviceId);
+      }
+
       for (const s of row.serials) {
         const col = columns.find((c) => c.colLetter === s.colLetter);
         if (!col) continue;
+        const targetDevice = deviceByRow.get(row.rowNumber) || device_id;
 
-        // قطعه‌ی جدید: در اولین برخورد، رکورد روی دستگاه هدف ساخته می‌شود
-        if (col.isNew && col.partIds.length === 0) {
+        // ستونِ پارت‌نامبر خود دستگاه → main_serial دستگاه مقصدِ همان ردیف
+        if (devicePn && col.partNumber === devicePn) {
+          updateDeviceStmt.run(s.value, rowDeviceId);
+          applied.push({ kind: 'device', serial: s.value });
+          continue;
+        }
+
+        // شمارنده‌ی مصرف رکوردها به تفکیک دستگاه (ضدتکراری: هر دستگاه قطعات خودش).
+        // در حالت چنددستگاهه، پارت‌نامبر تکراری در ردیف‌های (دستگاه‌های) مختلف
+        // یعنی «قطعات جداگانه» — همیشه رکورد جدید ساخته می‌شود تا هر دستگاه
+        // قطعه‌ی مستقل خودش را داشته باشد و در فهرست قطعات قابل ردیابی باشد.
+        if (create_per_row) {
+          const mergedDesc = col.descVariants.length > 0 ? col.descVariants.join(' | ') : null;
           const info = insertPartStmt.run(
-            device_id,
-            col.title,
-            col.desc || null,
+            rowDeviceId,
+            col.titleVariants.length > 1 ? col.titleVariants.join(' | ') : col.title,
+            mergedDesc,
             col.partNumber,
             s.value,
             todayJ,
             todayG,
             req.user!.sub
           );
-          const newId = info.lastInsertRowid as number;
-          col.partIds.push(newId);
-          col.isNew = false;
+          col.partIds.push(info.lastInsertRowid as number);
           applied.push({ kind: 'new-part', title: col.title, pn: col.partNumber, serial: s.value });
           continue;
         }
 
-        const target = col.partIds[perColumnCounter.get(s.colLetter) ?? 0];
-        perColumnCounter.set(s.colLetter, (perColumnCounter.get(s.colLetter) ?? 0) + 1);
+        // حالت دستگاه هدف واحد: اولین سریالِ ستون به قطعه‌ی موجود (اگر هست) وصل می‌شود؛
+        // سریال‌های بعدی قطعه‌ی جدید می‌سازند (چند عدد از یک قطعه روی همان دستگاه).
+        const used = col.perDeviceCounter.get(rowDeviceId) ?? 0;
+        const target = col.partIds[used];
+        col.perDeviceCounter.set(rowDeviceId, used + 1);
 
         if (target === undefined) {
-          // سریال‌های مازاد یک پارت‌نامبر موجود → قطعه‌ی جدید روی دستگاه هدف
+          // سریال‌های مازاد یک پارت‌نامبر موجود → قطعه‌ی جدید روی دستگاه مقصد همان ردیف
+          const mergedDesc = col.descVariants.length > 0 ? col.descVariants.join(' | ') : null;
           const info = insertPartStmt.run(
-            device_id,
-            col.title,
-            col.desc || null,
+            targetDevice!,
+            col.titleVariants.length > 1 ? col.titleVariants.join(' | ') : col.title,
+            mergedDesc,
             col.partNumber,
             s.value,
             todayJ,
@@ -397,7 +553,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
         }
 
         if (target < 0) {
-          updateDeviceStmt.run(s.value, device_id);
+          updateDeviceStmt.run(s.value, rowDeviceId);
           applied.push({ kind: 'device', serial: s.value });
           continue;
         }
@@ -408,14 +564,25 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
     }
   });
 
+  // --- گزارش توضیحات چندگانه (برای نمایش به کاربر) ---
+  const descConflicts = columns
+    .filter((c) => c.descVariants.length > 1)
+    .map((c) => ({
+      partNumber: c.partNumber,
+      title: c.titleVariants.join(' | '),
+      descriptions: c.descVariants,
+      note: 'برای این پارت‌نامبر چند توضیح متفاوت در فایل بود؛ همگی ذخیره شدند — در فهرست قطعات توضیح درست را انتخاب/ویرایش کنید.',
+    }));
+
   res.json({
     ok: true,
     summary: {
       file: file.filename,
       projectId: project_id,
-      projectName: device.project_name,
-      deviceId: device_id,
-      deviceMainSerial: device.main_serial,
+      projectName: device?.project_name ?? null,
+      deviceId: device_id ?? null,
+      deviceMainSerial: device?.main_serial ?? null,
+      devicesCreated: createdDevices,
       columnsTotal: columns.length,
       columnsMatched: matchedColumns,
       columnsCreated: createdColumns,
@@ -424,6 +591,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
       partsCreated: applied.filter((a) => a.kind === 'new-part').length,
       deviceSerialUpdated: applied.some((a) => a.kind === 'device'),
     },
+    descConflicts,
     unmatchedPartNumbers: unmatched,
     skipped: skipped.slice(0, 100),
   });
