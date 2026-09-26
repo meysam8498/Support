@@ -3,15 +3,14 @@
 @tailwind utilities;
 
 /* ============================================================
-   سیستم طراحی Flip7 — تیل/مرجانی/طلایی (RTL فارسی)
+   سیستم طراحی Ember Studio — تراکوتا/کهربا/استون گرم (RTL فارسی)
    طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
    اصول:
-   • سایه‌ی رنگی glow به‌جای سایه‌ی مشکی برای عناصر تعاملی
-   • دکمه‌های قرصی (pill) با ارتفاع لمسی ≥ 44px
-   • سطوح ورودی کرم (#FFF8E7) در تم لایت
-   • نوار رنگی سمت راست کارت‌ها برای بیان وضعیت (RTL)
-   • حاشیه‌ی نقطه‌چین برای جداکننده‌های بخش‌ها
-   • انیمیشن‌های کوتاه (≤ 500ms) و بازی‌گونه
+   • تراکوتا فقط برای عناصر تعاملی و وضعیت فعال — هرگز تزئینی
+   • کهربا فقط برای جلب‌توجه (اعلان/بج)
+   • کنتراست سِری/سَنس (Playfair برای اعداد نمایشی)
+   • همیشه پالت گرم — نه مشکی/سفید خالص، نه خاکستری سردها
+   • گرید فاصله‌ی ۴px؛ شعاع: دکمه ۸px، کارت ۱۲px
    ============================================================ */
 
 html,
@@ -20,17 +19,17 @@ body,
   height: 100%;
 }
 
-/* تم لایت (پیش‌فرض) — سطح پایه‌ی تیل خیلی روشن */
+/* تم لایت (پیش‌فرض) — پس‌زمینه‌ی سفید گرم */
 body {
-  font-family: 'Vazirmatn', Tahoma, sans-serif;
-  background-color: #eff8f7;
-  color: #115650;
+  font-family: 'Source Sans 3', 'Vazirmatn', Tahoma, sans-serif;
+  background-color: #fafaf9;
+  color: #1c1917;
 }
 
-/* تم دارک — تیلِ عمیق به‌جای خاکستری */
+/* تم دارک — گرم و قهوه‌ای‌تیره، نه آبی‌خاکستری */
 .dark body {
-  background-color: #0b2e2c;
-  color: #d7f0ee;
+  background-color: #1c1917;
+  color: #e7e5e4;
 }
 
 /* اعداد فارسی برای نمایش */
@@ -38,110 +37,109 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* اسکرول‌بار ظریف‌تر با ته‌رنگ تیل */
+/* اعداد نمایشی با فونت سِری Playfair (برای اعداد بزرگ لاتین/فارسی) */
+.display-num {
+  font-family: 'Playfair Display', 'Vazirmatn', serif;
+  letter-spacing: -0.02em;
+}
+
+/* اسکرول‌بار گرم */
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #9fe2de;
+  background: #d6d3d1;
   border-radius: 999px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #17706b;
+  background: #44403c;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #6dd3cd;
+  background: #a8a29e;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #23968f;
+  background: #57534e;
 }
 
-/* فوکوس یکدست با هاله‌ی تیل */
+/* فوکوس یکدست با هاله‌ی گرم تراکوتا */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(43, 168, 162, 0.35);
+  box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.12);
   border-radius: 8px;
 }
 
 @layer components {
-  /* ---------- دکمه‌ها: قرصی، ارتفاع لمسی، bounce ---------- */
+  /* ---------- دکمه‌ها: ۱۵۰ms، شعاع ۸px، سمی‌بولد ---------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 min-h-[44px] text-sm font-bold transition-all duration-200 focus:outline-none disabled:opacity-50 active:scale-95;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[40px] text-sm font-semibold transition-all duration-150 focus:outline-none disabled:opacity-50;
   }
-  /* CTA اصلی — طلایی گرادیانی با لایه‌ی براق */
+  /* Primary — تراکوتا با glow گرم در hover؛ در هر نما فقط یک CTA اصلی */
   .btn-primary {
-    @apply btn relative overflow-hidden text-[#5b4300] shadow-accent-glow;
-    background-image: linear-gradient(180deg, #ffe47a 0%, #ffd23f 55%, #f5c518 100%);
-  }
-  .btn-primary::before {
-    content: '';
-    @apply absolute inset-x-0 top-0 h-1/2 rounded-t-full pointer-events-none;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0));
-  }
-  .btn-primary:hover {
-    filter: brightness(1.05);
+    @apply btn bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow;
   }
   .btn-secondary {
-    @apply btn bg-white text-brand-800 border-2 border-brand-200 shadow-sm hover:bg-brand-50 hover:border-brand-300 dark:bg-brand-900/40 dark:text-brand-100 dark:border-brand-800 dark:hover:bg-brand-900/60;
+    @apply btn bg-transparent text-stone-700 border border-stone-300 hover:bg-surface-raised dark:text-stone-200 dark:border-stone-700 dark:hover:bg-stone-800;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-900/30;
   }
   .btn-danger {
-    @apply btn text-white shadow-coral-glow;
-    background-image: linear-gradient(180deg, #ff8a6a 0%, #ef6c4a 60%, #d45233 100%);
+    @apply btn bg-error text-white hover:bg-coral-dark;
   }
 
-  /* ---------- ورودی‌ها: کرم با حاشیه‌ی تیل ---------- */
+  /* ---------- ورودی‌ها: سطح گرم، فوکوس تراکوتا ---------- */
   .input {
-    @apply w-full rounded-xl border-2 border-brand-100 bg-cream px-3 py-2 text-sm text-brand-900 placeholder-brand-300 shadow-sm transition focus:border-brand-400 focus:outline-none dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-50 dark:placeholder-brand-400/70;
+    @apply w-full rounded-lg border border-stone-300 bg-surface-card px-3 py-2 text-base text-stone-900 placeholder-stone-400 shadow-sm transition focus:border-brand-500 focus:outline-none dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100 dark:placeholder-stone-500;
   }
   .label {
-    @apply mb-1 block text-sm font-bold text-brand-800 dark:text-brand-200;
+    @apply mb-1.5 block text-sm font-semibold text-stone-800 dark:text-stone-200;
   }
 
-  /* ---------- کارت‌ها: سفید، گرد بزرگ، سایه‌ی تیل ---------- */
+  /* ---------- کارت‌ها: سطح گرم، حاشیه ۱px، شعاع ۱۲px ---------- */
   .card {
-    @apply rounded-3xl border-2 border-brand-100/70 bg-white p-5 shadow-card dark:bg-brand-900/40 dark:border-brand-800/80;
+    @apply rounded-xl border border-stone-300 bg-surface-card p-4 shadow-card transition-shadow duration-150 hover:shadow-md dark:bg-stone-800 dark:border-stone-700;
   }
-  /* کارت با نوار رنگی سمت راست (RTL) برای بیان وضعیت */
+  /* نوار رنگی سمت راست (RTL) — معادل left stripe در طراحی اصلی */
   .card-accent {
     @apply relative overflow-hidden;
   }
   .card-accent::before {
     content: '';
-    @apply absolute inset-y-0 right-0 w-1.5 bg-brand-400;
+    @apply absolute inset-y-0 right-0 w-1 bg-brand-500;
+  }
+  /* کارت انتخاب‌شده — حاشیه‌ی راست تراکوتا ۲px */
+  .card-selected {
+    @apply border-r-2 border-r-brand-500;
+  }
+
+  /* ---------- Chip قرصی ---------- */
+  .chip {
+    @apply inline-flex items-center rounded-full px-3.5 py-1 text-xs font-semibold;
+  }
+  .chip-default {
+    @apply chip bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-300;
+  }
+  .chip-active {
+    @apply chip bg-brand-500 text-white;
+  }
+
+  /* ---------- نوار پیشرفت ۴px ---------- */
+  .progress-track {
+    @apply h-1 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full rounded-full bg-brand-500 transition-all duration-300 ease-out;
   }
 
   /* ---------- نشان (badge) ---------- */
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
 
-  /* ---------- ریبان رترو (بازسازی الگوی Flip7) ---------- */
-  .ribbon {
-    @apply relative inline-block bg-cream text-brand-800 font-extrabold tracking-widest;
-    padding: 0.5rem 1.75rem;
-    border: 3px solid #1e8c86;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  }
-  /* دنباله‌های ریبان */
-  .ribbon::before,
-  .ribbon::after {
-    content: '';
-    position: absolute;
-    top: 8px;
-    width: 34px;
-    height: 100%;
-    background: #f3ecd2;
-    border: 3px solid #1e8c86;
-    z-index: -1;
-  }
-  .ribbon::before {
-    right: -22px;
-    border-left-color: transparent;
-  }
-  .ribbon::after {
-    left: -22px;
-    border-right-color: transparent;
+  /* ---------- سِری نمایشی برای تیترها ---------- */
+  .heading-serif {
+    font-family: 'Playfair Display', 'Vazirmatn', serif;
+    letter-spacing: -0.02em;
   }
 }
