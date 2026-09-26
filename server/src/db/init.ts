@@ -12,7 +12,7 @@
 // همچنین یک کاربر نمونه‌ی فقط‌مشاهده با USER_USERNAME/USER_PASSWORD ساخته می‌شود
 // (پیش‌فرض: user / user123) برای تست نقش 'user'.
 // ============================================================
-import { getDb, applySchema } from './db.js';
+import { getDb, applySchema, migrateSchema } from './db.js';
 import { hashPassword } from '../lib/auth.js';
 import { todayJalali, todayGregorian } from '../lib/date.js';
 
@@ -169,7 +169,7 @@ export function seedDatabase() {
   `);
   insertProc.run(
     part1, 'internal', 'انبار مرکزی تهران', '1402/04/01', '2023-06-22',
-    36, 'خرارد از نمایندگی رسمی'
+    36, 'خریداری از نمایندگی رسمی'
   ).lastInsertRowid as number;
   insertProc.run(
     part2, 'external', 'DUB-HQ (دبی)', '1402/04/10', '2023-07-01',
@@ -214,6 +214,7 @@ function main() {
   }
 
   const db = getDb();
+  migrateSchema(db);
   applySchema(db);
   console.log('→ اسکما اعمال شد.');
 

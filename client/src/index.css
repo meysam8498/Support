@@ -2,23 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   سیستم طراحی Flip7 — تیل/مرجانی/طلایی (RTL فارسی)
+   طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
+   اصول:
+   • سایه‌ی رنگی glow به‌جای سایه‌ی مشکی برای عناصر تعاملی
+   • دکمه‌های قرصی (pill) با ارتفاع لمسی ≥ 44px
+   • سطوح ورودی کرم (#FFF8E7) در تم لایت
+   • نوار رنگی سمت راست کارت‌ها برای بیان وضعیت (RTL)
+   • حاشیه‌ی نقطه‌چین برای جداکننده‌های بخش‌ها
+   • انیمیشن‌های کوتاه (≤ 500ms) و بازی‌گونه
+   ============================================================ */
+
 html,
 body,
 #root {
   height: 100%;
 }
 
-/* تم لایت (پیش‌فرض) */
+/* تم لایت (پیش‌فرض) — سطح پایه‌ی تیل خیلی روشن */
 body {
   font-family: 'Vazirmatn', Tahoma, sans-serif;
-  background-color: #f3f4f6;
-  color: #1f2937;
+  background-color: #eff8f7;
+  color: #115650;
 }
 
-/* تم دارک */
+/* تم دارک — تیلِ عمیق به‌جای خاکستری */
 .dark body {
-  background-color: #0f172a;
-  color: #e2e8f0;
+  background-color: #0b2e2c;
+  color: #d7f0ee;
 }
 
 /* اعداد فارسی برای نمایش */
@@ -26,48 +38,110 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* اسکرول‌بار ظریف‌تر */
+/* اسکرول‌بار ظریف‌تر با ته‌رنگ تیل */
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 6px;
+  background: #9fe2de;
+  border-radius: 999px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #17706b;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #6dd3cd;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #23968f;
+}
+
+/* فوکوس یکدست با هاله‌ی تیل */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(43, 168, 162, 0.35);
+  border-radius: 8px;
 }
 
 @layer components {
+  /* ---------- دکمه‌ها: قرصی، ارتفاع لمسی، bounce ---------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 dark:focus:ring-offset-slate-900;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 min-h-[44px] text-sm font-bold transition-all duration-200 focus:outline-none disabled:opacity-50 active:scale-95;
   }
+  /* CTA اصلی — طلایی گرادیانی با لایه‌ی براق */
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-400;
+    @apply btn relative overflow-hidden text-[#5b4300] shadow-accent-glow;
+    background-image: linear-gradient(180deg, #ffe47a 0%, #ffd23f 55%, #f5c518 100%);
+  }
+  .btn-primary::before {
+    content: '';
+    @apply absolute inset-x-0 top-0 h-1/2 rounded-t-full pointer-events-none;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0));
+  }
+  .btn-primary:hover {
+    filter: brightness(1.05);
   }
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700;
+    @apply btn bg-white text-brand-800 border-2 border-brand-200 shadow-sm hover:bg-brand-50 hover:border-brand-300 dark:bg-brand-900/40 dark:text-brand-100 dark:border-brand-800 dark:hover:bg-brand-900/60;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-300;
+    @apply btn text-white shadow-coral-glow;
+    background-image: linear-gradient(180deg, #ff8a6a 0%, #ef6c4a 60%, #d45233 100%);
   }
+
+  /* ---------- ورودی‌ها: کرم با حاشیه‌ی تیل ---------- */
   .input {
-    @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:placeholder-slate-500;
+    @apply w-full rounded-xl border-2 border-brand-100 bg-cream px-3 py-2 text-sm text-brand-900 placeholder-brand-300 shadow-sm transition focus:border-brand-400 focus:outline-none dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-50 dark:placeholder-brand-400/70;
   }
   .label {
-    @apply mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300;
+    @apply mb-1 block text-sm font-bold text-brand-800 dark:text-brand-200;
   }
+
+  /* ---------- کارت‌ها: سفید، گرد بزرگ، سایه‌ی تیل ---------- */
   .card {
-    @apply rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:bg-slate-800 dark:border-slate-700;
+    @apply rounded-3xl border-2 border-brand-100/70 bg-white p-5 shadow-card dark:bg-brand-900/40 dark:border-brand-800/80;
   }
+  /* کارت با نوار رنگی سمت راست (RTL) برای بیان وضعیت */
+  .card-accent {
+    @apply relative overflow-hidden;
+  }
+  .card-accent::before {
+    content: '';
+    @apply absolute inset-y-0 right-0 w-1.5 bg-brand-400;
+  }
+
+  /* ---------- نشان (badge) ---------- */
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold;
+  }
+
+  /* ---------- ریبان رترو (بازسازی الگوی Flip7) ---------- */
+  .ribbon {
+    @apply relative inline-block bg-cream text-brand-800 font-extrabold tracking-widest;
+    padding: 0.5rem 1.75rem;
+    border: 3px solid #1e8c86;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  }
+  /* دنباله‌های ریبان */
+  .ribbon::before,
+  .ribbon::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    width: 34px;
+    height: 100%;
+    background: #f3ecd2;
+    border: 3px solid #1e8c86;
+    z-index: -1;
+  }
+  .ribbon::before {
+    right: -22px;
+    border-left-color: transparent;
+  }
+  .ribbon::after {
+    left: -22px;
+    border-right-color: transparent;
   }
 }

@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
-import { getDb, applySchema } from './db/db.js';
+import { getDb, applySchema, migrateSchema } from './db/db.js';
 import { seedIfEmpty } from './db/init.js';
 import { authRequired, errorHandler } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
@@ -24,6 +24,7 @@ import reportsRoutes from './routes/reports.js';
 import usersRoutes from './routes/users.js';
 import warrantyRequestRoutes from './routes/warrantyRequests.js';
 import procurementRoutes from './routes/procurement.js';
+import serialImportRoutes from './routes/serialImport.js';
 
 config();
 
@@ -50,6 +51,7 @@ app.use('/api/parts', authRequired, partsRoutes);
 app.use('/api/warranty', authRequired, warrantyRoutes);
 app.use('/api/warranty-requests', authRequired, warrantyRequestRoutes);
 app.use('/api/procurement', authRequired, procurementRoutes);
+app.use('/api/serial-import', authRequired, serialImportRoutes);
 app.use('/api/dashboard', authRequired, dashboardRoutes);
 app.use('/api/reports', authRequired, reportsRoutes);
 app.use('/api/users', authRequired, usersRoutes); // فقط مدیر (درون روتر چک می‌شود)
@@ -66,7 +68,8 @@ app.use(errorHandler);
 // مقداردهی اولیه پایگاه داده هنگام راه‌اندازی:
 // اعمال اسکما (idempotent) و سپس، در صورت خالی بودن، seed اولیه (مهم برای Docker).
 const db = getDb();
-applySchema(db);
+migrateSchema(db);   // اول ستون‌های جاافتاده‌ی نسخه‌های قدیمی اضافه می‌شود
+applySchema(db);     // سپس جداول/ایندکس‌های جدید ساخته می‌شوند (idempotent)
 seedIfEmpty();
 
 app.listen(PORT, () => {

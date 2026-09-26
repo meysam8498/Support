@@ -15,6 +15,7 @@ import ReportsPage from './pages/ReportsPage';
 import ListsPage from './pages/ListsPage';
 import UsersPage from './pages/UsersPage';
 import CustomerViewPage from './pages/CustomerViewPage';
+import SerialImportPage from './pages/SerialImportPage';
 
 function Protected({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token');
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="warranty/replace" element={<WarrantyReplacePage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="lists" element={<ListsPage />} />
+          <Route path="serial-import" element={<SerialImportPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="dashboard/customer/:id" element={<CustomerViewPage />} />
         </Route>

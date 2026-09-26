@@ -20,13 +20,15 @@ router.post('/login', (req, res) => {
 
   const db = getDb();
   const user = db.prepare(
-    `SELECT id, username, password_hash, full_name, role FROM users WHERE username = ?`
+    `SELECT id, username, password_hash, full_name, role, active FROM users WHERE username = ?`
   ).get(username) as
-    | { id: number; username: string; password_hash: string; full_name: string; role: 'admin' | 'user' }
+    | { id: number; username: string; password_hash: string; full_name: string; role: 'admin' | 'user'; active: number }
     | undefined;
 
-  if (!user || !verifyPassword(password, user.password_hash)) {
-    return res.status(401).json({ error: 'نام کاربری یا رمز عبور نادرست است.' });
+  // پیام یکسان برای «کاربر وجود ندارد»، «رمز نادرست» و «حساب غیرفعال»
+  // تا مهاجم نتواند وجود نام کاربری را حدس بزند.
+  if (!user || !verifyPassword(password, user.password_hash) || user.active !== 1) {
+    return res.status(401).json({ error: 'نام کاربری یا رمز عبور نادرست است (یا حساب غیرفعال است).' });
   }
 
   const token = signToken({

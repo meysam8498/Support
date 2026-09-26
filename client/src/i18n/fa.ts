@@ -27,6 +27,7 @@ export const t = {
   navWarranty: 'گارنتی و تعویض',
   navReports: 'گزارش‌ها',
   navLists: 'مدیریت لیست‌ها',
+  navSerialImport: 'ورود سریال از اکسل',
   navUsers: 'مدیریت کاربران',
   navSettings: 'تنظیمات',
 

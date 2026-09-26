@@ -8,6 +8,13 @@ function getToken(): string | null {
   return localStorage.getItem('token');
 }
 
+/** خروج: پاک‌کردن نشست و هدایت به صفحه‌ی ورود (برای پاسخ 401 درخواست‌های عادی). */
+function clearSessionAndRedirect(): void {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = '/login';
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -24,16 +31,32 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-    throw new Error('نشست منقضی است.');
+  // 401 فقط برای درخواست‌های عادی یعنی «نشست منقضی»؛
+ // (لاگین 401 اختصاصی خودش را در loginRequest مدیریت می‌کند.)
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    clearSessionAndRedirect();
+    throw new Error('نشست منقضی است؛ دوباره وارد شوید.');
   }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
   return data as T;
+}
+
+/**
+ * ورود: مثل request ولی 401 اینجا یعنی «اعتبارنامه نادرست» و نباید نشست را پاک
+ * کند یا ریدایرکت شود (باگ قبلی: نمایش پیام اشتباه «نشست منقضی است» به‌جای
+ * «نام کاربری یا رمز عبور نادرست است» هنگام رمز اشتباه).
+ */
+export async function loginRequest(username: string, password: string): Promise<{ token: string; user: User }> {
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
+  return data as { token: string; user: User };
 }
 
 export const api = {
@@ -44,6 +67,8 @@ export const api = {
   /** قطعات فعال یک دستگاه (برای جریان تعویض گارنتی). */
   getDeviceActiveParts: (deviceId: number) =>
     request<Part[]>('GET', `/parts?device=${deviceId}&status=active`),
+  /** ورود با مدیریت خطای اختصاصی (نمایش پیام واقعی سرور در صفحه‌ی لاگین). */
+  login: (username: string, password: string) => loginRequest(username, password),
 };
 
 // -------- نوع‌ها --------

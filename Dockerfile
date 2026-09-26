@@ -6,6 +6,9 @@
 #
 # معماری: یک کانتینر که هم API (Express) و هم فایل‌های بیلد‌شده‌ی فرانت‌اند (static)
 # را روی یک پورت سرو می‌کند. index.ts در محیط تولید، client/dist را serve می‌کند.
+#
+# امکانات: مدیریت تجهیزات/قطعات، گارانتی، تأمین قطعات، تقویم شمسی،
+#          ورود سریال‌ها از فایل اکسل (قالب فهرست قطعات انبار).
 # ============================================================
 
 # ───────────────────────── Stage 1: Build ─────────────────────────
@@ -48,7 +51,7 @@ EXPOSE 4000
 
 # برچسب‌های OCI برای شناسایی image (شامل اطلاعات طراح)
 LABEL org.opencontainers.image.title="Support Equipment Management" \
-      org.opencontainers.image.description="پلتفرم مدیریت پروژه و تجهیزات (RTL فارسی، گارانتی، تأمین قطعات)" \
+      org.opencontainers.image.description="پلتفرم مدیریت پروژه و تجهیزات (RTL فارسی، گارانتی، تأمین قطعات، ورود سریال از اکسل)" \
       org.opencontainers.image.author="Meysam Ijadi <M.Ijadi@Hotmail.com>" \
       org.opencontainers.image.authors="میثم ایجادی / Meysam Ijadi — +98 902 296 4006" \
       org.opencontainers.image.source="https://github.com/mijadi8498/support-equipment-management" \
