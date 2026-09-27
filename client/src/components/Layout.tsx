@@ -11,6 +11,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { t } from '../i18n/fa';
+import GlobalSearchBox from './GlobalSearchBox';
 
 interface NavItem {
   to: string;
@@ -139,11 +140,14 @@ export default function Layout() {
 
       {/* محتوای اصلی — پس‌زمینه‌ی سفید گرم صفحه */}
       <main className="flex-1 overflow-y-auto bg-surface-base dark:bg-stone-900">
-        {/* نوار بالا: شفاف + blur، حاشیه‌ی پایین ۱px */}
-        <div className="sticky top-0 z-10 flex items-center justify-end gap-3 border-b border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/80 px-6 py-3 backdrop-blur">
+        {/* نوار بالا: جست‌وجوی سراسری + تم — شفاف + blur، حاشیه‌ی پایین ۱px */}
+        <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/80 px-6 py-3 backdrop-blur">
+          <div className="flex-1 max-w-xl">
+            <GlobalSearchBox compact />
+          </div>
           <button
             onClick={toggleTheme}
-            className="btn-secondary !min-h-[36px] !px-3 text-sm"
+            className="btn-secondary !min-h-[36px] !px-3 text-sm shrink-0"
             title={t.toggleTheme}
             aria-label={t.toggleTheme}
           >
