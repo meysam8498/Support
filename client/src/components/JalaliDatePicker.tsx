@@ -178,24 +178,24 @@ export default function JalaliDatePicker({
         </button>
 
         {open && (
-          <div className="absolute z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white p-3 shadow-xl top-full right-0 dark:bg-slate-800 dark:border-slate-600">
+          <div className="absolute z-50 mt-2 w-72 rounded-xl border border-stone-200 bg-white p-3 shadow-xl top-full right-0 dark:bg-stone-800 dark:border-stone-600">
             {/* هدر ناوبری */}
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <button type="button" onClick={prevYear} className="rounded px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-slate-700">«</button>
-                <button type="button" onClick={prevMonth} className="rounded px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-slate-700">›</button>
+                <button type="button" onClick={prevYear} className="rounded px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-stone-700">«</button>
+                <button type="button" onClick={prevMonth} className="rounded px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-stone-700">›</button>
               </div>
-              <div className="text-sm font-medium text-gray-700 dark:text-slate-200">
+              <div className="text-sm font-medium text-stone-700 dark:text-stone-200">
                 {JALALI_MONTHS[viewMonth - 1]} {toFa(viewYear)}
               </div>
               <div className="flex items-center gap-1">
-                <button type="button" onClick={nextMonth} className="rounded px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-slate-700">‹</button>
-                <button type="button" onClick={nextYear} className="rounded px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-slate-700">»</button>
+                <button type="button" onClick={nextMonth} className="rounded px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-stone-700">‹</button>
+                <button type="button" onClick={nextYear} className="rounded px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-stone-700">»</button>
               </div>
             </div>
 
             {/* روزهای هفته */}
-            <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 dark:text-slate-500">
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-stone-400 dark:text-stone-500">
               {WEEK_DAYS.map((d) => (
                 <div key={d} className="py-1">{d}</div>
               ))}
@@ -215,7 +215,7 @@ export default function JalaliDatePicker({
                     className={`fa-nums rounded-md py-1 text-sm transition ${
                       isSelected
                         ? 'bg-brand-600 text-white font-medium'
-                        : 'text-gray-700 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-700'
+                        : 'text-stone-700 hover:bg-brand-50 dark:text-stone-200 dark:hover:bg-stone-700'
                     }`}
                   >
                     {toFa(d)}
@@ -224,8 +224,8 @@ export default function JalaliDatePicker({
               })}
             </div>
 
-            <div className="mt-2 border-t border-gray-100 pt-2 dark:border-slate-700">
-              <button type="button" onClick={fillToday} className="w-full rounded-md bg-gray-50 py-1.5 text-xs text-brand-600 hover:bg-gray-100 dark:bg-slate-700 dark:text-brand-300 dark:hover:bg-slate-600">
+            <div className="mt-2 border-t border-stone-100 pt-2 dark:border-stone-700">
+              <button type="button" onClick={fillToday} className="w-full rounded-md bg-surface-card py-1.5 text-xs text-brand-600 hover:bg-stone-100 dark:bg-stone-700 dark:text-brand-300 dark:hover:bg-stone-600">
                 امروز: {toFa(todayJalali())}
               </button>
             </div>

@@ -157,7 +157,7 @@ export default function DeviceFormPage() {
     }
   };
 
-  if (loading) return <p className="text-gray-400 text-center mt-20 dark:text-slate-500">{t.loading}</p>;
+  if (loading) return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.loading}</p>;
 
   const filteredModels = lists
     ? lists.deviceModels.filter((m) => !form.brand_id || m.brand_id === form.brand_id)
@@ -165,7 +165,7 @@ export default function DeviceFormPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <h1 className="text-xl font-bold dark:text-slate-100">{isEdit ? t.editDevice : t.addDevice}</h1>
+      <h1 className="text-xl font-bold dark:text-stone-50">{isEdit ? t.editDevice : t.addDevice}</h1>
 
       {error && (
         <p className="p-3 bg-red-50 text-red-600 rounded-lg text-sm dark:bg-red-900/30 dark:text-red-300">{error}</p>
@@ -228,7 +228,7 @@ export default function DeviceFormPage() {
             <JalaliDatePicker label={t.warrantyStart} value={form.warranty_start_jalali} onChange={(v) => set('warranty_start_jalali', v)} />
           </div>
           {warrantyEndPreview && (
-            <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+            <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
               {t.warrantyEnd}: <span className="fa-nums font-medium">{formatJalaliLong(warrantyEndPreview)}</span>
             </p>
           )}

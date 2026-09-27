@@ -175,25 +175,28 @@ export default function WarrantyReplacePage() {
     }
   };
 
-  if (loadingLists) return <p className="text-gray-400 dark:text-slate-500 text-center mt-20">{t.loading}</p>;
+  if (loadingLists) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
 
   // فقط ادمین اجازه ثبت تعویض دارد
   if (!isAdmin) {
     return (
       <div className="max-w-2xl mx-auto card text-center py-12">
-        <p className="text-gray-500 dark:text-slate-400">ثبت تعویض قطعه تحت گارنتی فقط برای کارشناس مجاز (ادمین) ممکن است.</p>
+        <p className="text-stone-500 dark:text-stone-400">ثبت تعویض قطعه تحت گارنتی فقط برای کارشناس مجاز (ادمین) ممکن است.</p>
       </div>
     );
   }
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <h1 className="text-xl font-bold dark:text-slate-100">{t.warrantyNew}</h1>
-      {error && <p className="p-3 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-sm">{error}</p>}
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">🔄</span>
+        <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">{t.warrantyNew}</h1>
+      </div>
+      {error && <p className="p-3 bg-coral/10 dark:bg-coral/20 text-coral-dark dark:text-coral-light rounded-lg text-sm border border-coral/30">{error}</p>}
 
       {/* گام ۱: انتخاب پروژه */}
-      <div className="card">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3">{t.warrantyStep1}</h3>
+      <div className="card card-accent">
+        <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-200 mb-3">{t.warrantyStep1}</h3>
         <SelectField
           label={t.projectName}
           value={projectId}
@@ -210,10 +213,10 @@ export default function WarrantyReplacePage() {
 
       {/* گام ۲: انتخاب دستگاه (فقط اگر پروژه انتخاب شده) */}
       {projectId && (
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3">{t.warrantyStep2}</h3>
+        <div className="card card-accent">
+          <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-200 mb-3">{t.warrantyStep2}</h3>
           {filteredDevices.length === 0 ? (
-            <p className="text-gray-400 dark:text-slate-500 text-sm">{t.noData}</p>
+            <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p>
           ) : (
             <div className="space-y-2">
               {filteredDevices.map((d) => {
@@ -225,19 +228,19 @@ export default function WarrantyReplacePage() {
                     onClick={() => { setDeviceId(d.id); setOldPartId(''); }}
                     className={`w-full text-right rounded-lg border p-3 transition ${
                       active
-                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/30 ring-1 ring-brand-200'
-                        : 'border-gray-200 dark:border-slate-700 hover:border-brand-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/30 ring-1 ring-brand-200 card-selected'
+                        : 'border-stone-200 dark:border-stone-700 hover:border-brand-300 hover:bg-brand-50/50 dark:hover:bg-stone-800'
                     }`}
                   >
                     <div className="flex flex-wrap justify-between items-center gap-2">
-                      <span className="font-medium dark:text-slate-100">
+                      <span className="font-medium text-stone-900 dark:text-stone-100">
                         {d.device_type_name || '—'} · {d.brand_name || ''} {d.device_model_name || ''}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-slate-400">
+                      <span className={`chip ${active ? 'chip-active' : 'chip-default'} !px-2.5 !py-0.5 text-[11px]`}>
                         {t.partsOfDevice}: {toFa(d.parts_count || 0)}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-gray-500 dark:text-slate-400 grid grid-cols-2 gap-x-4">
+                    <div className="mt-1 text-xs text-stone-500 dark:text-stone-400 grid grid-cols-2 gap-x-4">
                       <span>{t.mainSerial}: <b className="fa-nums" dir="ltr">{d.main_serial || '—'}</b></span>
                       <span>{t.contractNumber}: <b className="fa-nums" dir="ltr">{d.contract_number || '—'}</b></span>
                     </div>
@@ -251,31 +254,31 @@ export default function WarrantyReplacePage() {
 
       {/* گام ۳: انتخاب قطعه‌ی خراب (فقط اگر دستگاه انتخاب شده) */}
       {deviceId && selectedDevice && (
-        <div className="card">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">{t.warrantyStep3}</h3>
-            <span className="text-xs text-gray-400 dark:text-slate-500">
+        <div className="card card-accent">
+          <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+            <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-200">{t.warrantyStep3}</h3>
+            <span className="text-xs text-stone-500 dark:text-stone-400">
               {selectedDevice.device_type_name} {selectedDevice.brand_name} {selectedDevice.device_model_name}
               {' · '}<span className="fa-nums" dir="ltr">{selectedDevice.main_serial || '—'}</span>
             </span>
           </div>
-          <p className="text-xs text-gray-400 dark:text-slate-500 mb-3">{t.partsOfDevice}</p>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">{t.partsOfDevice}</p>
 
           {loadingParts ? (
-            <p className="text-gray-400 dark:text-slate-500 text-sm">{t.loading}</p>
+            <p className="text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
           ) : partsOfDevice.length === 0 ? (
-            <p className="text-gray-400 dark:text-slate-500 text-sm">{t.partNotFound}</p>
+            <p className="text-stone-400 dark:text-stone-500 text-sm">{t.partNotFound}</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-700">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
-                    <th className="text-right px-3 py-2 font-medium w-8"></th>
-                    <th className="text-right px-3 py-2 font-medium">{t.partTitle}</th>
-                    <th className="text-right px-3 py-2 font-medium">{t.partNumber1}</th>
-                    <th className="text-right px-3 py-2 font-medium">{t.partSerial}</th>
-                    <th className="text-right px-3 py-2 font-medium">{t.status}</th>
-                    <th className="text-right px-3 py-2 font-medium">{t.soldDate}</th>
+                  <tr className="bg-surface-card dark:bg-stone-800/80 text-stone-600 dark:text-stone-300">
+                    <th className="text-right px-3 py-2.5 font-semibold w-8"></th>
+                    <th className="text-right px-3 py-2.5 font-semibold">{t.partTitle}</th>
+                    <th className="text-right px-3 py-2.5 font-semibold">{t.partNumber1}</th>
+                    <th className="text-right px-3 py-2.5 font-semibold">{t.partSerial}</th>
+                    <th className="text-right px-3 py-2.5 font-semibold">{t.status}</th>
+                    <th className="text-right px-3 py-2.5 font-semibold">{t.soldDate}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -285,8 +288,10 @@ export default function WarrantyReplacePage() {
                       <tr
                         key={p.id}
                         onClick={() => setOldPartId(p.id)}
-                        className={`border-b dark:border-slate-700 cursor-pointer transition ${
-                          active ? 'bg-red-50/60 dark:bg-red-900/30' : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+                        className={`border-b border-dashed border-stone-100 dark:border-stone-700 cursor-pointer transition-colors ${
+                          active
+                            ? 'bg-coral/10 dark:bg-coral/20'
+                            : 'hover:bg-brand-50/60 dark:hover:bg-brand-900/25'
                         }`}
                       >
                         <td className="px-3 py-2 text-center">
@@ -296,13 +301,14 @@ export default function WarrantyReplacePage() {
                             checked={active}
                             onChange={() => setOldPartId(p.id)}
                             onClick={(e) => e.stopPropagation()}
+                            className="accent-brand-500"
                           />
                         </td>
-                        <td className="px-3 py-2 font-medium dark:text-slate-200">{p.title}</td>
-                        <td className="px-3 py-2 fa-nums dark:text-slate-300" dir="ltr">{p.part_number_1 || '—'}</td>
-                        <td className="px-3 py-2 fa-nums dark:text-slate-300" dir="ltr">{p.part_serial_number || '—'}</td>
+                        <td className="px-3 py-2 font-semibold text-stone-800 dark:text-stone-100">{p.title}</td>
+                        <td className="px-3 py-2 fa-nums text-stone-700 dark:text-stone-200" dir="ltr">{p.part_number_1 || '—'}</td>
+                        <td className="px-3 py-2 fa-nums text-stone-700 dark:text-stone-200" dir="ltr">{p.part_serial_number || '—'}</td>
                         <td className="px-3 py-2"><StatusBadge status={p.status} /></td>
-                        <td className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">{formatJalaliLong(p.sold_at_jalali)}</td>
+                        <td className="px-3 py-2 text-xs text-stone-500 dark:text-stone-400">{formatJalaliLong(p.sold_at_jalali)}</td>
                       </tr>
                     );
                   })}
@@ -312,8 +318,8 @@ export default function WarrantyReplacePage() {
           )}
 
           {oldPart && (
-            <div className="mt-3 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/40 dark:bg-red-900/20 p-3 text-xs text-gray-600 dark:text-slate-300">
-              <span className="font-semibold text-red-700 dark:text-red-400">{t.installedPart}: </span>
+            <div className="mt-3 rounded-xl border border-coral/30 bg-coral/10 dark:bg-coral/20 p-3 text-xs text-stone-600 dark:text-stone-300">
+              <span className="font-semibold text-coral-dark dark:text-coral-light">{t.installedPart}: </span>
               {oldPart.title}
               {' — '}
               <span dir="ltr" className="fa-nums">سریال: {oldPart.part_serial_number || '—'}</span>
@@ -324,10 +330,10 @@ export default function WarrantyReplacePage() {
 
       {/* گام ۴: فرم قطعه‌ی جدید (فقط اگر قطعه‌ای انتخاب شده) */}
       {oldPart && (
-        <form onSubmit={submit} className="card space-y-4">
-          <h3 className="text-sm font-semibold text-green-700 dark:text-green-400">{t.warrantyStep4}</h3>
+        <form onSubmit={submit} className="card card-accent space-y-4">
+          <h3 className="text-sm font-semibold text-success dark:text-green-400">{t.warrantyStep4}</h3>
           <div>
-            <label className="label">{t.partTitle}<span className="text-red-500 mr-1">*</span></label>
+            <label className="label">{t.partTitle}<span className="text-coral mr-1">*</span></label>
             <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} required />
           </div>
           <div className="grid md:grid-cols-2 gap-4">
@@ -365,7 +371,7 @@ export default function WarrantyReplacePage() {
       )}
 
       {!projectId && (
-        <p className="text-center text-gray-400 dark:text-slate-500 text-sm">{t.noActiveDevice}</p>
+        <p className="text-center text-stone-400 dark:text-stone-500 text-sm">{t.noActiveDevice}</p>
       )}
     </div>
   );

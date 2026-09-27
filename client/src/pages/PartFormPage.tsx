@@ -80,24 +80,24 @@ export default function PartFormPage() {
     finally { setSaving(false); }
   };
 
-  if (loading) return <p className="text-gray-400 dark:text-slate-500 text-center mt-20">{t.loading}</p>;
+  if (loading) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
 
   // کاربر غیر ادمین اجازه ایجاد/ویرایش ندارد
   if (!isAdmin) {
     return (
       <div className="max-w-2xl mx-auto card text-center py-12">
-        <p className="text-gray-500 dark:text-slate-400">دسترسی ثبت/ویرایش قطعه فقط برای کارشناس مجاز (ادمین) است.</p>
+        <p className="text-stone-500 dark:text-stone-400">دسترسی ثبت/ویرایش قطعه فقط برای کارشناس مجاز (ادمین) است.</p>
       </div>
     );
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-      <h1 className="text-xl font-bold dark:text-slate-100">{isEdit ? 'ویرایش قطعه' : t.addPart}</h1>
+      <h1 className="text-xl font-bold dark:text-stone-50">{isEdit ? 'ویرایش قطعه' : t.addPart}</h1>
       {error && <p className="p-3 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-sm">{error}</p>}
       <form onSubmit={submit} className="card space-y-4">
         <div>
-          <label className="label">دستگاه<span className="text-red-500 mr-1">*</span></label>
+          <label className="label">دستگاه<span className="text-coral mr-1">*</span></label>
           <select className="input" value={form.device_id} onChange={(e) => set('device_id', Number(e.target.value))} required disabled={!!presetDevice && !isEdit}>
             <option value="">انتخاب دستگاه...</option>
             {devices.map((d) => (
@@ -106,7 +106,7 @@ export default function PartFormPage() {
           </select>
         </div>
         <div>
-          <label className="label">{t.partTitle}<span className="text-red-500 mr-1">*</span></label>
+          <label className="label">{t.partTitle}<span className="text-coral mr-1">*</span></label>
           <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} required />
         </div>
         <div className="grid md:grid-cols-2 gap-4">

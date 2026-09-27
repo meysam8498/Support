@@ -43,8 +43,8 @@ export default function DeviceDetailPage() {
   };
   useEffect(() => { load(); }, [id]);
 
-  if (loading) return <p className="text-gray-400 text-center mt-20 dark:text-slate-500">{t.loading}</p>;
-  if (!data) return <p className="text-gray-400 text-center mt-20 dark:text-slate-500">{t.noData}</p>;
+  if (loading) return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.loading}</p>;
+  if (!data) return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.noData}</p>;
 
   const { device: d } = data;
 
@@ -56,7 +56,7 @@ export default function DeviceDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-bold dark:text-slate-100">جزئیات تجهیز</h1>
+        <h1 className="text-xl font-bold dark:text-stone-50">جزئیات تجهیز</h1>
         {isAdmin && (
           <div className="flex gap-2">
             <Link to={`/devices/${d.id}/edit`} className="btn-secondary">{t.edit}</Link>
@@ -79,7 +79,7 @@ export default function DeviceDetailPage() {
           <Spec label={t.brand} value={d.brand_name} />
           <Spec label={t.technicalExpert} value={d.technical_expert_name} />
           <div className="flex flex-col">
-            <span className="text-gray-400 text-xs dark:text-slate-500">{t.deviceStatus}</span>
+            <span className="text-stone-400 text-xs dark:text-stone-500">{t.deviceStatus}</span>
             {d.status ? <StatusBadge status={d.status} /> : <span>—</span>}
           </div>
           {d.replacement_reason_type && (
@@ -93,7 +93,7 @@ export default function DeviceDetailPage() {
 
       {/* انبار و تحویل */}
       <div className="card">
-        <h2 className="text-base font-semibold mb-3 dark:text-slate-200">انبار و تحویل</h2>
+        <h2 className="text-base font-semibold mb-3 dark:text-stone-200">انبار و تحویل</h2>
         <div className="grid md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <Spec label={t.warehouseExitDate} value={formatJalaliLong(d.warehouse_exit_jalali)} />
           <Spec label={t.customerDeliveryDate} value={formatJalaliLong(d.customer_delivery_jalali)} />
@@ -102,14 +102,14 @@ export default function DeviceDetailPage() {
 
       {/* گارانتی */}
       <div className="card">
-        <h2 className="text-base font-semibold mb-3 dark:text-slate-200">گارانتی</h2>
+        <h2 className="text-base font-semibold mb-3 dark:text-stone-200">گارانتی</h2>
         <div className="grid md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <Spec label={t.warrantyDuration} value={d.warranty_duration_months ? `${toFa(d.warranty_duration_months)} ماه` : '—'} />
           <Spec label={t.warrantyStart} value={formatJalaliLong(d.warranty_start_jalali)} />
           <Spec label={t.warrantyEnd} value={formatJalaliLong(d.warranty_end_jalali)} />
           {warrantyStatus && (
             <div className="flex flex-col">
-              <span className="text-gray-400 text-xs dark:text-slate-500">وضعیت گارانتی</span>
+              <span className="text-stone-400 text-xs dark:text-stone-500">وضعیت گارانتی</span>
               <span className={`text-sm font-medium ${warrantyStatus === t.warrantyValid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {warrantyStatus}
               </span>
@@ -120,13 +120,13 @@ export default function DeviceDetailPage() {
 
       {/* درخواست‌های گارانتی */}
       <div className="card">
-        <h2 className="text-base font-semibold mb-3 dark:text-slate-200">{t.warrantyRequests} ({toFa(data.warrantyRequests.length)})</h2>
+        <h2 className="text-base font-semibold mb-3 dark:text-stone-200">{t.warrantyRequests} ({toFa(data.warrantyRequests.length)})</h2>
         {data.warrantyRequests.length === 0 ? (
-          <p className="text-gray-400 text-sm dark:text-slate-500">{t.noData}</p>
+          <p className="text-stone-400 text-sm dark:text-stone-500">{t.noData}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="bg-gray-50 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+              <thead><tr className="bg-surface-card text-stone-600 dark:bg-stone-800 dark:text-stone-300">
                 <th className="text-right px-3 py-2 font-medium">{t.requestDate}</th>
                 <th className="text-right px-3 py-2 font-medium">{t.requestStatus}</th>
                 <th className="text-right px-3 py-2 font-medium">{t.description}</th>
@@ -135,10 +135,10 @@ export default function DeviceDetailPage() {
                 {data.warrantyRequests.map((wr) => {
                   const st = REQ_STATUS[wr.status] || REQ_STATUS.pending;
                   return (
-                    <tr key={wr.id} className="border-b dark:border-slate-700">
+                    <tr key={wr.id} className="border-b dark:border-stone-700">
                       <td className="px-3 py-2 text-xs fa-nums">{formatJalaliLong(wr.request_jalali)}</td>
                       <td className="px-3 py-2"><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                      <td className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">{wr.description || '—'}</td>
+                      <td className="px-3 py-2 text-xs text-stone-500 dark:text-stone-400">{wr.description || '—'}</td>
                     </tr>
                   );
                 })}
@@ -150,13 +150,13 @@ export default function DeviceDetailPage() {
 
       {/* قطعات (با اطلاعات تأمین) */}
       <div className="card">
-        <h2 className="text-base font-semibold mb-3 dark:text-slate-200">قطعات این تجهیز ({toFa(data.parts.length)})</h2>
+        <h2 className="text-base font-semibold mb-3 dark:text-stone-200">قطعات این تجهیز ({toFa(data.parts.length)})</h2>
         {data.parts.length === 0 ? (
-          <p className="text-gray-400 text-sm dark:text-slate-500">{t.noData}</p>
+          <p className="text-stone-400 text-sm dark:text-stone-500">{t.noData}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="bg-gray-50 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+              <thead><tr className="bg-surface-card text-stone-600 dark:bg-stone-800 dark:text-stone-300">
                 <th className="text-right px-3 py-2 font-medium">{t.partTitle}</th>
                 <th className="text-right px-3 py-2 font-medium">{t.partNumber1}</th>
                 <th className="text-right px-3 py-2 font-medium">{t.partSerial}</th>
@@ -166,12 +166,12 @@ export default function DeviceDetailPage() {
               </tr></thead>
               <tbody>
                 {data.parts.map((p) => (
-                  <tr key={p.id} className="border-b hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                  <tr key={p.id} className="border-b hover:bg-surface-card dark:border-stone-700 dark:hover:bg-brand-900/25">
                     <td className="px-3 py-2"><Link to={`/parts/${p.id}`} className="text-brand-600 hover:underline dark:text-brand-400">{p.title}</Link></td>
                     <td className="px-3 py-2 fa-nums" dir="ltr">{p.part_number_1 || '—'}</td>
                     <td className="px-3 py-2 fa-nums" dir="ltr">{p.part_serial_number || '—'}</td>
                     <td className="px-3 py-2"><StatusBadge status={p.status} /></td>
-                    <td className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">
+                    <td className="px-3 py-2 text-xs text-stone-500 dark:text-stone-400">
                       {p.source ? (p.source === 'internal' ? t.sourceInternal : t.sourceExternal) : '—'}
                       {p.supplier_warranty_months ? ` · ${toFa(p.supplier_warranty_months)} ماه` : ''}
                     </td>
@@ -190,28 +190,28 @@ export default function DeviceDetailPage() {
 
       {/* تاریخچه تعویض گارنتی */}
       <div className="card">
-        <h2 className="text-base font-semibold mb-3 dark:text-slate-200">تاریخچه تعویض ({toFa(data.replacements.length)})</h2>
+        <h2 className="text-base font-semibold mb-3 dark:text-stone-200">تاریخچه تعویض ({toFa(data.replacements.length)})</h2>
         {data.replacements.length === 0 ? (
-          <p className="text-gray-400 text-sm dark:text-slate-500">{t.noData}</p>
+          <p className="text-stone-400 text-sm dark:text-stone-500">{t.noData}</p>
         ) : (
           <div className="space-y-3">
             {data.replacements.map((r) => (
-              <div key={r.id} className="border rounded-lg p-3 text-sm dark:border-slate-700">
+              <div key={r.id} className="border rounded-lg p-3 text-sm dark:border-stone-700">
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <span className="font-medium text-red-600 dark:text-red-400">{r.old_part_title}</span>
-                    <span className="mx-2 text-gray-400">→</span>
+                    <span className="mx-2 text-stone-400">→</span>
                     <span className="font-medium text-green-600 dark:text-green-400">{r.new_part_title}</span>
                   </div>
-                  <span className="text-xs text-gray-400 fa-nums dark:text-slate-500">{formatJalaliLong(r.replaced_at_jalali)}</span>
+                  <span className="text-xs text-stone-400 fa-nums dark:text-stone-500">{formatJalaliLong(r.replaced_at_jalali)}</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500 dark:text-slate-400">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-stone-500 dark:text-stone-400">
                   <span>کارشناس: {r.expert_name || '—'}</span>
                   <span>دلیل: {r.failure_reason_name || '—'}</span>
                   <span className="fa-nums" dir="ltr">قدیمی: {r.old_part_serial || '—'}</span>
                   <span className="fa-nums" dir="ltr">جدید: {r.new_part_serial || '—'}</span>
                 </div>
-                {r.description && <p className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded dark:bg-slate-700 dark:text-slate-300">{r.description}</p>}
+                {r.description && <p className="mt-2 text-xs text-stone-600 bg-surface-card p-2 rounded dark:bg-stone-700 dark:text-stone-300">{r.description}</p>}
               </div>
             ))}
           </div>
@@ -225,7 +225,7 @@ export default function DeviceDetailPage() {
 function Spec({ label, value, ltr }: { label: string; value?: string | null; ltr?: boolean }) {
   return (
     <div className="flex flex-col">
-      <span className="text-gray-400 text-xs dark:text-slate-500">{label}</span>
+      <span className="text-stone-400 text-xs dark:text-stone-500">{label}</span>
       <span className={`font-medium fa-nums ${ltr ? 'dir-ltr' : ''}`} style={ltr ? { direction: 'ltr', textAlign: 'right' } : undefined}>{value || '—'}</span>
     </div>
   );

@@ -30,22 +30,22 @@ export default function Modal({ open, onClose, title, children, wide }: Props) {
       onClick={onClose}
     >
       <div
-        className={`bg-white rounded-2xl shadow-xl mx-4 dark:bg-slate-800 ${
+        className={`bg-white rounded-2xl shadow-xl mx-4 dark:bg-stone-800 ${
           wide ? 'w-full max-w-3xl' : 'w-full max-w-lg'
         } max-h-[90vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
-          <h2 className="text-lg font-semibold dark:text-slate-100">{title}</h2>
+        <div className="flex items-center justify-between border-b px-6 py-4 dark:border-stone-700">
+          <h2 className="text-lg font-semibold dark:text-stone-50">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none dark:hover:text-slate-200"
+            className="text-stone-400 hover:text-stone-600 text-2xl leading-none dark:hover:text-stone-200"
             aria-label="بستن"
           >
             &times;
           </button>
         </div>
-        <div className="overflow-y-auto p-6 dark:text-slate-200">{children}</div>
+        <div className="overflow-y-auto p-6 dark:text-stone-200">{children}</div>
       </div>
     </div>
   );

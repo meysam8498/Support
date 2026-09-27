@@ -47,7 +47,7 @@ export default function ListsPage() {
   if (!isAdmin) {
     return (
       <div className="card text-center py-12">
-        <p className="text-gray-500 dark:text-slate-400">دسترسی به مدیریت لیست‌ها فقط برای کارشناس مجاز (ادمین) امکان‌پذیر است.</p>
+        <p className="text-stone-500 dark:text-stone-400">دسترسی به مدیریت لیست‌ها فقط برای کارشناس مجاز (ادمین) امکان‌پذیر است.</p>
       </div>
     );
   }
@@ -123,7 +123,7 @@ export default function ListsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold dark:text-slate-100">{t.navLists}</h1>
+      <h1 className="text-xl font-bold dark:text-stone-50">{t.navLists}</h1>
 
       {/* تب‌ها */}
       <div className="flex flex-wrap gap-2">
@@ -131,7 +131,7 @@ export default function ListsPage() {
           <button
             key={d.key}
             onClick={() => setActive(d)}
-            className={`px-3 py-1.5 rounded-lg text-sm transition ${active.key === d.key ? 'bg-brand-600 text-white' : 'bg-white dark:bg-slate-800 border dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+            className={`px-3 py-1.5 rounded-lg text-sm transition ${active.key === d.key ? 'bg-brand-600 text-white' : 'bg-white dark:bg-stone-800 border dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-surface-card dark:hover:bg-stone-700'}`}
           >
             {d.label}
           </button>
@@ -140,16 +140,16 @@ export default function ListsPage() {
 
       <div className="card">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-base font-semibold dark:text-slate-100">{active.label}</h2>
+          <h2 className="text-base font-semibold dark:text-stone-50">{active.label}</h2>
           <button onClick={openAddModal} className="btn-primary text-xs">{t.addItem}</button>
         </div>
 
         {items.length === 0 ? (
-          <p className="text-gray-400 dark:text-slate-500 text-sm">{t.noData}</p>
+          <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
+              <thead><tr className="bg-surface-card dark:bg-stone-800/80 text-stone-600 dark:text-stone-300">
                 <th className="text-right px-3 py-2 font-medium">ردیف</th>
                 <th className="text-right px-3 py-2 font-medium">{t.name}</th>
                 {active.hasPhone && <th className="text-right px-3 py-2 font-medium">{t.phone}</th>}
@@ -160,16 +160,16 @@ export default function ListsPage() {
               </tr></thead>
               <tbody>
                 {items.map((it, idx) => (
-                  <tr key={it.id} className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800">
-                    <td className="px-3 py-2 text-gray-400 dark:text-slate-500 fa-nums">{idx + 1}</td>
-                    <td className="px-3 py-2 font-medium dark:text-slate-200">{it.name}</td>
-                    {active.hasPhone && <td className="px-3 py-2 fa-nums dark:text-slate-300" dir="ltr">{it.phone || '—'}</td>}
-                    {active.extraField && <td className="px-3 py-2 dark:text-slate-300">{it.brand_name || '—'}</td>}
+                  <tr key={it.id} className="border-b dark:border-stone-700 hover:bg-surface-card dark:hover:bg-brand-900/25">
+                    <td className="px-3 py-2 text-stone-400 dark:text-stone-500 fa-nums">{idx + 1}</td>
+                    <td className="px-3 py-2 font-medium dark:text-stone-200">{it.name}</td>
+                    {active.hasPhone && <td className="px-3 py-2 fa-nums dark:text-stone-300" dir="ltr">{it.phone || '—'}</td>}
+                    {active.extraField && <td className="px-3 py-2 dark:text-stone-300">{it.brand_name || '—'}</td>}
                     {active.key === 'projects' && (
-                      <td className="px-3 py-2 dark:text-slate-300">
+                      <td className="px-3 py-2 dark:text-stone-300">
                         <span className="fa-nums" dir="ltr">{it.contract_number || '—'}</span>
                         {lists?.salesExperts.find((s) => s.id === it.sales_expert_id) && (
-                          <span className="text-gray-400 dark:text-slate-500 text-xs mr-2">/ {lists.salesExperts.find((s) => s.id === it.sales_expert_id)?.name}</span>
+                          <span className="text-stone-400 dark:text-stone-500 text-xs mr-2">/ {lists.salesExperts.find((s) => s.id === it.sales_expert_id)?.name}</span>
                         )}
                       </td>
                     )}
@@ -180,18 +180,18 @@ export default function ListsPage() {
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition ${
                             (it.active ?? 1)
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'
+                              : 'bg-stone-100 text-stone-500 dark:bg-stone-700 dark:text-stone-400'
                           }`}
                           title={(it.active ?? 1) ? 'غیرفعال کردن' : 'فعال کردن'}
                         >
-                          <span className={`inline-block w-2 h-2 rounded-full ${(it.active ?? 1) ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                          <span className={`inline-block w-2 h-2 rounded-full ${(it.active ?? 1) ? 'bg-green-500' : 'bg-stone-400'}`}></span>
                           {(it.active ?? 1) ? t.active : t.inactive}
                         </button>
                       </td>
                     )}
                     <td className="px-3 py-2 flex gap-3">
                       <button onClick={() => openEditModal(it)} className="text-brand-600 hover:underline text-xs dark:text-brand-400">{t.edit}</button>
-                      <button onClick={() => remove(it.id)} className="text-red-500 hover:underline text-xs">{t.delete}</button>
+                      <button onClick={() => remove(it.id)} className="text-coral hover:text-coral-dark text-xs">{t.delete}</button>
                     </td>
                   </tr>
                 ))}

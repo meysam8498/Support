@@ -41,12 +41,12 @@ export default function UsersPage() {
   if (!isAdmin) {
     return (
       <div className="card text-center py-12">
-        <p className="text-gray-500 dark:text-slate-400">دسترسی به مدیریت کاربران فقط برای مدیر (admin) ممکن است.</p>
+        <p className="text-stone-500 dark:text-stone-400">دسترسی به مدیریت کاربران فقط برای مدیر (admin) ممکن است.</p>
       </div>
     );
   }
 
-  if (loading) return <p className="text-gray-400 dark:text-slate-500 text-center mt-20">{t.loading}</p>;
+  if (loading) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
 
   const openCreate = () => {
     setCreateForm({ username: '', fullName: '', email: '', password: '', role: 'user' });
@@ -117,14 +117,14 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center flex-wrap gap-3">
-        <h1 className="text-xl font-bold dark:text-slate-100">{t.navUsers}</h1>
+        <h1 className="text-xl font-bold dark:text-stone-50">{t.navUsers}</h1>
         <button onClick={openCreate} className="btn-primary text-sm">افزودن کاربر</button>
       </div>
 
       <div className="card">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
+            <thead><tr className="bg-surface-card dark:bg-stone-800/80 text-stone-600 dark:text-stone-300">
               <th className="text-right px-3 py-2 font-medium">{t.fullName}</th>
               <th className="text-right px-3 py-2 font-medium">{t.username}</th>
               <th className="text-right px-3 py-2 font-medium">{t.email}</th>
@@ -134,17 +134,17 @@ export default function UsersPage() {
             </tr></thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800">
-                  <td className="px-3 py-2 font-medium dark:text-slate-200">{u.fullName}</td>
-                  <td className="px-3 py-2 fa-nums dark:text-slate-300" dir="ltr">{u.username}</td>
-                  <td className="px-3 py-2 fa-nums dark:text-slate-300" dir="ltr">{u.email || '—'}</td>
+                <tr key={u.id} className="border-b dark:border-stone-700 hover:bg-surface-card dark:hover:bg-brand-900/25">
+                  <td className="px-3 py-2 font-medium dark:text-stone-200">{u.fullName}</td>
+                  <td className="px-3 py-2 fa-nums dark:text-stone-300" dir="ltr">{u.username}</td>
+                  <td className="px-3 py-2 fa-nums dark:text-stone-300" dir="ltr">{u.email || '—'}</td>
                   <td className="px-3 py-2">
                     <span className={`badge ${u.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'}`}>
                       {u.role === 'admin' ? t.roleAdmin : t.roleUser}
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`badge ${(u.active ?? 1) ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                    <span className={`badge ${(u.active ?? 1) ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300'}`}>
                       {(u.active ?? 1) ? t.active : t.inactive}
                     </span>
                   </td>
@@ -153,7 +153,7 @@ export default function UsersPage() {
                       <button onClick={() => openEdit(u)} className="text-brand-600 dark:text-brand-400 hover:underline text-xs">{t.edit}</button>
                       <button onClick={() => { setResetTarget(u); setNewPassword(''); setError(''); }} className="text-amber-600 dark:text-amber-400 hover:underline text-xs">{t.resetPassword}</button>
                       {u.id !== currentUser?.id && (
-                        <button onClick={() => remove(u)} className="text-red-500 hover:underline text-xs">{t.delete}</button>
+                        <button onClick={() => remove(u)} className="text-coral hover:text-coral-dark text-xs">{t.delete}</button>
                       )}
                     </div>
                   </td>
@@ -169,11 +169,11 @@ export default function UsersPage() {
         <div className="space-y-4">
           {error && <p className="p-3 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-sm">{error}</p>}
           <div>
-            <label className="label">{t.fullName}<span className="text-red-500 mr-1">*</span></label>
+            <label className="label">{t.fullName}<span className="text-coral mr-1">*</span></label>
             <input className="input" value={createForm.fullName} onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })} autoFocus />
           </div>
           <div>
-            <label className="label">{t.username}<span className="text-red-500 mr-1">*</span></label>
+            <label className="label">{t.username}<span className="text-coral mr-1">*</span></label>
             <input className="input" dir="ltr" value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} />
           </div>
           <div>
@@ -181,7 +181,7 @@ export default function UsersPage() {
             <input className="input" dir="ltr" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} />
           </div>
           <div>
-            <label className="label">{t.password}<span className="text-red-500 mr-1">*</span></label>
+            <label className="label">{t.password}<span className="text-coral mr-1">*</span></label>
             <input className="input" type="password" dir="ltr" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} />
           </div>
           <div>
@@ -236,7 +236,7 @@ export default function UsersPage() {
         <div className="space-y-4">
           {error && <p className="p-3 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-sm">{error}</p>}
           <div>
-            <label className="label">رمز جدید<span className="text-red-500 mr-1">*</span></label>
+            <label className="label">رمز جدید<span className="text-coral mr-1">*</span></label>
             <input className="input" type="password" dir="ltr" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoFocus />
           </div>
           <div className="flex gap-2 justify-end">
