@@ -11,6 +11,8 @@ import { requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
+import { buildWarehouseWorkbook, sendWorkbook, type WarehouseExportRow } from '../lib/warehouseExport.js';
+
 const partSchema = z.object({
   device_id: z.number().int().positive(),
   title: z.string().min(1),
@@ -193,7 +195,98 @@ router.put('/:id', requireRole('admin'), (req, res) => {
   res.json({ ok: true });
 });
 
-/** DELETE /api/parts/:id (فقط admin) */
+/**
+ * GET /api/parts/export/warehouse — خروجی اکسل قطعات در قالب فهرست انبار
+ * پارامتر اختیاری: ?device=X یا ?status=... (مثل فهرست)؛ خروجی قابل بازخورد به ورود سریال است.
+ */
+router.get('/export/warehouse', (req, res) => {
+  const db = getDb();
+  const deviceId = req.query.device ? Number(req.query.device) : null;
+  const status = typeof req.query.status === 'string' ? req.query.status : null;
+
+  const where: string[] = [];
+  const params: (number | string)[] = [];
+  if (deviceId !== null && !Number.isNaN(deviceId)) {
+    where.push('p.device_id = ?');
+    params.push(deviceId);
+  }
+  if (status === 'active' || status === 'replaced' || status === 'defective') {
+    where.push('p.status = ?');
+    params.push(status);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const rows = db.prepare(`
+    SELECT
+      p.title, p.tech_specs, p.part_number_1, p.part_number_2,
+      p.part_serial_number, p.status,
+      d.main_serial AS device_serial,
+      dt.name AS device_type_name
+    FROM parts p
+    LEFT JOIN devices d       ON d.id = p.device_id
+    LEFT JOIN device_types dt ON dt.id = d.device_type_id
+    ${whereSql}
+    ORDER BY d.main_serial, p.id
+  `).all(...params) as {
+    title: string; tech_specs: string | null; part_number_1: string | null; part_number_2: string | null;
+    part_serial_number: string | null; status: string;
+    device_serial: string | null; device_type_name: string | null;
+  }[];
+
+  const exportRows: WarehouseExportRow[] = rows.map((p) => ({
+    deviceSerial: p.device_serial || '',
+    kind: p.device_type_name || '',
+    title: p.title || '',
+    partNumber: p.part_number_1 || p.part_number_2 || '',
+    partSerial: p.part_serial_number || '',
+    specs: p.tech_specs || '',
+  }));
+
+  const wb = buildWarehouseWorkbook(exportRows, {
+    title: `خروجی قطعات — ${exportRows.length} ردیف`,
+    note: status === 'active' ? 'فقط قطعات فعال شامل این خروجی است.' : undefined,
+  });
+  const stamp = new Date().toISOString().slice(0, 10);
+  sendWorkbook(res, wb, `parts-warehouse-${stamp}.xlsx`);
+});
+
+/**
+ * PATCH /api/parts/:id/field — ویرایش درجای یک فیلد (فقط admin).
+ * Whitelist فیلدها: part_serial_number | part_number_1 | tech_specs
+ * مقدار null یا رشته‌ی خالی بعد از trim = پاک‌کردن فیلد.
+ */
+const INLINE_FIELDS = {
+  part_serial_number: { max: 120 },
+  part_number_1: { max: 80 },
+  tech_specs: { max: 2000 },
+} as const;
+type InlineField = keyof typeof INLINE_FIELDS;
+
+router.patch('/:id/field', requireRole('admin'), (req, res) => {
+  const fieldSchema = z.object({
+    field: z.enum(['part_serial_number', 'part_number_1', 'tech_specs']),
+    value: z.string().max(2000).optional().nullable(),
+  });
+  const parsed = fieldSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
+  }
+  const field = parsed.data.field as InlineField;
+  const raw = parsed.data.value;
+  let value = typeof raw === 'string' ? raw.trim() : null; // null = پاک‌کردن
+  if (value === '') value = null;
+  if (value !== null && value.length > INLINE_FIELDS[field].max) {
+    return res.status(400).json({ error: `حداکثر طول مجاز ${INLINE_FIELDS[field].max} کاراکتر است.` });
+  }
+
+  const db = getDb();
+  const exists = db.prepare(`SELECT id FROM parts WHERE id = ?`).get(Number(req.params.id));
+  if (!exists) return res.status(404).json({ error: 'قطعه یافت نشد.' });
+
+  db.prepare(`UPDATE parts SET ${field} = ? WHERE id = ?`).run(value, Number(req.params.id));
+  res.json({ ok: true, field, value });
+});
+
 router.delete('/:id', requireRole('admin'), (req, res) => {
   try {
     getDb().prepare(`DELETE FROM parts WHERE id = ?`).run(Number(req.params.id));

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getDb } from '../db/db.js';
 import { datePairFromJalali, warrantyEndPair } from '../lib/date.js';
 import { requireRole } from '../middleware/auth.js';
+import { buildWarehouseWorkbook, sendWorkbook, type WarehouseExportRow } from '../lib/warehouseExport.js';
 
 const router = Router();
 
@@ -75,6 +76,90 @@ router.get('/', (_req, res) => {
     ORDER BY d.created_at DESC
   `).all();
   res.json(rows);
+});
+
+/**
+ * GET /api/devices/export/warehouse — خروجی اکسل تجهیزات و قطعاتشان در قالب فهرست انبار.
+ * هر تجهیز: یک بلوک (ردیف هدر تجهیز + ردیف قطعاتش) — قابل بازخورد به ورود سریال.
+ * پارامتر اختیاری: ?project=X برای محدودکردن به یک پروژه.
+ */
+router.get('/export/warehouse', (req, res) => {
+  const db = getDb();
+  const projectId = req.query.project ? Number(req.query.project) : null;
+
+  const where = projectId && !Number.isNaN(projectId) ? 'WHERE d.project_id = ?' : '';
+  const params: number[] = projectId && !Number.isNaN(projectId) ? [projectId] : [];
+
+  const devices = db.prepare(`
+    SELECT d.id, d.main_serial, d.part_number_1, d.part_number_2, d.status,
+           dt.name AS device_type_name, b.name AS brand_name, dm.name AS device_model_name,
+           p.name AS project_name
+    FROM devices d
+    LEFT JOIN device_types dt ON dt.id = d.device_type_id
+    LEFT JOIN device_models dm ON dm.id = d.device_model_id
+    LEFT JOIN brands b         ON b.id = d.brand_id
+    LEFT JOIN projects p       ON p.id = d.project_id
+    ${where}
+    ORDER BY d.id
+  `).all(...params) as {
+    id: number; main_serial: string | null; part_number_1: string | null; part_number_2: string | null;
+    status: string; device_type_name: string | null; brand_name: string | null;
+    device_model_name: string | null; project_name: string | null;
+  }[];
+
+  interface DevicePartRow {
+    device_id: number;
+    title: string; tech_specs: string | null; part_number_1: string | null; part_number_2: string | null;
+    part_serial_number: string | null; status: string;
+  }
+  const partsByDevice = new Map<number, DevicePartRow[]>();
+  if (devices.length > 0) {
+    const ids = devices.map((d) => d.id);
+    const placeholders = ids.map(() => '?').join(',');
+    const allParts = db.prepare(`
+      SELECT device_id, title, tech_specs, part_number_1, part_number_2,
+             part_serial_number, status
+      FROM parts WHERE device_id IN (${placeholders}) ORDER BY id
+    `).all(...ids) as unknown as DevicePartRow[];
+    for (const pt of allParts) {
+      const arr = partsByDevice.get(pt.device_id) ?? [];
+      arr.push(pt);
+      partsByDevice.set(pt.device_id, arr);
+    }
+  }
+
+  const exportRows: WarehouseExportRow[] = [];
+  for (const d of devices) {
+    const deviceKind = [d.device_type_name, d.brand_name, d.device_model_name].filter(Boolean).join(' ');
+    const devicePn = d.part_number_1 || d.part_number_2 || '';
+    // ردیف هدر تجهیز: نوع قطعه = «دستگاه» + عنوان = نوع/برند/مدل + پارت‌نامبر خود دستگاه
+    exportRows.push({
+      deviceSerial: '',
+      kind: 'دستگاه',
+      title: deviceKind || 'تجهیز',
+      partNumber: devicePn,
+      partSerial: d.main_serial || '',
+      specs: d.project_name || '',
+    });
+    for (const pt of partsByDevice.get(d.id) ?? []) {
+      // ردیف‌های قطعات: ستون سریال تجهیز پر می‌شود تا import مقصد را بداند
+      exportRows.push({
+        deviceSerial: d.main_serial || '',
+        kind: pt.status !== 'active' ? `قطعه (${pt.status === 'replaced' ? 'تعویض‌شده' : 'معیوب'})` : '',
+        title: pt.title || '',
+        partNumber: pt.part_number_1 || pt.part_number_2 || '',
+        partSerial: pt.part_serial_number || '',
+        specs: pt.tech_specs || '',
+      });
+    }
+  }
+
+  const wb = buildWarehouseWorkbook(exportRows, {
+    title: `خروجی تجهیزات و قطعات — ${devices.length} تجهیز، ${exportRows.length} ردیف`,
+    note: 'ردیف‌های «دستگاه» مرز بلوک هر تجهیز هستند؛ در ورود مجدد، سریال ستون «سریال قطعه»ی ردیف دستگاه، به‌عنوان سریال اصلی دستگاه ثبت می‌شود.',
+  });
+  const stamp = new Date().toISOString().slice(0, 10);
+  sendWorkbook(res, wb, `devices-warehouse-${stamp}.xlsx`);
 });
 
 /** GET /api/devices/:id — جزئیات یک تجهیز + قطعات + تاریخچه تعویض + درخواست گارانتی */

@@ -12,6 +12,10 @@ import { t } from '../i18n/fa';
 import { formatJalaliLong, toFa } from '../lib/date';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { downloadAuthenticated } from '../lib/download';
+import InlineEditCell from '../components/InlineEditCell';
+
+type InlineField = 'part_serial_number' | 'part_number_1' | 'tech_specs';
 
 export default function PartsPage() {
   const { isAdmin } = useAuth();
@@ -21,6 +25,25 @@ export default function PartsPage() {
   const [dupOnly, setDupOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [descDialog, setDescDialog] = useState<{ pn: string; group: Part[] } | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  /** خروجی اکسل فهرست انبار — با فیلترهای فعال فعلی */
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter) params.set('status', statusFilter);
+      const qs = params.toString();
+      await downloadAuthenticated(
+        `/parts/export/warehouse${qs ? `?${qs}` : ''}`,
+        'parts-warehouse.xlsx'
+      );
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const load = async () => {
     try {
@@ -53,6 +76,15 @@ export default function PartsPage() {
     [pnGroups]
   );
 
+  // ---------- ویرایش درجا (سریال، پارت‌نامبر، مشخصات فنی) — فقط ادمین ----------
+  /** ذخیره‌ی یک فیلد با PATCH /field + به‌روزرسانی محلی فهرست */
+  const saveField = async (partId: number, field: InlineField, newValue: string | null) => {
+    await api.patch(`/parts/${partId}/field`, { field, value: newValue });
+    setParts((prev) =>
+      prev.map((x) => (x.id === partId ? { ...x, [field]: newValue ?? undefined } : x))
+    );
+  };
+
   const filtered = parts.filter((p) => {
     if (statusFilter && p.status !== statusFilter) return false;
     const pn = (p.part_number_1 || p.part_number_2 || '').replace(/\s+/g, '').toUpperCase();
@@ -68,20 +100,40 @@ export default function PartsPage() {
   });
 
   if (loading)
-    return <p className="text-brand-300 text-center mt-20 dark:text-brand-400">{t.loading}</p>;
+    return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.loading}</p>;
+
+  const statusCounts = {
+    active: parts.filter((p) => p.status === 'active').length,
+    replaced: parts.filter((p) => p.status === 'replaced').length,
+    defective: parts.filter((p) => p.status === 'defective').length,
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-[1200px] mx-auto px-6">
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <span className="text-3xl">🔩</span>
-          <h1 className="text-xl font-extrabold text-brand-800 dark:text-brand-100">فهرست قطعات</h1>
+          <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">فهرست قطعات</h1>
+          <span className="badge bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300">
+            {toFa(parts.length)} قطعه
+          </span>
         </div>
-        {isAdmin && (
-          <Link to="/parts/new" className="btn-primary text-sm">
-            {t.addPart}
-          </Link>
-        )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            onClick={exportExcel}
+            disabled={exporting || parts.length === 0}
+            title="خروجی اکسل در قالب فهرست انبار — قابل بازخورد به ورود سریال"
+          >
+            {exporting ? '...' : '⬇ خروجی اکسل'}
+          </button>
+          {isAdmin && (
+            <Link to="/parts/new" className="btn-primary text-sm">
+              {t.addPart}
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-3 flex-wrap items-center">
@@ -91,25 +143,39 @@ export default function PartsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          className="input max-w-[180px]"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">همه‌ی وضعیت‌ها</option>
-          <option value="active">فعال</option>
-          <option value="replaced">تعویض‌شده</option>
-          <option value="defective">معیوب</option>
-        </select>
+        {/* چایپ‌های فیلتر وضعیت — Ember Studio */}
+        <div className="flex gap-2 flex-wrap">
+          {([
+            ['', 'همه', parts.length],
+            ['active', 'فعال', statusCounts.active],
+            ['replaced', 'تعویض‌شده', statusCounts.replaced],
+            ['defective', 'معیوب', statusCounts.defective],
+          ] as [string, string, number][]).map(([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setStatusFilter(value)}
+              className={
+                statusFilter === value
+                  ? 'chip chip-active cursor-pointer'
+                  : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'
+              }
+            >
+              {label} <span className="fa-nums opacity-70">({toFa(count)})</span>
+            </button>
+          ))}
+        </div>
         {dupPns.size > 0 && (
-          <label className="flex items-center gap-2 text-sm text-brand-700 dark:text-brand-200 cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
             <input
               type="checkbox"
               checked={dupOnly}
               onChange={(e) => setDupOnly(e.target.checked)}
-              className="w-4 h-4 accent-[#2BA8A2]"
+              className="w-4 h-4 accent-brand-500"
             />
-            فقط تکراری‌ها ({toFa(dupPns.size)} پارت‌نامبر)
+            <span className="chip bg-gold/15 text-[#8a6d00] dark:text-gold-light border border-gold/40">
+              فقط تکراری‌ها ({toFa(dupPns.size)})
+            </span>
           </label>
         )}
       </div>
@@ -122,7 +188,7 @@ export default function PartsPage() {
       )}
 
       {filtered.length === 0 ? (
-        <p className="text-brand-300 dark:text-brand-400 text-center py-12">{t.noData}</p>
+        <p className="text-stone-400 dark:text-stone-500 text-center py-12">{t.noData}</p>
       ) : (
         <div className="overflow-x-auto card !p-0">
           <table className="w-full text-sm">
@@ -147,7 +213,7 @@ export default function PartsPage() {
                 return (
                   <tr
                     key={p.id}
-                    className={`border-b border-dashed border-brand-50 dark:border-brand-900 hover:bg-brand-50/60 dark:hover:bg-brand-900/30 ${
+                    className={`border-b border-dashed border-stone-100 dark:border-stone-700 hover:bg-brand-50/60 dark:hover:bg-brand-900/25 transition-colors ${
                       isDup ? 'bg-gold/5' : ''
                     }`}
                   >
@@ -167,17 +233,47 @@ export default function PartsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 fa-nums text-brand-700 dark:text-brand-200" dir="ltr">
-                      {p.part_number_1 || '—'}
+                    <td className="px-3 py-2 fa-nums" dir="ltr">
+                      {isAdmin ? (
+                        <InlineEditCell
+                          value={p.part_number_1}
+                          onSave={(v) => saveField(p.id, 'part_number_1', v)}
+                          numeric
+                          placeholder="پارت‌نامبر…"
+                        />
+                      ) : (
+                        <span className="text-stone-700 dark:text-stone-200">{p.part_number_1 || '—'}</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 fa-nums" dir="ltr">
-                      {p.part_serial_number || '—'}
+                      {isAdmin ? (
+                        <InlineEditCell
+                          value={p.part_serial_number}
+                          onSave={(v) => saveField(p.id, 'part_serial_number', v)}
+                          numeric
+                          placeholder="سریال قطعه…"
+                        />
+                      ) : (
+                        <span>{p.part_serial_number || '—'}</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-xs max-w-[220px]">
-                      <span className={multiDesc ? 'text-coral-dark dark:text-coral-light' : ''}>
-                        {p.tech_specs || '—'}
-                      </span>
-                      {multiDesc && <span className="text-coral-dark dark:text-coral-light"> ⚠</span>}
+                      {isAdmin ? (
+                        <div className="flex items-center gap-1">
+                          <InlineEditCell
+                            value={p.tech_specs}
+                            onSave={(v) => saveField(p.id, 'tech_specs', v)}
+                            multiline
+                            widthClass="w-[200px]"
+                            placeholder="مشخصات فنی…"
+                          />
+                          {multiDesc && <span className="text-coral-dark dark:text-coral-light shrink-0">⚠</span>}
+                        </div>
+                      ) : (
+                        <span className={multiDesc ? 'text-coral-dark dark:text-coral-light' : ''}>
+                          {p.tech_specs || '—'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2">{p.project_name || '—'}</td>
                     <td className="px-3 py-2 fa-nums" dir="ltr">
@@ -186,7 +282,7 @@ export default function PartsPage() {
                     <td className="px-3 py-2">
                       <StatusBadge status={p.status} />
                     </td>
-                    <td className="px-3 py-2 text-xs text-brand-400 dark:text-brand-300/70">
+                    <td className="px-3 py-2 text-xs text-stone-400 dark:text-stone-500">
                       {formatJalaliLong(p.sold_at_jalali)}
                     </td>
                     {isAdmin && dupPns.size > 0 && (
@@ -279,7 +375,7 @@ function DescDialog({
         </p>
 
         <div className="space-y-2">
-          {variants.length === 0 && <p className="text-sm text-brand-400">توضیحی ثبت نشده است.</p>}
+          {variants.length === 0 && <p className="text-sm text-stone-400 dark:text-stone-500">توضیحی ثبت نشده است.</p>}
           {variants.map((v) => (
             <label
               key={v}
@@ -294,10 +390,10 @@ function DescDialog({
                 name="desc"
                 checked={choice === v}
                 onChange={() => setChoice(v)}
-                className="mt-1 accent-[#2BA8A2]"
+                className="mt-1 accent-brand-500"
               />
               <span className="text-brand-800 dark:text-brand-100">{v}</span>
-              <span className="text-xs text-brand-400 dark:text-brand-300/70 mr-auto shrink-0">
+              <span className="text-xs text-stone-400 dark:text-stone-500 mr-auto shrink-0">
                 ({toFa(group.filter((p) => p.tech_specs?.trim() === v).length)} رکورد)
               </span>
             </label>
