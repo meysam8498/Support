@@ -28,6 +28,12 @@ export function getDb(): DatabaseSync {
   _db = new DatabaseSync(dbPath);
   _db.exec('PRAGMA journal_mode = WAL');
   _db.exec('PRAGMA foreign_keys = ON');
+  // بهینه‌سازی چندکاربره: WAL خواندن همزمان چند اتصال را ممکن می‌کند؛
+  // busy_timeout از خطای SQLITE_BUSY هنگام قفل نوشتن کوتاه جلوگیری می‌کند؛
+  // synchronous=NORMAL در WAL سرعت نوشتن را بالا می‌برد با حفظ دوام.
+  _db.exec('PRAGMA busy_timeout = 5000');
+  _db.exec('PRAGMA synchronous = NORMAL');
+  _db.exec('PRAGMA cache_size = -8000'); // ~8MB page cache
 
   return _db;
 }

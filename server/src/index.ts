@@ -25,6 +25,7 @@ import usersRoutes from './routes/users.js';
 import warrantyRequestRoutes from './routes/warrantyRequests.js';
 import procurementRoutes from './routes/procurement.js';
 import serialImportRoutes from './routes/serialImport.js';
+import searchRoutes from './routes/search.js';
 
 config();
 
@@ -53,6 +54,7 @@ app.use('/api/warranty-requests', authRequired, warrantyRequestRoutes);
 app.use('/api/procurement', authRequired, procurementRoutes);
 app.use('/api/serial-import', authRequired, serialImportRoutes);
 app.use('/api/dashboard', authRequired, dashboardRoutes);
+app.use('/api/search', authRequired, searchRoutes);
 app.use('/api/reports', authRequired, reportsRoutes);
 app.use('/api/users', authRequired, usersRoutes); // فقط مدیر (درون روتر چک می‌شود)
 

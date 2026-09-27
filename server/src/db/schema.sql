@@ -239,5 +239,15 @@ CREATE INDEX IF NOT EXISTS idx_replacements_device    ON warranty_replacements(d
 CREATE INDEX IF NOT EXISTS idx_replacements_old_part  ON warranty_replacements(old_part_id);
 CREATE INDEX IF NOT EXISTS idx_replacements_failure   ON warranty_replacements(failure_reason_id);
 CREATE INDEX IF NOT EXISTS idx_wreq_device            ON warranty_requests(device_id);
-CREATE INDEX IF NOT EXISTS idx_wreq_status            ON warranty_requests(status);
-CREATE INDEX IF NOT EXISTS idx_proc_part              ON procurement(part_id);
+CREATE INDEX IF NOT EXISTS idx_wreq_status            ON warranty_requests(status);CREATE INDEX IF NOT EXISTS idx_proc_part             ON procurement(part_id);
+
+-- ایندکس‌های جست‌وجوی سراسری و ضدتکراری‌سازی سریال (کارایی چندکاربره)
+CREATE INDEX IF NOT EXISTS idx_devices_main_serial   ON devices(main_serial);
+CREATE INDEX IF NOT EXISTS idx_devices_project_serial ON devices(project_id, main_serial);
+CREATE INDEX IF NOT EXISTS idx_devices_pn1            ON devices(part_number_1);
+CREATE INDEX IF NOT EXISTS idx_devices_pn2            ON devices(part_number_2);
+CREATE INDEX IF NOT EXISTS idx_parts_serial           ON parts(part_serial_number);
+CREATE INDEX IF NOT EXISTS idx_parts_pn1              ON parts(part_number_1);
+CREATE INDEX IF NOT EXISTS idx_parts_pn2              ON parts(part_number_2);
+CREATE INDEX IF NOT EXISTS idx_projects_name          ON projects(name);
+CREATE INDEX IF NOT EXISTS idx_users_active           ON users(active);
