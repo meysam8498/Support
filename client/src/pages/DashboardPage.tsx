@@ -5,8 +5,8 @@
 // → بخش دومویی: آخرین تعویض‌ها + پروژه‌ها با آواتار چرخه‌ای
 // → نوار پیشرفت تراکوتا + چایپ‌ها + یک CTA اصلی در کل صفحه
 // ============================================================
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, type DashboardStats, type Lists, type ReportSummary } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
@@ -28,24 +28,35 @@ const ACCENT_SOFT = [
   'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300',
 ];
 
+/** یک سطر از گزارش پرخرابی‌ترین قطعات */
+interface FailedPartRow {
+  part_title: string;
+  part_number_1: string | null;
+  replacement_count: number;
+  affected_devices: number;
+}
+
 export default function DashboardPage() {
   const { isAdmin, user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [lists, setLists] = useState<Lists | null>(null);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
+  const [topFailed, setTopFailed] = useState<FailedPartRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, l, r] = await Promise.all([
+        const [s, l, r, f] = await Promise.all([
           api.get<DashboardStats>('/dashboard/stats'),
           api.get<Lists>('/lists'),
           api.get<ReportSummary>('/reports/summary'),
+          api.get<FailedPartRow[]>('/reports/most-failed-parts?limit=5'),
         ]);
         setStats(s);
         setLists(l);
         setSummary(r);
+        setTopFailed(f);
       } catch { /* handled by global */ }
       finally { setLoading(false); }
     })();
@@ -114,6 +125,76 @@ export default function DashboardPage() {
         <p className="text-xs text-stone-500 dark:text-stone-400 mt-2 fa-nums">
           {toFa(stats?.activeParts ?? 0)} فعال از {toFa(stats?.parts ?? 0)} قطعه
         </p>
+      </section>
+
+      {/* ---------- گزارش سریع: ۵ قطعه با بیشترین خرابی (progress بارهای رتبه‌ای) ---------- */}
+      <section className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">📉</span>
+            <h2 className="heading-serif text-lg font-bold text-stone-900 dark:text-stone-50">
+              گزارش سریع — پرخرابی‌ترین قطعات
+            </h2>
+          </div>
+          <Link to="/reports" className="btn-ghost !min-h-[32px] text-xs">
+            گزارش کامل
+          </Link>
+        </div>
+
+        {topFailed.length === 0 ? (
+          <p className="text-stone-400 dark:text-stone-500 text-sm">
+            هنوز تعویض گارانتی ثبت نشده — به‌محض ثبت اولین تعویض، پرخرابی‌ترین قطعات اینجا نمایش داده می‌شوند.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {topFailed.map((row, i) => {
+              const max = topFailed[0]?.replacement_count || 1;
+              const pct = Math.round((row.replacement_count / max) * 100);
+              // رتبه‌ی ۱ تراکوتا؛ بقیه به‌ترتیب اشباع کمتر — رتبه‌بندی بصری فوری
+              const barCls = i === 0 ? 'bg-brand-500' : i === 1 ? 'bg-brand-400' : i === 2 ? 'bg-brand-300' : i === 3 ? 'bg-gold' : 'bg-stone-400';
+              return (
+                <div key={`${row.part_title}-${row.part_number_1 ?? ''}-${i}`}>
+                  <div className="flex justify-between items-baseline mb-1.5 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {/* مدال رتبه */}
+                      <span
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                          i === 0
+                            ? 'bg-brand-500 text-white'
+                            : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300'
+                        }`}
+                      >
+                        {toFa(i + 1)}
+                      </span>
+                      <span className="font-semibold text-stone-800 dark:text-stone-100 truncate" dir="auto">
+                        {row.part_title}
+                      </span>
+                      {row.part_number_1 && (
+                        <span className="text-xs text-stone-400 dark:text-stone-500 fa-nums hidden sm:inline" dir="ltr">
+                          {row.part_number_1}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] text-stone-400 dark:text-stone-500 hidden md:inline fa-nums">
+                        {toFa(row.affected_devices)} دستگاه
+                      </span>
+                      <span className="badge bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/30 fa-nums">
+                        {toFa(row.replacement_count)} خرابی
+                      </span>
+                    </div>
+                  </div>
+                  <div className="progress-track">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ease-out ${barCls}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <div className="grid lg:grid-cols-2 gap-6">
