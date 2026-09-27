@@ -1,14 +1,17 @@
 // ============================================================
-// صفحه‌ی ورود سریال‌ها از فایل اکسل — سیستم طراحی Flip7 — فقط مدیر
+// صفحه‌ی ورود سریال‌ها از فایل اکسل — سیستم طراحی Ember Studio — فقط مدیر
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
 // جریان: ۱) انتخاب پروژه  ۲) انتخاب تجهیز همان پروژه  ۳) آپلود فایل
 // بدون پروژه/تجهیز مقصد، آپلود ممکن نیست (جلوی ثبت بی‌مقصد گرفته می‌شود).
+// پیش‌نمایش خشک: پیش از ثبت واقعی، تطبیق ستون‌ها و اقدام‌های ردیف‌به‌ردیف
+// از سرور گرفته و نمایش داده می‌شود — بدون هیچ تغییری در پایگاه‌داده.
 // ============================================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type Device, type Project } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa } from '../lib/date';
+import { downloadAuthenticated } from '../lib/download';
 
 interface ImportSummary {
   file: string;
@@ -41,6 +44,51 @@ interface ImportResult {
   skipped: { row: number; column: string; partNumber: string; reason: string }[];
 }
 
+// ---------- پیش‌نمایش خشک (dry-run) ----------
+type PreviewColumnStatus = 'matched' | 'new' | 'device_serial';
+
+interface PreviewColumn {
+  colLetter: string;
+  partNumber: string;
+  title: string;
+  desc: string | null;
+  status: PreviewColumnStatus;
+  matchedFrom: 'device' | 'system' | null;
+  existingCount: number;
+  partTitles: string[];
+}
+
+type PreviewActionKind = 'update_part' | 'create_part' | 'set_main_serial';
+
+interface PreviewAction {
+  row: number;
+  col: string;
+  partNumber: string;
+  serial: string;
+  action: PreviewActionKind;
+  target: string;
+}
+
+interface ImportPreview {
+  file: string;
+  projectName: string | null;
+  mode: 'single' | 'per_row';
+  rowsDetected: number;
+  columnsTotal: number;
+  columnsMatched: number;
+  columnsCreated: number;
+  willUpdateParts: number;
+  willCreateParts: number;
+  willCreateDevices: number;
+  willUpdateMainSerial: boolean;
+  columns: PreviewColumn[];
+  actions: PreviewAction[];
+  actionsTruncated: boolean;
+  actionsCap: number;
+  descConflicts: DescConflict[];
+  warnings: string[];
+}
+
 export default function SerialImportPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -52,7 +100,23 @@ export default function SerialImportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const [templateBusy, setTemplateBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /** دانلود قالب نمونه — با توکن (لینک ساده ۴۰۱ می‌دهد) */
+  const downloadTemplate = async () => {
+    setTemplateBusy(true);
+    try {
+      await downloadAuthenticated('/serial-import/template', 'support-parts-template.xlsx');
+    } catch (err) {
+      setPreviewError((err as Error).message);
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -80,6 +144,40 @@ export default function SerialImportPage() {
   const selectedDevice = projectDevices.find((d) => d.id === deviceId);
   const selectedProject = projects.find((p) => p.id === projectId);
 
+  /** پیش‌نمایش خشک: همان بدنه‌ی آپلود به /preview می‌رود — بدون هیچ تغییری در دیتابیس */
+  const runPreview = async () => {
+    setError('');
+    setPreviewError('');
+    setResult(null);
+    if (!projectId) return setPreviewError('ابتدا پروژه‌ی مقصد را انتخاب کنید.');
+    if (!deviceId && !perRow)
+      return setPreviewError('تجهیز مقصد را انتخاب کنید یا گزینه‌ی «هر ردیف = یک دستگاه» را فعال کنید.');
+    if (!file) return setPreviewError('برای پیش‌نمایش، ابتدا فایل اکسل را انتخاب کنید.');
+
+    setPreviewBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('project_id', String(projectId));
+      if (deviceId) fd.append('device_id', String(deviceId));
+      if (perRow) fd.append('create_per_row', '1');
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/serial-import/preview', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: fd,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
+      setPreview(data.preview as ImportPreview);
+    } catch (err) {
+      setPreview(null);
+      setPreviewError((err as Error).message);
+    } finally {
+      setPreviewBusy(false);
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -105,6 +203,7 @@ export default function SerialImportPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
       setResult(data as ImportResult);
+      setPreview(null);
       setFile(null);
       if (inputRef.current) inputRef.current.value = '';
     } catch (err) {
@@ -127,21 +226,23 @@ export default function SerialImportPage() {
         <h1 className="text-xl font-extrabold text-brand-800 dark:text-brand-100">ورود سریال‌ها از فایل اکسل</h1>
       </div>
 
-      {/* راهنمای قالب — جداکننده‌ی نقطه‌چین مثل Flip7 */}
+      {/* راهنمای قالب — جداکننده‌ی نقطه‌چین */}
       <details className="card card-accent" open={!result}>
         <summary className="cursor-pointer font-bold text-brand-700 dark:text-brand-200 border-b-2 border-dashed border-brand-100 dark:border-brand-800 pb-2 mb-3">
           قالب فایل (مطابق فهرست قطعات انبار)
         </summary>
         <ul className="list-disc pr-5 space-y-1 text-sm leading-6 text-brand-800 dark:text-brand-200">
-          <li><b>ردیف ۱:</b> عنوان قطعه در هر ستون (Case، Main Board، Power، …)</li>
-          <li><b>ردیف ۲:</b> توضیحات/مدل قطعه (اختیاری)</li>
-          <li><b>ردیف ۳:</b> پارت‌نامبر هر قطعه — کلید تطبیق با سامانه</li>
-          <li><b>ردیف ۴ به بعد:</b> سریال‌ها — هر ردیف = یک دستگاه</li>
-          <li>ستون A فقط شماره‌ی ردیف است و نادیده گرفته می‌شود.</li>
+          <li><b>قالب جدید (توصیه‌شده):</b> هر ردیف = یک قطعه — ستون‌ها: سریال تجهیز، نوع قطعه، عنوان قطعه، پارت‌نامبر، سریال قطعه، مشخصات فنی. این قالب صریحاً می‌گوید هر قطعه روی کدام دستگاه نصب است.{' '}
+            <button type="button" onClick={downloadTemplate} disabled={templateBusy} className="underline text-brand-600 dark:text-brand-300 font-bold">
+              {templateBusy ? '...' : 'دانلود فایل نمونه'}
+            </button>
+          </li>
+          <li><b>قالب قدیمی (فهرست انبار):</b> ردیف ۱ عنوان، ردیف ۲ توضیحات، ردیف ۳ پارت‌نامبر، ردیف ۴ به بعد سریال‌ها (هر ردیف = یک دستگاه). این قالب هم پذیرفته می‌شود و به‌صورت خودکار شناسایی می‌گردد.</li>
         </ul>
         <p className="text-xs text-brand-500 dark:text-brand-300/80 leading-5 mt-2">
           اگر پارت‌نامبری در دستگاه مقصد وجود نداشته باشد، قطعه‌ی جدید با همان عنوان و پارت‌نامبر
-          روی دستگاه مقصد ساخته می‌شود. هیچ داده‌ای حذف نمی‌شود.
+          روی دستگاه مقصد ساخته می‌شود. هیچ داده‌ای حذف نمی‌شود. پیش از ثبت، «پیش‌نمایش» را بزنید
+          تا دقیقاً ببینید چه اتفاقی می‌افتد.
         </p>
       </details>
 
@@ -158,6 +259,7 @@ export default function SerialImportPage() {
               onChange={(e) => {
                 setProjectId(e.target.value ? Number(e.target.value) : '');
                 setDeviceId('');
+                setPreview(null);
               }}
               required
             >
@@ -175,7 +277,10 @@ export default function SerialImportPage() {
             <select
               className="input"
               value={deviceId}
-              onChange={(e) => setDeviceId(e.target.value ? Number(e.target.value) : '')}
+              onChange={(e) => {
+                setDeviceId(e.target.value ? Number(e.target.value) : '');
+                setPreview(null);
+              }}
               disabled={projectId === ''}
             >
               <option value="">
@@ -194,8 +299,9 @@ export default function SerialImportPage() {
                 onChange={(e) => {
                   setPerRow(e.target.checked);
                   if (e.target.checked) setDeviceId('');
+                  setPreview(null);
                 }}
-                className="w-4 h-4 accent-[#2BA8A2]"
+                className="w-4 h-4 accent-brand-500"
               />
               هر ردیف اکسل = یک دستگاه جدید (برای فایل‌های چنددستگاهه مثل فهرست انبار)
             </label>
@@ -204,20 +310,20 @@ export default function SerialImportPage() {
 
         {/* نوار مقصد انتخاب‌شده */}
         {(selectedDevice || perRow) && (
-          <div className="rounded-2xl bg-brand-50 border-2 border-brand-200 px-4 py-3 text-sm text-brand-800 dark:bg-brand-900/40 dark:border-brand-700 dark:text-brand-100">
+          <div className="rounded-2xl bg-surface-card border-2 border-stone-200 px-4 py-3 text-sm text-stone-800 dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100">
             <span className="font-bold">مقصد:</span> {selectedProject?.name}
             {perRow ? (
               <>
-                <span className="mx-2 text-brand-300">|</span>
+                <span className="mx-2 text-stone-300 dark:text-stone-600">|</span>
                 حالت چنددستگاهه: ردیف‌های دارای سریال دستگاه (ستون Case) دستگاه جدید می‌سازند
               </>
             ) : (
               <>
                 {' ← '}{selectedDevice!.device_type_name}
                 {selectedDevice!.brand_name ? ` (${selectedDevice!.brand_name})` : ''}
-                <span className="mx-2 text-brand-300">|</span>
+                <span className="mx-2 text-stone-300 dark:text-stone-600">|</span>
                 سریال فعلی: <span dir="ltr" className="font-bold">{selectedDevice!.main_serial || '—'}</span>
-                <span className="mx-2 text-brand-300">|</span>
+                <span className="mx-2 text-stone-300 dark:text-stone-600">|</span>
                 <Link to={`/devices/${selectedDevice!.id}`} className="underline text-brand-600 dark:text-brand-300">
                   مشاهده‌ی تجهیز
                 </Link>
@@ -233,7 +339,10 @@ export default function SerialImportPage() {
             type="file"
             accept=".xlsx,.xls"
             className="input"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              setPreview(null);
+            }}
           />
         </div>
 
@@ -243,14 +352,32 @@ export default function SerialImportPage() {
           </p>
         )}
 
-        <button
-          type="submit"
-          className="btn-primary"
-          disabled={busy || !file || !projectId || (!deviceId && !perRow)}
-        >
-          {busy ? 'در حال پردازش...' : 'آپلود و به‌روزرسانی سریال‌ها'}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={runPreview}
+            disabled={previewBusy || busy || !file || !projectId || (!deviceId && !perRow)}
+          >
+            {previewBusy ? 'در حال تحلیل...' : '🔍 پیش‌نمایش (بدون ثبت)'}
+          </button>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={busy || previewBusy || !file || !projectId || (!deviceId && !perRow)}
+          >
+            {busy ? 'در حال پردازش...' : 'آپلود و به‌روزرسانی سریال‌ها'}
+          </button>
+        </div>
       </form>
+
+      {previewError && (
+        <p className="p-3 bg-coral/10 text-coral-dark rounded-xl text-sm border-2 border-coral/30 dark:text-coral-light">
+          {previewError}
+        </p>
+      )}
+
+      {preview && <PreviewPanel p={preview} />}
 
       {s && (
         <div className="card card-accent space-y-3">
@@ -331,11 +458,135 @@ export default function SerialImportPage() {
   );
 }
 
+// ---------- پنل پیش‌نمایش خشک ----------
+const PREVIEW_STATUS_META: Record<PreviewColumnStatus, { label: string; cls: string }> = {
+  matched: { label: 'تطبیق', cls: 'bg-success/10 text-success border-success/40' },
+  new: { label: 'قطعه‌ی جدید', cls: 'bg-gold/15 text-[#8a6d00] dark:text-gold-light border-gold/40' },
+  device_serial: { label: 'سریال اصلی دستگاه', cls: 'bg-sky/10 text-sky-dark dark:text-sky-light border-sky/40' },
+};
+
+const PREVIEW_ACTION_META: Record<PreviewActionKind, { label: string; cls: string }> = {
+  update_part: { label: 'به‌روزرسانی قطعه', cls: 'bg-success/10 text-success border-success/40' },
+  create_part: { label: 'ساخت قطعه‌ی جدید', cls: 'bg-gold/15 text-[#8a6d00] dark:text-gold-light border-gold/40' },
+  set_main_serial: { label: 'سریال اصلی دستگاه', cls: 'bg-sky/10 text-sky-dark dark:text-sky-light border-sky/40' },
+};
+
+function PreviewPanel({ p }: { p: ImportPreview }) {
+  return (
+    <div className="card card-accent space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-2xl">🔍</span>
+        <h2 className="font-extrabold text-brand-800 dark:text-brand-100">پیش‌نمایش خشک — هیچ داده‌ای تغییر نمی‌کند</h2>
+        <span className="chip-active">پیش‌نمایش</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+        <Stat label="فایل">{p.file}</Stat>
+        <Stat label="ردیف‌های سریال">{toFa(p.rowsDetected)}</Stat>
+        <Stat label="ستون‌ها">
+          {toFa(p.columnsTotal)} (تطبیق {toFa(p.columnsMatched)} / جدید {toFa(p.columnsCreated)})
+        </Stat>
+        <Stat label="قطعات به‌روزرسانی‌شونده">{toFa(p.willUpdateParts)}</Stat>
+        <Stat label="قطعات ساخته‌شونده">{toFa(p.willCreateParts)}</Stat>
+        <Stat label="دستگاه‌های ساخته‌شونده">{toFa(p.willCreateDevices)}</Stat>
+      </div>
+
+      {p.willUpdateMainSerial && (
+        <p className="text-sm text-sky-dark dark:text-sky-light">
+          ★ سریال اصلی دستگاه نیز به‌روزرسانی خواهد شد.
+        </p>
+      )}
+
+      {p.warnings.length > 0 && (
+        <div className="rounded-2xl bg-gold/10 border-2 border-gold/40 px-4 py-3 text-sm space-y-1">
+          {p.warnings.map((w) => (
+            <p key={w} className="text-[#8a6d00] dark:text-gold-light">⚠ {w}</p>
+          ))}
+        </div>
+      )}
+
+      {/* تطبیق ستون‌ها — ستون به ستون: تطبیق دارد / ساخته می‌شود / سریال دستگاه */}
+      <div>
+        <p className="font-bold text-sm text-brand-800 dark:text-brand-100 mb-2">تطبیق ستون‌ها:</p>
+        <div className="space-y-2">
+          {p.columns.map((c) => {
+            const meta = PREVIEW_STATUS_META[c.status];
+            return (
+              <div
+                key={c.colLetter}
+                className="rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2 text-sm flex flex-wrap items-center gap-2"
+              >
+                <span className="badge bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-200" dir="ltr">
+                  ستون {c.colLetter}
+                </span>
+                <span className="font-bold" dir="auto">{c.title}</span>
+                <span dir="ltr" className="text-xs text-stone-500 dark:text-stone-400">{c.partNumber}</span>
+                <span className={`badge border ${meta.cls}`}>{meta.label}</span>
+                {c.status === 'matched' && (
+                  <span className="text-xs text-stone-500 dark:text-stone-400">
+                    ({c.matchedFrom === 'device' ? 'همین دستگاه' : 'کل سامانه'} · {toFa(c.existingCount)} قطعه موجود)
+                  </span>
+                )}
+                {c.desc && (
+                  <span className="text-xs text-stone-500 dark:text-stone-400 w-full" dir="auto">{c.desc}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* اقدام‌های ردیف‌به‌ردیف که در صورت تأیید اجرا خواهند شد */}
+      <details>
+        <summary className="cursor-pointer text-sm font-bold text-brand-700 dark:text-brand-200">
+          اقدام‌های ردیف‌به‌ردیف ({toFa(p.actions.length)}{p.actionsTruncated ? '+' : ''})
+        </summary>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-brand-600 dark:text-brand-300">
+                <th className="text-right py-1.5 px-2">ردیف اکسل</th>
+                <th className="text-right py-1.5 px-2">ستون</th>
+                <th className="text-right py-1.5 px-2">پارت‌نامبر</th>
+                <th className="text-right py-1.5 px-2">سریال</th>
+                <th className="text-right py-1.5 px-2">اقدام</th>
+                <th className="text-right py-1.5 px-2">مقصد</th>
+              </tr>
+            </thead>
+            <tbody>
+              {p.actions.map((a, i) => {
+                const meta = PREVIEW_ACTION_META[a.action];
+                return (
+                  <tr key={i} className="border-t border-stone-100 dark:border-stone-700">
+                    <td className="py-1.5 px-2">{toFa(a.row)}</td>
+                    <td className="py-1.5 px-2" dir="ltr">{a.col}</td>
+                    <td className="py-1.5 px-2" dir="ltr">{a.partNumber}</td>
+                    <td className="py-1.5 px-2" dir="ltr">{a.serial}</td>
+                    <td className="py-1.5 px-2">
+                      <span className={`badge border ${meta.cls}`}>{meta.label}</span>
+                    </td>
+                    <td className="py-1.5 px-2" dir="auto">{a.target}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {p.actionsTruncated && (
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
+            نمایش تا {toFa(p.actionsCap)} اقدام اول؛ بقیه در زمان ثبت اجرا می‌شوند.
+          </p>
+        )}
+      </details>
+    </div>
+  );
+}
+
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-brand-50 dark:bg-brand-900/40 p-3 border border-brand-100 dark:border-brand-800">
-      <p className="text-xs text-brand-500 dark:text-brand-300/80 mb-1">{label}</p>
-      <p className="font-bold text-brand-800 dark:text-brand-100 truncate" dir="auto">
+    <div className="rounded-2xl bg-surface-card dark:bg-stone-800/60 p-3 border border-stone-200 dark:border-stone-700">
+      <p className="text-xs text-stone-500 dark:text-stone-400 mb-1">{label}</p>
+      <p className="font-bold text-stone-800 dark:text-stone-100 truncate" dir="auto">
         {children}
       </p>
     </div>
