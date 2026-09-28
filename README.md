@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.10.2`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.11.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -133,9 +133,9 @@ curl http://localhost:4000/api/health
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.10.2
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.11.0
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.10.2
+docker push meysam8498/support-equipment-management:1.11.0
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
@@ -303,6 +303,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.11.0** | 2026-09-28 | 📊 دو نمودار در داشبورد — روند تعویض‌های ماهانه (۱۲ ماه شمسی اخیر با ستون‌های خالی صفر و شمارنده‌ی مجموع) + قطعات پرمصرف (بیشترین تعویض با نوار رتبه‌ای) · endpoint جدید `GET /api/reports/replacement-trend` |
 | **1.10.2** | 2026-09-28 | ↩️ دکمه‌ی «بازگردانی» در هر ردیف ویرایش‌شده‌ی پیش‌نمایش آپدیت کاتالوگ (undo ویرایش → برگشت به مقادیر فایل) + «بازگردانی همه» در هدر پیش‌نمایش |
 | **1.10.1** | 2026-09-28 | ⚙️ workflow CI مستقل تایپ‌چک (`typecheck.yml`) — دو job موازی روی هر push/PR: سرور (`tsc -p server/tsconfig.json --noEmit`) و کلاینت (`tsc -b`) با کش npm |
 | **1.10.0** | 2026-09-28 | 🧲 پیشنهاد ادغام در import کاتالوگ — ردیف‌های با PN مشابه مرجع موجود (غلط تایپی، فاصله‌ی لِوِنشتاین ≤۲) با بج «⚠ PN مشابه» علامت می‌خورند و کاربر «ادغام در مرجع موجود» یا «مرجع جدید» را انتخاب می‌کند؛ ادغام فقط فیلدهای پرشده را در مرجع هدف می‌ریزد (مسیر paste و فایل اکسل) |

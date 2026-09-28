@@ -79,27 +79,69 @@ interface FailedPartRow {
   affected_devices: number;
 }
 
+/** یک ماه از روند تعویض‌ها */
+interface TrendMonth {
+  year: number;
+  month: number;
+  label: string;
+  count: number;
+}
+
+/** نمودار ستونی SVG روند ماهانه — بدون وابستگی خارجی، RTL */
+function TrendChart({ months }: { months: TrendMonth[] }) {
+  const max = Math.max(1, ...months.map((m) => m.count));
+  return (
+    <div className="flex items-end justify-between gap-1 h-40" dir="ltr">
+      {months.map((m, i) => {
+        const pct = Math.round((m.count / max) * 100);
+        const isLast = i === months.length - 1;
+        return (
+          <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-1 h-full justify-end min-w-0" title={`${m.label} ${toFa(m.year)}: ${toFa(m.count)} تعویض`}>
+            {m.count > 0 && (
+              <span className="text-[10px] text-stone-500 dark:text-stone-400 fa-nums">{toFa(m.count)}</span>
+            )}
+            <div
+              className={`w-full max-w-[28px] rounded-t-md transition-all duration-500 ${
+                isLast ? 'bg-brand-500' : m.count > 0 ? 'bg-brand-300 dark:bg-brand-700' : 'bg-stone-200 dark:bg-stone-700/60'
+              }`}
+              style={{ height: `${Math.max(pct, m.count > 0 ? 6 : 3)}%` }}
+            />
+            <span className={`text-[9px] leading-none truncate w-full text-center ${isLast ? 'font-bold text-brand-700 dark:text-brand-300' : 'text-stone-400 dark:text-stone-500'}`}>
+              {m.label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { isAdmin, user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [lists, setLists] = useState<Lists | null>(null);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [topFailed, setTopFailed] = useState<FailedPartRow[]>([]);
+  const [trend, setTrend] = useState<TrendMonth[]>([]);
+  const [trendTotal, setTrendTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, l, r, f] = await Promise.all([
+        const [s, l, r, f, tr] = await Promise.all([
           api.get<DashboardStats>('/dashboard/stats'),
           api.get<Lists>('/lists'),
           api.get<ReportSummary>('/reports/summary'),
           api.get<FailedPartRow[]>('/reports/most-failed-parts?limit=5'),
+          api.get<{ months: TrendMonth[]; total: number }>('/reports/replacement-trend'),
         ]);
         setStats(s);
         setLists(l);
         setSummary(r);
         setTopFailed(f);
+        setTrend(tr.months);
+        setTrendTotal(tr.total);
       } catch { /* handled by global */ }
       finally { setLoading(false); }
     })();
@@ -172,6 +214,76 @@ export default function DashboardPage() {
           {toFa(stats?.activeParts ?? 0)} فعال از {toFa(stats?.parts ?? 0)} قطعه
         </p>
       </section>
+
+      {/* ---------- نمودارها: روند ماهانه + پرمصرف‌ترین قطعات ---------- */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* روند ماهانه‌ی تعویض‌ها (۱۲ ماه شمسی اخیر) */}
+        <section className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">📈</span>
+              <div>
+                <h2 className="heading-serif text-lg font-bold text-stone-900 dark:text-stone-50">روند تعویض‌های ماهانه</h2>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                  ۱۲ ماه شمسی اخیر · مجموع <b className="fa-nums">{toFa(trendTotal)}</b> تعویض
+                </p>
+              </div>
+            </div>
+            <Link to="/reports" className="btn-ghost !min-h-[32px] text-xs">گزارش کامل</Link>
+          </div>
+          {trend.every((m) => m.count === 0) ? (
+            <p className="text-stone-400 dark:text-stone-500 text-sm">در ۱۲ ماه اخیر تعویضی ثبت نشده است.</p>
+          ) : (
+            <TrendChart months={trend} />
+          )}
+        </section>
+
+        {/* قطعات پرمصرف (بیشترین تعویض) با نوار رتبه‌ای */}
+        <section className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">🔩</span>
+              <div>
+                <h2 className="heading-serif text-lg font-bold text-stone-900 dark:text-stone-50">قطعات پرمصرف</h2>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">بیشترین تعویض‌شده در کل سامانه</p>
+              </div>
+            </div>
+            <Link to="/reports" className="btn-ghost !min-h-[32px] text-xs">گزارش کامل</Link>
+          </div>
+          {topFailed.length === 0 ? (
+            <p className="text-stone-400 dark:text-stone-500 text-sm">هنوز تعویضی ثبت نشده است.</p>
+          ) : (
+            <div className="space-y-3">
+              {topFailed.map((row, i) => {
+                const max = topFailed[0]?.replacement_count || 1;
+                const pct = Math.round((row.replacement_count / max) * 100);
+                const barCls = i === 0 ? 'bg-brand-500' : i === 1 ? 'bg-brand-400' : i === 2 ? 'bg-brand-300' : 'bg-stone-400';
+                const filterQs = `part=${encodeURIComponent(row.part_title)}${row.part_number_1 ? `&pn=${encodeURIComponent(row.part_number_1)}` : ''}`;
+                return (
+                  <Link key={`${row.part_title}-${row.part_number_1 ?? ''}-${i}`} to={`/warranty?${filterQs}`} className="group block rounded-lg -mx-2 px-2 hover:bg-brand-50/60 dark:hover:bg-brand-900/20 transition-colors">
+                    <div className="flex justify-between items-baseline mb-1 gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${i === 0 ? 'bg-brand-500 text-white' : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300'}`}>
+                          {toFa(i + 1)}
+                        </span>
+                        <span className="font-semibold text-sm text-stone-800 dark:text-stone-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-300 transition-colors" dir="auto">
+                          {row.part_title}
+                        </span>
+                      </div>
+                      <span className="badge bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/30 fa-nums text-[10px] shrink-0">
+                        {toFa(row.replacement_count)} تعویض
+                      </span>
+                    </div>
+                    <div className="progress-track">
+                      <div className={`h-full rounded-full ${barCls}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* ---------- گزارش سریع: ۵ قطعه با بیشترین خرابی (progress بارهای رتبه‌ای) ---------- */}
       <section className="card">

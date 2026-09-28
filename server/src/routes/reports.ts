@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db/db.js';
+import { todayJalali, JALALI_MONTHS, jalaliToGregorianISO } from '../lib/date.js';
 
 /**
  * گزارش‌های تحلیلی خرابی و گارنتی.
@@ -127,6 +128,48 @@ router.get('/service-needs-by-type', (_req, res) => {
     ORDER BY total_replacements DESC, replacements_per_device DESC
   `).all();
   res.json(rows);
+});
+
+/**
+ * ۶) روند ماهانه‌ی تعویض‌ها — ۱۲ ماه شمسی اخیر (قدیمی → جدید) با صفرِ ماه‌های خالی.
+ * شمارش دقیق: بازه‌ی میلادیِ هر ماه شمسی (ابتدا تا ابتدای ماه بعد) با SQL — بدون خطای مرزی.
+ */
+router.get('/replacement-trend', (_req, res) => {
+  const db = getDb();
+  const [jy, jm] = todayJalali().split('/').map(Number);
+  const months: { key: string; y: number; m: number; label: string }[] = [];
+  for (let back = 11; back >= 0; back--) {
+    let y = jy;
+    let m = jm - back;
+    while (m <= 0) { m += 12; y -= 1; }
+    months.push({ key: `${y}/${String(m).padStart(2, '0')}`, y, m, label: JALALI_MONTHS[m - 1] ?? String(m) });
+  }
+  const firstKey = months[0].key; // قدیمی‌ترین ماه (شمسی)
+
+  const countByJKey = new Map<string, number>();
+  for (const mo of months) {
+    const startJ = `${mo.y}/${String(mo.m).padStart(2, '0')}/01`;
+    let endY = mo.y, endM = mo.m;
+    endM += 1; if (endM > 12) { endM = 1; endY += 1; }
+    const endJ = `${endY}/${String(endM).padStart(2, '0')}/01`;
+    const gStart = jalaliToGregorianISO(startJ);
+    const gEnd = jalaliToGregorianISO(endJ);
+    if (!gStart || !gEnd) continue;
+    const c = (db.prepare(`
+      SELECT COUNT(*) AS c FROM warranty_replacements
+      WHERE replaced_at_gregorian >= ? AND replaced_at_gregorian < ?
+    `).get(gStart, gEnd) as { c: number }).c;
+    countByJKey.set(mo.key, c);
+  }
+
+  const trend = months.map((mo) => ({
+    year: mo.y,
+    month: mo.m,
+    label: mo.label,
+    count: countByJKey.get(mo.key) ?? 0,
+  }));
+  const total = trend.reduce((s, m) => s + m.count, 0);
+  res.json({ months: trend, total, since: firstKey });
 });
 
 /** ۵) خلاصه جامع برای داشبورد گزارش‌ها */
