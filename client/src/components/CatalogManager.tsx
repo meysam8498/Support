@@ -61,12 +61,14 @@ function ImportEditableList({
   items,
   edits,
   onChange,
+  onUndo,
   resolutions,
   onResolve,
 }: {
   items: ImportResultItem[];
   edits: Record<string, { title?: string; specs?: string; pn2?: string }>;
   onChange: (pn: string, field: 'title' | 'specs' | 'pn2', value: string) => void;
+  onUndo: (pn: string) => void;
   resolutions: Record<string, 'new' | { mergeInto: number }>;
   onResolve: (pn: string, r: 'new' | { mergeInto: number } | null) => void;
 }) {
@@ -104,7 +106,19 @@ function ImportEditableList({
                 <span className="text-[10px] text-sky-dark dark:text-sky-light">اعمال: {it.filled.join('، ')}</span>
               )}
               {it.reason && <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate">{it.reason}</span>}
-              {isEdited && <span className="badge bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40">ویرایش‌شده</span>}
+              {isEdited && (
+                <>
+                  <span className="badge bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40">ویرایش‌شده</span>
+                  <button
+                    type="button"
+                    onClick={() => onUndo(it.pn)}
+                    className="text-[10px] text-stone-500 dark:text-stone-400 underline cursor-pointer"
+                    title="حذف ویرایش‌های این ردیف و برگشت به مقادیر فایل"
+                  >
+                    ↩ بازگردانی
+                  </button>
+                </>
+              )}
             </div>
             {isSimilar && (
               <div className="flex flex-wrap items-center gap-1.5 rounded-md bg-stone-50 dark:bg-stone-800/60 px-2 py-1.5 border border-stone-200 dark:border-stone-700">
@@ -441,6 +455,15 @@ export default function CatalogManager() {
     } finally { setBusy(false); }
   };
 
+  /** بازگردانی یک ردیف ویرایش‌شده به مقادیر فایل (undo ویرایش) */
+  const onEditUndo = (pn: string) => {
+    setImportEdits((s) => {
+      const next = { ...s };
+      delete next[pn];
+      return next;
+    });
+  };
+
   /** تصمیم ادغام/جدید برای PN برخوردی مشابه */
   const onResolve = (pn: string, r: 'new' | { mergeInto: number } | null) => {
     setImportResolutions((s) => {
@@ -674,11 +697,21 @@ export default function CatalogManager() {
             <div className="rounded-xl bg-surface-card dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 p-3 space-y-2">
               <p className="text-xs font-bold text-brand-700 dark:text-brand-300">
                 {importResult.dryRun ? '🔍 پیش‌نمایش — هیچ تغییری ذخیره نشده؛ عنوان/مشخصات هر ردیف را ویرایش کنید:' : 'نتیجه:'}{' '}
+                {importResult.dryRun && Object.keys(importEdits).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setImportEdits({})}
+                    className="text-[11px] text-stone-500 dark:text-stone-400 underline cursor-pointer"
+                    title="حذف همه‌ی ویرایش‌های دستی و برگشت همه‌ی ردیف‌ها به مقادیر فایل"
+                  >
+                    ↩ بازگردانی همه به مقادیر فایل
+                  </button>
+                )}
                 {toFa(importResult.createdCount)} جدید · {toFa(importResult.updatedCount)} به‌روزرسانی · {toFa(importResult.skippedCount)} بدون تغییر
                 {importResult.itemsTruncated ? ' (نمایش اولین ۲۰۰ ردیف)' : ''}
               </p>
               {importResult.dryRun ? (
-                <ImportEditableList items={importResult.items} edits={importEdits} onChange={onEditChange} resolutions={importResolutions} onResolve={onResolve} />
+                <ImportEditableList items={importResult.items} edits={importEdits} onChange={onEditChange} onUndo={onEditUndo} resolutions={importResolutions} onResolve={onResolve} />
               ) : (
                 <p className="text-[11px] text-stone-500 dark:text-stone-400">
                   {toFa(Object.keys(importEdits).length)} ویرایش دستی همراه ثبت اعمال شد.
