@@ -11,6 +11,7 @@ import { api } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
 import ExportColumnsDialog from '../components/ExportColumnsDialog';
+import PeriodicReportDialog from '../components/PeriodicReportDialog';
 
 interface FailedPart { part_title: string; part_number_1?: string; replacement_count: number; affected_devices: number; }
 interface FailureByCustomer { project_id: number; project_name: string; claims_count: number; affected_devices: number; distinct_failures: number; }
@@ -85,6 +86,7 @@ export default function ReportsPage() {
   const [replacements, setReplacements] = useState<ReplacementRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportOpen, setExportOpen] = useState(false);
+  const [periodicOpen, setPeriodicOpen] = useState(false);
 
   // جست‌وجوی متنی + بازه‌ی تاریخ شمسی (از/تا)
   const [q, setQ] = useState('');
@@ -185,13 +187,22 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold dark:text-stone-50">{t.navReports}</h1>
-        <button
-          type="button"
-          onClick={() => setExportOpen(true)}
-          className="btn-secondary !min-h-[34px] text-xs"
-        >
-          ⬇ خروجی اکسل تعویض‌ها
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPeriodicOpen(true)}
+            className="btn-secondary !min-h-[34px] text-xs"
+          >
+            🗓️ گزارش دوره‌ای
+          </button>
+          <button
+            type="button"
+            onClick={() => setExportOpen(true)}
+            className="btn-secondary !min-h-[34px] text-xs"
+          >
+            ⬇ خروجی اکسل تعویض‌ها
+          </button>
+        </div>
       </div>
 
       {/* ---------- نوار جست‌وجو + بازه‌ی تاریخ ---------- */}
@@ -386,6 +397,7 @@ export default function ReportsPage() {
 
       {/* دیالوگ خروجی اکسل با انتخاب ستون‌ها */}
       <ExportColumnsDialog open={exportOpen} onClose={() => setExportOpen(false)} />
+      <PeriodicReportDialog open={periodicOpen} onClose={() => setPeriodicOpen(false)} />
     </div>
   );
 }

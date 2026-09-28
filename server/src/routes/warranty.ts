@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getDb, runTransaction } from '../db/db.js';
 import { datePairFromJalali, todayJalali, todayGregorian, jalaliToGregorianISO } from '../lib/date.js';
 import { requireRole } from '../middleware/auth.js';
+import jalaali from 'jalaali-js';
 import { findDuplicateSerial } from './parts.js';
 import * as XLSX from 'xlsx';
 import { sendWorkbook, safeFileName } from '../lib/warehouseExport.js';
@@ -289,4 +290,149 @@ router.get('/replacements/export', (req, res) => {
 });
 
 void todayGregorian;
+
+// ---------- GET /api/warranty/replacements/periodic-report — گزارش دوره‌ای اکسل (ادمین) ----------
+// ماهانه/فصلی با پارامتر بازه‌ی شمسی — سه شیت: خلاصه + تعویض‌ها + راهنما
+router.get('/replacements/periodic-report', requireRole('admin'), (req, res) => {
+  const db = getDb();
+
+  // --- نوع دوره و بازه ---
+  const periodRaw = String(req.query.period ?? 'monthly').toLowerCase();
+  if (periodRaw !== 'monthly' && periodRaw !== 'quarterly') {
+    return res.status(400).json({ error: 'پارامتر period باید monthly یا quarterly باشد.' });
+  }
+  const periodLabel = periodRaw === 'monthly' ? 'ماهانه' : 'فصلی';
+  const periodMonths = periodRaw === 'monthly' ? 1 : 3;
+
+  // بازه‌ی شمسی: date_from/date_to صریح، یا از period_start=YYYY/MM (ماه شروع) با طول دوره
+  const dateFromRaw = typeof req.query.date_from === 'string' ? req.query.date_from.trim() : '';
+  const dateToRaw = typeof req.query.date_to === 'string' ? req.query.date_to.trim() : '';
+  const periodStartRaw = typeof req.query.period_start === 'string' ? req.query.period_start.trim() : '';
+
+  let fromJ = dateFromRaw;
+  let toJ = dateToRaw;
+
+  if (periodStartRaw && !dateFromRaw && !dateToRaw) {
+    const m = /^(\d{4})\/(\d{1,2})$/.exec(periodStartRaw);
+    if (!m) return res.status(400).json({ error: 'period_start نامعتبر است (قالب 1404/07 — ماه شروع دوره).' });
+    const sy = Number(m[1]);
+    const sm = Number(m[2]);
+    if (sm < 1 || sm > 12) return res.status(400).json({ error: 'ماه شروع باید ۱ تا ۱۲ باشد.' });
+    // پایان دوره = ابتدای ماه (شروع + طول دوره)
+    let ey = sy, em = sm;
+    for (let i = 0; i < periodMonths; i++) { em += 1; if (em > 12) { em = 1; ey += 1; } }
+    fromJ = `${sy}/${String(sm).padStart(2, '0')}/01`;
+    toJ = `${ey}/${String(em).padStart(2, '0')}/01`;
+  }
+
+  // پیش‌فرض: دوره‌ی اخیر (آخرین دوره کامل قبل از امروز)
+  if (!fromJ && !toJ) {
+    const tj = todayJalali();
+    const [ty, tm] = tj.split('/').map(Number);
+    let sy = ty, sm = tm;
+    for (let i = 0; i < periodMonths; i++) { sm -= 1; if (sm < 1) { sm = 12; sy -= 1; } }
+    fromJ = `${sy}/${String(sm).padStart(2, '0')}/01`;
+    toJ = `${ty}/${String(tm).padStart(2, '0')}/01`;
+  }
+
+  const fromISO = fromJ ? jalaliToGregorianISO(fromJ) : null;
+  const toISO = toJ ? jalaliToGregorianISO(toJ) : null;
+  if (!fromISO) return res.status(400).json({ error: `تاریخ شروع نامعتبر است: ${fromJ} (قالب 1404/07/01)` });
+  if (!toISO) return res.status(400).json({ error: `تاریخ پایان نامعتبر است: ${toJ} (قالب 1404/12/29)` });
+  if (fromISO >= toISO) return res.status(400).json({ error: 'بازه نامعتبر است — پایان باید بعد از شروع باشد.' });
+
+  const rows = db.prepare(`
+    SELECT
+      wr.replaced_at_jalali,
+      p.name AS project_name, d.main_serial AS device_serial,
+      op.title AS old_part_title, op.part_number_1 AS old_part_pn, op.part_serial_number AS old_part_serial,
+      np.title AS new_part_title, np.part_number_1 AS new_part_pn, np.part_serial_number AS new_part_serial,
+      te.name AS expert_name, fr.name AS failure_reason_name, wr.description
+    FROM warranty_replacements wr
+    LEFT JOIN devices d  ON d.id = wr.device_id
+    LEFT JOIN projects p ON p.id = d.project_id
+    LEFT JOIN parts op   ON op.id = wr.old_part_id
+    LEFT JOIN parts np   ON np.id = wr.new_part_id
+    LEFT JOIN technical_experts te ON te.id = wr.replaced_by_expert_id
+    LEFT JOIN failure_reasons fr  ON fr.id = wr.failure_reason_id
+    WHERE wr.replaced_at_gregorian >= ? AND wr.replaced_at_gregorian < ?
+    ORDER BY wr.replaced_at_gregorian DESC
+  `).all(fromISO, toISO) as Array<Record<string, string | null>>;
+
+  // --- خلاصه‌ی دوره ---
+  const byProject = new Map<string, number>();
+  const byPart = new Map<string, number>();
+  const byReason = new Map<string, number>();
+  for (const r of rows) {
+    const pr = r.project_name || '(بدون پروژه)';
+    byProject.set(pr, (byProject.get(pr) ?? 0) + 1);
+    const key = `${r.old_part_title || '(بدون عنوان)'}${r.old_part_pn ? ` [${r.old_part_pn}]` : ''}`;
+    byPart.set(key, (byPart.get(key) ?? 0) + 1);
+    const rs = r.failure_reason_name || '(نامشخص)';
+    byReason.set(rs, (byReason.get(rs) ?? 0) + 1);
+  }
+  const sortDesc = (m: Map<string, number>) => [...m.entries()].sort((a, b) => b[1] - a[1]);
+
+  const periodText = `${fromJ} تا ${toJ}`;
+  const j = jalaali.toJalaali(new Date());
+  const today = `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
+
+  // --- شیت ۱: خلاصه‌ی دوره ---
+  const summary: (string | number)[][] = [
+    [`گزارش دوره‌ای تعویض‌های گارانتی — ${periodLabel}`],
+    [''],
+    ['بازه‌ی گزارش', periodText],
+    ['تاریخ تولید', today],
+    ['مجموع تعویض‌های دوره', rows.length],
+    [''],
+    ['تعویض به تفکیک پروژه:'],
+    ['پروژه', 'تعداد'],
+    ...sortDesc(byProject).map(([k, v]) => [k, v]),
+    [''],
+    ['تعویض به تفکیک قطعه:'],
+    ['قطعه', 'تعداد'],
+    ...sortDesc(byPart).map(([k, v]) => [k, v]),
+    [''],
+    ['تعویض به تفکیک دلیل خرابی:'],
+    ['دلیل', 'تعداد'],
+    ...sortDesc(byReason).map(([k, v]) => [k, v]),
+  ];
+
+  // --- شیت ۲: ریز تعویض‌ها (همان ستون‌های export کامل) ---
+  const headers = REPLACEMENT_COLUMNS.map((c) => c.label);
+  const data = rows.map((r) => REPLACEMENT_COLUMNS.map((c) => c.get(r)));
+
+  const wb = XLSX.utils.book_new();
+  const wsSummary = XLSX.utils.aoa_to_sheet(summary);
+  wsSummary['!cols'] = [{ wch: 34 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'خلاصه');
+
+  const wsData = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  wsData['!cols'] = REPLACEMENT_COLUMNS.map((c) => ({ wch: Math.max(10, Math.min(32, c.label.length + 8)) }));
+  wsData['!freeze'] = { xSplit: '0', ySplit: '1' };
+  XLSX.utils.book_append_sheet(wb, wsData, 'تعویض‌ها');
+
+  const guide: (string | null)[][] = [
+    ['راهنمای گزارش دوره‌ای'],
+    [''],
+    ['دوره', '', periodLabel],
+    ['بازه', '', periodText],
+    [''],
+    ['پارامترهای endpoint:'],
+    ['period', 'monthly یا quarterly (پیش‌فرض monthly)'],
+    ['period_start', 'ماه شروع دوره به قالب 1404/07 — بازه خودکار ساخته می‌شود'],
+    ['date_from / date_to', 'بازه‌ی صریح شمسی 1404/07/01 — بر period_start اولویت دارد'],
+    [''],
+    ['پیش‌فرض بدون پارامتر', 'آخرین دوره‌ی کامل قبل از امروز'],
+    ['تاریخ شمسی تعویض‌ها', 'ستون «تاریخ تعویض» شیت تعویض‌ها، شمسی است'],
+    ['سامانه', '', 'Support Equipment Management — طراحی: میثم ایجادی / M.Ijadi@Hotmail.com'],
+  ];
+  const wsGuide = XLSX.utils.aoa_to_sheet(guide);
+  wsGuide['!cols'] = [{ wch: 22 }, { wch: 60 }];
+  XLSX.utils.book_append_sheet(wb, wsGuide, 'راهنما');
+
+  const fname = `periodic-${periodRaw}-${safeFileName(fromJ.replace(/\//g, '-'))}.xlsx`;
+  sendWorkbook(res, wb, fname);
+});
+
 export default router;

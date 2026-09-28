@@ -12,6 +12,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
+import PeriodicReportDialog from '../components/PeriodicReportDialog';
 
 interface ReplacementRow {
   id: number;
@@ -41,6 +42,7 @@ export default function ReplacementsListPage() {
   const [rows, setRows] = useState<ReplacementRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [periodicOpen, setPeriodicOpen] = useState(false);
   const [q, setQ] = useState('');
 
   useEffect(() => {
@@ -100,6 +102,13 @@ export default function ReplacementsListPage() {
               ✕ حذف فیلتر
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setPeriodicOpen(true)}
+            className="btn-secondary !min-h-[34px] text-xs"
+          >
+            🗓️ گزارش دوره‌ای
+          </button>
           <Link to="/warranty/replace" className="btn-primary !min-h-[34px] text-xs">
             + ثبت تعویض جدید
           </Link>
@@ -203,6 +212,8 @@ export default function ReplacementsListPage() {
       <p className="text-xs text-stone-400 dark:text-stone-500 text-center fa-nums">
         {toFa(filtered.length)} تعویض{hasFilter ? ' برای این قطعه' : ''}
       </p>
+
+      <PeriodicReportDialog open={periodicOpen} onClose={() => setPeriodicOpen(false)} />
     </div>
   );
 }
