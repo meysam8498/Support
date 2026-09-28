@@ -10,10 +10,12 @@ import { config } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
+import { existsSync } from 'node:fs';
 
 import { getDb, applySchema, migrateSchema } from './db/db.js';
 import { seedIfEmpty } from './db/init.js';
-import { authRequired, errorHandler } from './middleware/auth.js';
+import { authRequired, requireRole, errorHandler } from './middleware/auth.js';
+import { startBackupScheduler, backupOnce, backupStatus, listBackups, backupDir } from './lib/backup.js';
 import authRoutes from './routes/auth.js';
 import listsRoutes from './routes/lists.js';
 import devicesRoutes from './routes/devices.js';
@@ -62,6 +64,28 @@ app.use('/api/serial-import', authRequired, serialImportRoutes);
 app.use('/api/dashboard', authRequired, dashboardRoutes);
 app.use('/api/search', authRequired, searchRoutes);
 app.use('/api/part-catalog', authRequired, partCatalogRoutes);
+
+// --- پشتیبان‌گیری (فقط ادمین) ---
+// GET /api/backups — فهرست بکاپ‌ها + وضعیت زمان‌بند
+app.get('/api/backups', authRequired, requireRole('admin'), (_req, res) => {
+  res.json({ ...backupStatus(), items: listBackups() });
+});
+// POST /api/backups/run — بکاپ دستی (فوری)
+app.post('/api/backups/run', authRequired, requireRole('admin'), (_req, res) => {
+  const r = backupOnce(getDb());
+  res.status(r.ok ? 200 : 500).json(r);
+});
+// GET /api/backups/:file — دانلود یک بکاپ (نام محدودشده به الگوی خودمان — بدون path traversal)
+app.get('/api/backups/:file', authRequired, requireRole('admin'), (req, res) => {
+  const f = String(req.params.file);
+  if (!/^support-backup-\d{8}-\d{6}\.db$/.test(f)) return res.status(400).json({ error: 'نام فایل نامعتبر است.' });
+  const filePath = path.join(backupDir(), f);
+  if (!existsSync(filePath)) return res.status(404).json({ error: 'فایل بکاپ یافت نشد.' });
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', `attachment; filename="${f}"`);
+  res.setHeader('Cache-Control', 'no-store');
+  res.sendFile(filePath);
+});
 app.use('/api/reports', authRequired, reportsRoutes);
 app.use('/api/users', authRequired, usersRoutes); // فقط مدیر (درون روتر چک می‌شود)
 
@@ -80,6 +104,9 @@ const db = getDb();
 migrateSchema(db);   // اول ستون‌های جاافتاده‌ی نسخه‌های قدیمی اضافه می‌شود
 applySchema(db);     // سپس جداول/ایندکس‌های جدید ساخته می‌شوند (idempotent)
 seedIfEmpty();
+
+// زمان‌بند بکاپ روزانه (پیش‌فرض ۰۳:۳۰، نگهداری ۳۰ نسخه — BACKUP_AT/BACKUP_KEEP/BACKUP_DIR)
+startBackupScheduler(getDb());
 
 app.listen(PORT, () => {
   console.log(`✓ سرور در حال اجراست: http://localhost:${PORT}`);

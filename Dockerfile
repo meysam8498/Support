@@ -9,7 +9,7 @@
 #
 # امکانات: کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، ورود سریال از اکسل یا paste،
 #          گرید جدولی قطعات، گارانتی، تأمین قطعات، تقویم شمسی.
-# نسخه: 1.11.0 (پیش‌فرض؛ در CI از تگ گیت با ARG APP_VERSION پر می‌شود)
+# نسخه: 1.12.0 (پیش‌فرض؛ در CI از تگ گیت با ARG APP_VERSION پر می‌شود)
 # ============================================================
 
 # ───────────────────────── Stage 1: Build ─────────────────────────
@@ -51,7 +51,7 @@ VOLUME /app/server/data
 EXPOSE 4000
 
 # نسخه‌ی image — در CI با ARG APP_VERSION از تگ گیت (v1.2.1) بازنویسی می‌شود
-ARG APP_VERSION=1.11.0
+ARG APP_VERSION=1.12.0
 
 # برچسب‌های OCI برای شناسایی image (شامل اطلاعات طراح)
 LABEL org.opencontainers.image.title="Support Equipment Management" \
@@ -69,6 +69,9 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=8s --retries=3 \
 ENV NODE_ENV=production \
     APP_VERSION=${APP_VERSION} \
     PORT=4000 \
-    DB_PATH=/app/server/data/app.db
+    DB_PATH=/app/server/data/app.db \
+    BACKUP_DIR=/app/server/backups \
+    BACKUP_KEEP=30 \
+    BACKUP_AT=3
 
 CMD ["node", "server/dist/index.js"]

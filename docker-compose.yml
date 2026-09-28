@@ -8,7 +8,7 @@
 #
 # امکانات: کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، ورود سریال‌ها از اکسل یا paste،
 #          گرید جدولی قطعات، گارانتی، تأمین قطعات، تقویم شمسی.
-# نسخه: 1.11.0
+# نسخه: 1.12.0
 # ============================================================
 
 services:
@@ -38,6 +38,7 @@ services:
       - USER_PASSWORD=${USER_PASSWORD:-user123}
     volumes:
       - app-data:/app/server/data
+      - backup-data:/app/server/backups
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -47,4 +48,6 @@ services:
 
 volumes:
   app-data:
+    driver: local
+  backup-data:
     driver: local
