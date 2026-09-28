@@ -148,6 +148,14 @@ export default function CatalogManager() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
+  /** پیشنهاد ادغام هنگام برخورد PN در ویرایش — مرجع برخوردی + PN درخواستی */
+  const [mergeSuggestion, setMergeSuggestion] = useState<{
+    editingId: number;
+    editingTitle: string;
+    requestedPn: string;
+    conflict: { id: number; part_number_1: string; title: string; tech_specs: string | null; installed_count: number };
+  } | null>(null);
+
   // ---------- افزودن مرجع جدید (دستی) ----------
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ part_number_1: '', part_number_2: '', title: '', tech_specs: '', notes: '' });
@@ -194,7 +202,7 @@ export default function CatalogManager() {
     setForm({ part_number_1: r.part_number_1, part_number_2: r.part_number_2 || '', title: r.title, tech_specs: r.tech_specs || '', notes: r.notes || '' });
   };
 
-  const saveEdit = async () => {
+  const saveEdit = async (): Promise<void> => {
     if (!editing) return;
     setBusy(true);
     try {
@@ -217,6 +225,36 @@ export default function CatalogManager() {
       setEditing(null);
       await load();
       setTimeout(() => setMsg(''), 4000);
+    } catch (e) {
+      // برخورد PN با مرجع دیگر؟ → پیشنهاد «ادغام» به‌جای خطا
+      const err = e as Error & { payload?: { conflict?: { id: number; part_number_1: string; title: string; tech_specs: string | null; installed_count: number } } };
+      const conflict = err.payload?.conflict;
+      if (conflict && editing) {
+        setMergeSuggestion({
+          editingId: editing.id,
+          editingTitle: editing.title,
+          requestedPn: form.part_number_1.trim().toUpperCase(),
+          conflict,
+        });
+      } else {
+        alert((e as Error).message);
+      }
+    } finally { setBusy(false); }
+  };
+
+  /** پذیرش پیشنهاد: ادغام مرجعِ در حال ویرایش (source) در مرجع برخوردی (keep) + هم‌راستاسازی */
+  const acceptMergeSuggestion = async () => {
+    if (!mergeSuggestion) return;
+    const { editingId, conflict } = mergeSuggestion;
+    setBusy(true);
+    try {
+      const r = await api.post<{ synced: number }>('/part-catalog/merge', { keep_id: conflict.id, merge_ids: [editingId] });
+      // sync قطعات جدید فقط در صورت خالی‌بودن فیلدهایشان انجام شده؛ عنوان مرجع نگه‌داشته می‌شود
+      setMsg(`ادغام انجام شد — مرجع «${mergeSuggestion.editingTitle}» حذف و قطعاتش به «${conflict.title}» منتقل شد (${toFa(r.synced)} قطعه وصل است).`);
+      setMergeSuggestion(null);
+      setEditing(null);
+      await load();
+      setTimeout(() => setMsg(''), 6000);
     } catch (e) {
       alert((e as Error).message);
     } finally { setBusy(false); }
@@ -579,6 +617,44 @@ export default function CatalogManager() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* دیالوگ پیشنهاد ادغام هنگام برخورد PN */}
+      <Modal open={!!mergeSuggestion} onClose={() => setMergeSuggestion(null)} title="پارت‌نامبر تکراری — پیشنهاد ادغام">
+        {mergeSuggestion && (
+          <div className="space-y-4">
+            <p className="text-sm text-stone-700 dark:text-stone-200 leading-6">
+              پارت‌نامبر <b className="fa-nums" dir="ltr">{mergeSuggestion.requestedPn}</b> هم‌اکنون به مرجع دیگری تعلق دارد؛
+              پس نمی‌توان همین‌جا تغییرش داد. می‌توانید <b>مرجع فعلی</b> را در آن <b>ادغام</b> کنید تا همه‌ی قطعاتش منتقل شوند:
+            </p>
+            <div className="rounded-xl border-2 border-gold/40 bg-gold/5 p-3 text-sm space-y-1">
+              <p className="font-bold text-[#8a6d00] dark:text-gold-light">مرجع نگه‌داشتنی (مقصد):</p>
+              <p>
+                <b dir="auto">{mergeSuggestion.conflict.title}</b>{' '}
+                <span className="fa-nums text-stone-500 dark:text-stone-400" dir="ltr">({mergeSuggestion.conflict.part_number_1})</span>
+              </p>
+              {mergeSuggestion.conflict.tech_specs && (
+                <p className="text-xs text-stone-600 dark:text-stone-300" dir="auto">{mergeSuggestion.conflict.tech_specs}</p>
+              )}
+              <p className="text-xs fa-nums text-stone-600 dark:text-stone-300">
+                نصب‌شده: {toFa(mergeSuggestion.conflict.installed_count)} قطعه
+              </p>
+            </div>
+            <div className="rounded-xl border border-stone-200 dark:border-stone-700 p-3 text-sm space-y-1">
+              <p className="font-bold text-stone-700 dark:text-stone-200">مرجع ادغام‌شونده (حذف می‌شود):</p>
+              <p dir="auto">{mergeSuggestion.editingTitle}</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                قطعات نصب‌شده‌ی آن به مقصد منتقل و با اطلاعات مقصد هم‌راستا می‌شوند؛ این مرجع حذف خواهد شد.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button onClick={() => setMergeSuggestion(null)} className="btn-secondary">انصراف و ویرایش دستی PN</button>
+              <button onClick={acceptMergeSuggestion} disabled={busy} className="btn-primary">
+                {busy ? '...' : `⧉ ادغام در «${mergeSuggestion.conflict.title}»`}
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* دیالوگ ویرایش مرجع */}

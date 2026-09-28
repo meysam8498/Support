@@ -39,7 +39,13 @@ async function request<T>(
   }
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
+  if (!res.ok) {
+    // بدنه‌ی خطا (مثل conflict در 409) به Error می‌چسبد تا فراخوان‌ها بتوانند تصمیم بگیرند
+    const err = new Error(data.error || `خطای ${res.status}`) as Error & { payload?: unknown; status?: number };
+    err.payload = data;
+    err.status = res.status;
+    throw err;
+  }
   return data as T;
 }
 

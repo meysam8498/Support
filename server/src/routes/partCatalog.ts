@@ -269,7 +269,18 @@ router.put('/:id', requireRole('admin'), (req: Request, res: Response) => {
     if (!newKey) return res.status(400).json({ error: 'پارت‌نامبر نمی‌تواند خالی باشد.' });
     if (newKey !== entry.part_number_1) {
       const dup = db.prepare(`SELECT id FROM part_catalog WHERE part_number_1 = ? AND id != ?`).get(newKey, id);
-      if (dup) return res.status(409).json({ error: 'مرجع دیگری با این پارت‌نامبر موجود است — ابتدا دو مرجع را ادغام کنید.' });
+      if (dup) {
+        // به‌جای خطای خشک، اطلاعات مرجع برخوردی برمی‌گردد تا UI «ادغام» را پیشنهاد دهد
+        const conflict = db.prepare(`
+          SELECT pc.id, pc.part_number_1, pc.title, pc.tech_specs,
+                 (SELECT COUNT(*) FROM parts p WHERE p.catalog_id = pc.id) AS installed_count
+          FROM part_catalog pc WHERE pc.part_number_1 = ? AND pc.id != ?
+        `).get(newKey, id);
+        return res.status(409).json({
+          error: 'مرجع دیگری با این پارت‌نامبر موجود است — می‌توانید این مرجع را در آن ادغام کنید.',
+          conflict,
+        });
+      }
     }
   }
 
