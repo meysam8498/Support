@@ -91,10 +91,22 @@ export default function PartDetailPage() {
         )}
       </div>
 
-      {/* تعویض‌ها */}
-      {data.replacements.length > 0 && (
-        <div className="card">
-          <h2 className="text-base font-semibold mb-3 dark:text-stone-50">سوابق تعویض ({toFa(data.replacements.length)})</h2>
+      {/* تعویض‌ها — با لینک به فهرست فیلترشده‌ی تعویض‌های همان دسته */}
+      <div className="card">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h2 className="text-base font-semibold dark:text-stone-50">سوابق تعویض ({toFa(data.replacements.length)})</h2>
+          {data.replacements.length > 0 && (
+            <Link
+              to={`/warranty?part=${encodeURIComponent(data.replacements[0].old_part_title || p.title)}${p.part_number_1 ? `&pn=${encodeURIComponent(p.part_number_1)}` : ''}`}
+              className="text-xs text-brand-600 dark:text-brand-300 hover:underline"
+            >
+              مشاهده در فهرست تعویض‌ها →
+            </Link>
+          )}
+        </div>
+        {data.replacements.length === 0 ? (
+          <p className="text-stone-400 dark:text-stone-500 text-sm">این قطعه هنوز تعویض نشده است.</p>
+        ) : (
           <div className="space-y-3">
             {data.replacements.map((r) => (
               <div key={r.id} className="border dark:border-stone-700 rounded-lg p-3 text-sm">
@@ -115,8 +127,8 @@ export default function PartDetailPage() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

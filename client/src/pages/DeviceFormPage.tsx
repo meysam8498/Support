@@ -148,7 +148,8 @@ export default function DeviceFormPage() {
         navigate(`/devices/${id}`);
       } else {
         const res = await api.post<{ id: number }>('/devices', payload);
-        navigate(`/devices/${res.id}`);
+        // تجهیز = مجموعه‌ای از قطعات؛ مستقیم به ویرایشگر جدولی قطعات می‌رویم
+        navigate(`/devices/${res.id}/parts-grid`);
       }
     } catch (err) {
       setError((err as Error).message);

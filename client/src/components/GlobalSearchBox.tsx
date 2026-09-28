@@ -1,9 +1,11 @@
 // ============================================================
-// باکس جست‌وجوی سراسری — یک باکس، همه‌چیز (داشبورد)
+// باکس جست‌وجوی سراسری — یک باکس، همه‌چیز (هدر برنامه)
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
 // ----------------------------------------------------------------
 // • debounce ۳۰۰ms روی تایپ کاربر — هر ورودی یک درخواست /api/search
 // • نتیجه گروه‌بندی‌شده (پروژه/تجهیز/قطعه/کارشناس/تعویض) با ناوبری مستقیم
+// • هایلایت عبارت تطبیق‌یافته در برچسب/زیرنویس + خط ویژه‌ی «فیلد تطبیق‌یافته»
+//   و خط متا (قرارداد، تاریخ‌ها، وضعیت) که سرور برای هر hit می‌فرستد
 // • بستن با Escape، کلیک بیرون، یا ناوبری؛ Ctrl+K فوکوس می‌کند
 // • درخواست قبلی abort می‌شود تا پاسخ‌های کهنه UI را خراب نکنند
 // ============================================================
@@ -15,6 +17,8 @@ interface SearchHit {
   id: number;
   label: string;
   sub: string;
+  meta?: string;
+  matched?: { field: string; value: string };
   link: string;
   badge: string;
 }
@@ -24,6 +28,11 @@ interface SearchResponse {
   hits: SearchHit[];
   groups: { type: SearchHit['type']; title: string; count: number }[];
   empty: boolean;
+  total?: number;
+  page?: number;
+  per_page?: number;
+  has_more?: boolean;
+  type_counts?: Partial<Record<SearchHit['type'], number>>;
 }
 
 const TYPE_ICONS: Record<SearchHit['type'], string> = {
@@ -34,12 +43,58 @@ const TYPE_ICONS: Record<SearchHit['type'], string> = {
   replacement: '🔄',
 };
 
+/** قطعه‌بندی متن برای هایلایت عبارت جست‌وجو (case-insensitive) */
+function splitHighlight(text: string, term: string): { part: string; hit: boolean }[] {
+  if (!term || !text) return [{ part: text, hit: false }];
+  const lower = text.toLowerCase();
+  const needle = term.toLowerCase();
+  const out: { part: string; hit: boolean }[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const at = lower.indexOf(needle, i);
+    if (at === -1) {
+      out.push({ part: text.slice(i), hit: false });
+      break;
+    }
+    if (at > i) out.push({ part: text.slice(i, at), hit: false });
+    out.push({ part: text.slice(at, at + term.length), hit: true });
+    i = at + term.length;
+  }
+  return out.length ? out : [{ part: text, hit: false }];
+}
+
+function Highlight({ text, term }: { text: string; term: string }) {
+  const parts = splitHighlight(text, term);
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.hit ? (
+          <mark key={i} className="bg-amber-200/70 dark:bg-amber-400/30 text-inherit rounded-[3px] px-0.5">
+            {p.part}
+          </mark>
+        ) : (
+          <React.Fragment key={i}>{p.part}</React.Fragment>
+        ),
+      )}
+    </>
+  );
+}
+
+const TYPE_LABELS: Record<SearchHit['type'], string> = {
+  project: 'پروژه',
+  device: 'تجهیز',
+  part: 'قطعه',
+  expert: 'کارشناس',
+  replacement: 'تعویض',
+};
+
 export default function GlobalSearchBox({ compact = false }: { compact?: boolean }) {
   const [q, setQ] = useState('');
   const [data, setData] = useState<SearchResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [typeFilter, setTypeFilter] = useState<SearchHit['type'] | ''>('');
   const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -66,7 +121,7 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  // debounce جست‌وجو
+  // debounce جست‌وجو — با تغییر فیلتر نوع هم دوباره جست‌وجو می‌شود
   useEffect(() => {
     const term = q.trim();
     if (term.length < 2) {
@@ -82,7 +137,9 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
       abortRef.current = ctrl;
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`, {
+        const qs = new URLSearchParams({ q: term });
+        if (typeFilter) qs.set('types', typeFilter);
+        const res = await fetch(`/api/search?${qs.toString()}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           signal: ctrl.signal,
         });
@@ -103,7 +160,7 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [q]);
+  }, [q, typeFilter]);
 
   const go = useCallback((link: string) => {
     setOpen(false);
@@ -128,6 +185,8 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
       go(data.hits[activeIdx].link);
     }
   };
+
+  const term = q.trim();
 
   return (
     <div ref={boxRef} className="relative">
@@ -155,10 +214,35 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
       </div>
 
       {open && data && (
-        <div className="absolute z-50 mt-2 w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-surface-card dark:bg-stone-800 shadow-lg max-h-[420px] overflow-y-auto">
+        <div className="absolute z-50 mt-2 w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-surface-card dark:bg-stone-800 shadow-lg max-h-[460px] overflow-y-auto">
+          {/* چیپ‌های فیلتر نوع */}
+          <div className="sticky top-0 z-10 bg-surface-card dark:bg-stone-800 border-b border-stone-200 dark:border-stone-700 px-2.5 py-1.5 flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setTypeFilter('')}
+              className={`chip !px-2 !py-0.5 text-[11px] ${!typeFilter ? 'chip-active' : 'chip-default opacity-70 hover:opacity-100'}`}
+            >
+              همه{data.type_counts ? ` (${toFa(Object.values(data.type_counts).reduce((a: number, b) => a + (b || 0), 0))})` : ''}
+            </button>
+            {(Object.keys(TYPE_LABELS) as SearchHit['type'][]).map((tp) => {
+              const cnt = data.type_counts?.[tp] ?? 0;
+              if (cnt === 0 && typeFilter !== tp) return null;
+              return (
+                <button
+                  key={tp}
+                  type="button"
+                  onClick={() => setTypeFilter(typeFilter === tp ? '' : tp)}
+                  className={`chip !px-2 !py-0.5 text-[11px] ${typeFilter === tp ? 'chip-active' : 'chip-default opacity-70 hover:opacity-100'} ${cnt === 0 ? 'opacity-40' : ''}`}
+                  title={`فقط ${TYPE_LABELS[tp]}`}
+                >
+                  {TYPE_ICONS[tp]} {TYPE_LABELS[tp]} ({toFa(cnt)})
+                </button>
+              );
+            })}
+          </div>
           {data.hits.length === 0 ? (
             <p className="p-4 text-sm text-stone-500 dark:text-stone-400 text-center">
-              نتیجه‌ای برای «{data.q}» پیدا نشد.
+              نتیجه‌ای برای «{data.q}»{typeFilter ? ` در ${TYPE_LABELS[typeFilter]}` : ''} پیدا نشد.
             </p>
           ) : (
             <div className="py-1">
@@ -186,11 +270,24 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
                         <span className="mt-0.5 shrink-0">{TYPE_ICONS[h.type]}</span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm font-semibold text-stone-800 dark:text-stone-100 truncate" dir="auto">
-                            {h.label}
+                            <Highlight text={h.label} term={term} />
                           </span>
                           {h.sub && (
                             <span className="block text-xs text-stone-500 dark:text-stone-400 truncate" dir="auto">
-                              {h.sub}
+                              <Highlight text={h.sub} term={term} />
+                            </span>
+                          )}
+                          {h.matched && h.matched.value && h.matched.value !== h.label && (
+                            <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-brand-700 dark:text-brand-300 truncate" dir="auto">
+                              <span className="shrink-0 opacity-70">{h.matched.field}:</span>
+                              <span className="truncate">
+                                <Highlight text={h.matched.value} term={term} />
+                              </span>
+                            </span>
+                          )}
+                          {h.meta && (
+                            <span className="mt-0.5 block text-[11px] text-stone-400 dark:text-stone-500 truncate" dir="auto">
+                              {h.meta}
                             </span>
                           )}
                         </span>
@@ -202,6 +299,11 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
                   })}
                 </div>
               ))}
+              {data.per_page === 0 && data.total !== undefined && data.total > data.hits.length && (
+                <p className="px-3 py-2 text-[11px] text-stone-400 dark:text-stone-500 text-center fa-nums">
+                  {toFa(data.hits.length)} از {toFa(data.total)} نتیجه — برای فهرست کامل‌تر، فیلتر نوع را بالا انتخاب کنید
+                </p>
+              )}
             </div>
           )}
         </div>

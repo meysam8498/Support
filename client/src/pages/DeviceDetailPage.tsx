@@ -60,6 +60,7 @@ export default function DeviceDetailPage() {
         {isAdmin && (
           <div className="flex gap-2">
             <Link to={`/devices/${d.id}/edit`} className="btn-secondary">{t.edit}</Link>
+            <Link to={`/devices/${d.id}/parts-grid`} className="btn-secondary" title="افزودن چند قطعه به‌صورت جدولی">🔩 قطعات (جدولی)</Link>
             <Link to={`/parts/new?device=${d.id}`} className="btn-primary">{t.addPart}</Link>
           </div>
         )}

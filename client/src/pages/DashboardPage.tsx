@@ -152,8 +152,14 @@ export default function DashboardPage() {
               const pct = Math.round((row.replacement_count / max) * 100);
               // رتبه‌ی ۱ تراکوتا؛ بقیه به‌ترتیب اشباع کمتر — رتبه‌بندی بصری فوری
               const barCls = i === 0 ? 'bg-brand-500' : i === 1 ? 'bg-brand-400' : i === 2 ? 'bg-brand-300' : i === 3 ? 'bg-gold' : 'bg-stone-400';
+              const filterQs = `part=${encodeURIComponent(row.part_title)}${row.part_number_1 ? `&pn=${encodeURIComponent(row.part_number_1)}` : ''}`;
               return (
-                <div key={`${row.part_title}-${row.part_number_1 ?? ''}-${i}`}>
+                <Link
+                  key={`${row.part_title}-${row.part_number_1 ?? ''}-${i}`}
+                  to={`/warranty?${filterQs}`}
+                  title={`مشاهده‌ی ${toFa(row.replacement_count)} تعویض «${row.part_title}»`}
+                  className="group block rounded-lg -mx-2 px-2 hover:bg-brand-50/60 dark:hover:bg-brand-900/20 transition-colors"
+                >
                   <div className="flex justify-between items-baseline mb-1.5 gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       {/* مدال رتبه */}
@@ -166,7 +172,7 @@ export default function DashboardPage() {
                       >
                         {toFa(i + 1)}
                       </span>
-                      <span className="font-semibold text-stone-800 dark:text-stone-100 truncate" dir="auto">
+                      <span className="font-semibold text-stone-800 dark:text-stone-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-300 transition-colors" dir="auto">
                         {row.part_title}
                       </span>
                       {row.part_number_1 && (
@@ -190,7 +196,7 @@ export default function DashboardPage() {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

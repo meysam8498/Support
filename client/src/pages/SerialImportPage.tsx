@@ -106,6 +106,10 @@ export default function SerialImportPage() {
   const [templateBusy, setTemplateBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // ---------- حالت «چسباندن لیست» (بدون فایل) ----------
+  const [pasteMode, setPasteMode] = useState(false);
+  const [pastedText, setPastedText] = useState('');
+
   /** دانلود قالب نمونه — با توکن (لینک ساده ۴۰۱ می‌دهد) */
   const downloadTemplate = async () => {
     setTemplateBusy(true);
@@ -152,6 +156,35 @@ export default function SerialImportPage() {
     if (!projectId) return setPreviewError('ابتدا پروژه‌ی مقصد را انتخاب کنید.');
     if (!deviceId && !perRow)
       return setPreviewError('تجهیز مقصد را انتخاب کنید یا گزینه‌ی «هر ردیف = یک دستگاه» را فعال کنید.');
+    if (pasteMode) {
+      if (!pastedText.trim()) return setPreviewError('لیست را از اکسل کپی و اینجا بچسبانید.');
+      setPreviewBusy(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/serial-import/preview-text', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            text: pastedText,
+            project_id: projectId,
+            device_id: deviceId || undefined,
+            create_per_row: perRow,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
+        setPreview(data.preview as ImportPreview);
+      } catch (err) {
+        setPreview(null);
+        setPreviewError((err as Error).message);
+      } finally {
+        setPreviewBusy(false);
+      }
+      return;
+    }
     if (!file) return setPreviewError('برای پیش‌نمایش، ابتدا فایل اکسل را انتخاب کنید.');
 
     setPreviewBusy(true);
@@ -185,12 +218,44 @@ export default function SerialImportPage() {
     if (!projectId) return setError('ابتدا پروژه‌ی مقصد را انتخاب کنید.');
     if (!deviceId && !perRow)
       return setError('تجهیز مقصد را انتخاب کنید یا گزینه‌ی «هر ردیف = یک دستگاه» را فعال کنید.');
-    if (!file) return setError('فایل اکسل را انتخاب کنید.');
+    if (!file && !pasteMode) return setError('فایل اکسل را انتخاب کنید.');
+
+    // حالت چسباندن لیست — مسیر JSON بدون فایل
+    if (pasteMode) {
+      if (!pastedText.trim()) return setError('لیست را از اکسل کپی و اینجا بچسبانید.');
+      setBusy(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/serial-import/text', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            text: pastedText,
+            project_id: projectId,
+            device_id: deviceId || undefined,
+            create_per_row: perRow,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
+        setResult(data as ImportResult);
+        setPreview(null);
+        setPastedText('');
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
 
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', file!);
       fd.append('project_id', String(projectId));
       if (deviceId) fd.append('device_id', String(deviceId));
       if (perRow) fd.append('create_per_row', '1');
@@ -308,6 +373,24 @@ export default function SerialImportPage() {
           </div>
         </div>
 
+        {/* انتخاب روش ورود: فایل یا چسباندن لیست */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => { setPasteMode(false); setPreview(null); }}
+            className={!pasteMode ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
+          >
+            📄 فایل اکسل
+          </button>
+          <button
+            type="button"
+            onClick={() => { setPasteMode(true); setFile(null); setPreview(null); }}
+            className={pasteMode ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
+          >
+            📋 چسباندن لیست (بدون فایل)
+          </button>
+        </div>
+
         {/* نوار مقصد انتخاب‌شده */}
         {(selectedDevice || perRow) && (
           <div className="rounded-2xl bg-surface-card border-2 border-stone-200 px-4 py-3 text-sm text-stone-800 dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100">
@@ -332,19 +415,37 @@ export default function SerialImportPage() {
           </div>
         )}
 
-        <div>
-          <label className="label">۳) فایل اکسل (xlsx / xls)</label>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="input"
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
-              setPreview(null);
-            }}
-          />
-        </div>
+        {pasteMode ? (
+          <div>
+            <label className="label">۳) لیست را از اکسل کپی و اینجا بچسبانید (Ctrl+V)</label>
+            <textarea
+              className="input font-mono text-xs"
+              rows={8}
+              dir="ltr"
+              placeholder={'عنوان قطعه\tپارت‌نامبر\tسریال قطعه\tمشخصات فنی\n32GB DDR4\t840758-001\t5CD1234568\tPC4-2666\nPSU 800W\tP19776-B21\t5CD9999999\t800W Platinum'}
+              value={pastedText}
+              onChange={(e) => { setPastedText(e.target.value); setPreview(null); }}
+            />
+            <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-1 leading-5">
+              هر ردیف = یک قطعه · جداکننده: Tab (کپی مستقیم از اکسل)، | یا ؛ · سرستون اختیاری:
+              سریال تجهیز | نوع قطعه | عنوان قطعه | پارت‌نامبر | سریال قطعه | مشخصات فنی
+            </p>
+          </div>
+        ) : (
+          <div>
+            <label className="label">۳) فایل اکسل (xlsx / xls)</label>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="input"
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setPreview(null);
+              }}
+            />
+          </div>
+        )}
 
         {error && (
           <p className="p-3 bg-coral/10 text-coral-dark rounded-xl text-sm border-2 border-coral/30 dark:text-coral-light">
@@ -357,16 +458,16 @@ export default function SerialImportPage() {
             type="button"
             className="btn-secondary"
             onClick={runPreview}
-            disabled={previewBusy || busy || !file || !projectId || (!deviceId && !perRow)}
+            disabled={previewBusy || busy || !projectId || (!deviceId && !perRow) || (!pasteMode && !file) || (pasteMode && !pastedText.trim())}
           >
             {previewBusy ? 'در حال تحلیل...' : '🔍 پیش‌نمایش (بدون ثبت)'}
           </button>
           <button
             type="submit"
             className="btn-primary"
-            disabled={busy || previewBusy || !file || !projectId || (!deviceId && !perRow)}
+            disabled={busy || previewBusy || !projectId || (!deviceId && !perRow) || (!pasteMode && !file) || (pasteMode && !pastedText.trim())}
           >
-            {busy ? 'در حال پردازش...' : 'آپلود و به‌روزرسانی سریال‌ها'}
+            {busy ? 'در حال پردازش...' : pasteMode ? 'ثبت لیست چسبانده‌شده' : 'آپلود و به‌روزرسانی سریال‌ها'}
           </button>
         </div>
       </form>
