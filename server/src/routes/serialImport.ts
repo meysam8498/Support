@@ -31,6 +31,8 @@ import jalaali from 'jalaali-js';
 import { z } from 'zod';
 import { getDb, runTransaction } from '../db/db.js';
 import { requireRole } from '../middleware/auth.js';
+import { syncPartsToCatalog } from './partCatalog.js';
+import { findDuplicateSerial } from './parts.js';
 
 const router = Router();
 
@@ -167,6 +169,116 @@ router.post('/preview', requireRole('admin'), (req: Request, res: Response) => {
       }
     }
   });
+});
+
+// ------------------------------------------------------------------
+// ورود بدون فایل — چسباندن مستقیم لیست از اکسل
+// ------------------------------------------------------------------
+/**
+ * متن چندردیفی چسبانده‌شده را به rows به شکل Record<colLetter, value> تجزیه
+ * می‌کند (همان شکلی که sheetToColumnRows از اکسل می‌سازد) تا کل منطق
+ * ردیف‌محور موجود (parseRowTemplate + preview + upload) بدون تغییر استفاده شود.
+ * جداکننده: Tab (اکسل) یا | یا ؛ — خودکار تشخیص داده می‌شود.
+ */
+function textToColumnRows(text: string): Record<string, string>[] {
+  const clean = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n+$/, '');
+  const lines = clean.split('\n').filter((l) => l.trim() !== '');
+  if (lines.length === 0) return [];
+
+  const first = lines[0];
+  let delim = '\t';
+  const pipes = (first.match(/\|/g) || []).length;
+  const semis = (first.match(/;/g) || []).length;
+  if (!first.includes('\t')) {
+    if (pipes >= 2 && pipes >= semis) delim = '|';
+    else if (semis >= 2) delim = ';';
+  }
+
+  return lines.map((line) => {
+    const obj: Record<string, string> = {};
+    line.split(delim).forEach((cell, i) => {
+      const v = cell.trim().replace(/^"|"$/g, '');
+      if (v !== '') obj[colLetter(i + 1)] = v;
+    });
+    return obj;
+  });
+}
+
+/** بدنه‌ی JSON مسیر text را اعتبارسنجی و Analysis می‌سازد */
+function analyzeTextPayload(req: Request, res: Response): Analysis | null {
+  const schema = z.object({
+    text: z.string().min(1).max(200_000),
+    project_id: z.coerce.number().int().positive(),
+    device_id: z.coerce.number().int().positive().optional(),
+    create_per_row: z.boolean().optional().default(false),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'ورودی نامعتبر است — متن و پروژه‌ی مقصد الزامی است.', detail: parsed.error.flatten() });
+    return null;
+  }
+  const { text, project_id, device_id, create_per_row } = parsed.data;
+
+  const db = getDb();
+  let device: TargetDevice | undefined;
+  if (device_id) {
+    device = db.prepare(
+      `SELECT d.id, d.project_id, d.main_serial, d.part_number_1, d.part_number_2, p.name AS project_name
+       FROM devices d LEFT JOIN projects p ON p.id = d.project_id WHERE d.id = ?`
+    ).get(device_id) as TargetDevice | undefined;
+    if (!device) { res.status(404).json({ error: 'تجهیز مقصد یافت نشد.' }); return null; }
+    if (device.project_id !== project_id) { res.status(400).json({ error: 'تجهیز به پروژه‌ی انتخاب‌شده تعلق ندارد.' }); return null; }
+  }
+
+  const rows = textToColumnRows(text);
+  if (rows.length === 0) { res.status(400).json({ error: 'متن خالی است — لیست را از اکسل کپی و اینجا بچسبانید.' }); return null; }
+
+  const rowTemplate = parseRowTemplate(rows);
+  if (!rowTemplate) {
+    res.status(400).json({
+      error: 'متن چسبانده‌شده قالب ردیف‌محور نیست — هر ردیف باید حداقل پارت‌نامبر و سریال قطعه داشته باشد (سرستون: پارت‌نامبر، سریال قطعه، …).',
+    });
+    return null;
+  }
+
+  return {
+    file: { filename: 'clipboard', data: Buffer.from(text, 'utf8') },
+    project_id,
+    device_id,
+    create_per_row,
+    device,
+    devicePn: '',
+    columns: [],
+    serialRows: [],
+    matchedColumns: 0,
+    createdColumns: 0,
+    unmatched: [],
+    descConflicts: [],
+    deviceTemplate: undefined,
+    rowTemplate,
+  };
+}
+
+// POST /api/serial-import/preview-text — پیش‌نمایش خشک متن چسبانده‌شده (فقط admin)
+router.post('/preview-text', requireRole('admin'), (req: Request, res: Response) => {
+  try {
+    const analysis = analyzeTextPayload(req, res);
+    if (!analysis) return;
+    res.json({ ok: true, preview: buildRowTemplatePreview(analysis) });
+  } catch (err) {
+    if (!res.headersSent) res.status(500).json({ error: 'خطا در تحلیل متن.', detail: (err as Error).message });
+  }
+});
+
+// POST /api/serial-import/text — ثبت واقعی متن چسبانده‌شده (فقط admin)
+router.post('/text', requireRole('admin'), (req: Request, res: Response) => {
+  try {
+    const analysis = analyzeTextPayload(req, res);
+    if (!analysis) return;
+    handleRowTemplateUpload(analysis, req, res);
+  } catch (err) {
+    if (!res.headersSent) res.status(500).json({ error: 'خطا در ثبت متن.', detail: (err as Error).message });
+  }
 });
 
 // POST /api/serial-import — آپلود اکسل مقید به پروژه/دستگاه (فقط admin)
@@ -784,14 +896,6 @@ function buildRowTemplatePreview(analysis: Analysis): Record<string, unknown> {
     slot.used++;
     return id;
   };
-  const findPartByPn = (pn: string) =>
-    db.prepare(
-      `SELECT id, title, part_serial_number, device_id FROM parts
-       WHERE UPPER(REPLACE(COALESCE(part_number_1,''), ' ', '')) = ?
-          OR UPPER(REPLACE(COALESCE(part_number_2,''), ' ', '')) = ?
-       ORDER BY id LIMIT 1`
-    ).get(pn, pn) as { id: number; title: string; part_serial_number: string | null; device_id: number } | undefined;
-
   for (let i = 0; i < rt.rows.length; i++) {
     const r = rt.rows[i];
     const rowNo = i + 2; // +2: هدر + ۱-مبنا
@@ -837,29 +941,21 @@ function buildRowTemplatePreview(analysis: Analysis): Record<string, unknown> {
       }
     }
 
-    // تطبیق اسلاتی داخل دستگاه مقصد
+    // تطبیق اسلاتی داخل دستگاه مقصد (سریال ستون اول، یا تجهیز مقصد انتخابی فقط وقتی ردیف سریال ندارد)
+    const targetDevId = devInfo?.exists ? devInfo.id : !r.deviceSerial ? device_id : undefined;
     let matchedId: number | undefined;
-    if (devInfo?.exists) {
-      matchedId = takeSlot(normalizePartNumber(r.partNumber), devInfo.id);
+    if (targetDevId) {
+      matchedId = takeSlot(normalizePartNumber(r.partNumber), targetDevId);
     }
     if (matchedId !== undefined) {
       const t = db.prepare(`SELECT title FROM parts WHERE id = ?`).get(matchedId) as { title: string } | undefined;
       updatedParts++;
       actions.push({ row: rowNo, col: '—', partNumber: r.partNumber, serial: r.partSerial, action: 'update_part', target: `قطعه #${matchedId} «${t?.title ?? ''}» → ${targetLabel}` });
-    } else if (devInfo?.exists) {
-      // دستگاه موجود ولی اسلات خالی → قطعه‌ی جدید روی همان دستگاه
+    } else if (devInfo?.exists || device_id) {
+      // اسلات‌های دستگاه مقصد تمام شد (چند قطعه‌ی هم‌پارت‌نامبر مجاز است) یا مقصد انتخابی → قطعه‌ی جدید روی همان تجهیز
+      // یکسان‌سازی فقط در سطح کاتالوگ است؛ رکورد هر نمونه مستقل می‌ماند و از دستگاه دیگر انتقال نمی‌یابد
       createdParts++;
       actions.push({ row: rowNo, col: '—', partNumber: r.partNumber, serial: r.partSerial, action: 'create_part', target: `${r.title || r.kind || r.partNumber} → ${targetLabel}` });
-    } else if (r.deviceSerial || device_id) {
-      // دستگاه جدید در فایل یا مقصد انتخابی → منطق global پیشین (اولین قطعه‌ی هم‌پارت‌نامبر در کل سامانه)
-      const existing = findPartByPn(r.partNumber);
-      if (existing) {
-        updatedParts++;
-        actions.push({ row: rowNo, col: '—', partNumber: r.partNumber, serial: r.partSerial, action: 'update_part', target: `قطعه #${existing.id} «${existing.title}» → ${targetLabel}` });
-      } else {
-        createdParts++;
-        actions.push({ row: rowNo, col: '—', partNumber: r.partNumber, serial: r.partSerial, action: 'create_part', target: `${r.title || r.kind || r.partNumber} → ${targetLabel}` });
-      }
     } else {
       // نه سریال تجهیز در فایل هست و نه مقصد انتخابی → نادیده (مطابق ثبت واقعی)
       skippedPreview++;
@@ -923,6 +1019,23 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
     `INSERT INTO parts (device_id, title, tech_specs, part_number_1, part_serial_number, status, sold_at_jalali, sold_at_gregorian, created_by)
      VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`
   );
+  // یکتایی سریال قطعه — سریال‌های مصرف‌شده در همین import + چک دیتابیس
+  const usedSerials = new Set<string>();
+  const isDuplicateSerial = (serial: string, rowNo: number, pn: string): boolean => {
+    const key = serial.trim().toUpperCase();
+    if (!key) return false;
+    if (usedSerials.has(key)) {
+      skipped.push({ row: rowNo, column: 'سریال قطعه', partNumber: pn, reason: `سریال «${serial.trim()}» در همین فایل تکرار شده است — سریال باید یکتا باشد.` });
+      return true;
+    }
+    const dup = findDuplicateSerial(db, serial);
+    if (dup) {
+      skipped.push({ row: rowNo, column: 'سریال قطعه', partNumber: pn, reason: `سریال «${serial.trim()}» از قبل ثبت شده (قطعه #${dup.id} «${dup.title}») — سریال باید یکتا باشد.` });
+      return true;
+    }
+    usedSerials.add(key);
+    return false;
+  };
 
   const todayJ = (() => {
     const j = jalaali.toJalaali(new Date());
@@ -1022,6 +1135,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
         // یعنی «قطعات جداگانه» — همیشه رکورد جدید ساخته می‌شود تا هر دستگاه
         // قطعه‌ی مستقل خودش را داشته باشد و در فهرست قطعات قابل ردیابی باشد.
         if (create_per_row) {
+          if (isDuplicateSerial(s.value, row.rowNumber, col.partNumber)) continue;
           const mergedDesc = col.descVariants.length > 0 ? col.descVariants.join(' | ') : null;
           const info = insertPartStmt.run(
             rowDeviceId,
@@ -1046,6 +1160,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
 
         if (target === undefined) {
           // سریال‌های مازاد یک پارت‌نامبر موجود → قطعه‌ی جدید روی دستگاه مقصد همان ردیف
+          if (isDuplicateSerial(s.value, row.rowNumber, col.partNumber)) continue;
           const mergedDesc = col.descVariants.length > 0 ? col.descVariants.join(' | ') : null;
           const info = insertPartStmt.run(
             targetDevice!,
@@ -1068,11 +1183,15 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
           continue;
         }
 
+        if (isDuplicateSerial(s.value, row.rowNumber, col.partNumber)) continue;
         updatePartStmt.run(s.value, target);
         applied.push({ kind: 'part', partId: target, serial: s.value, title: col.title });
       }
     }
   });
+
+  // یکسان‌سازی: قطعات تازه‌وارد به کاتالوگ وصل و با مرجع هم‌راستا می‌شوند
+  const catalogSynced = syncPartsToCatalog(getDb());
 
   res.json({
     ok: true,
@@ -1228,6 +1347,24 @@ function handleRowTemplateUpload(analysis: Analysis, req: Request, res: Response
   const skipped: { row: number; column: string; partNumber: string; reason: string }[] = [];
   let createdDevices = 0;
 
+  // یکتایی سریال قطعه — سریال‌های مصرف‌شده در همین import + چک دیتابیس
+  const usedSerials = new Set<string>();
+  const isDuplicateSerial = (serial: string, rowNo: number, pn: string): boolean => {
+    const key = serial.trim().toUpperCase();
+    if (!key) return false;
+    if (usedSerials.has(key)) {
+      skipped.push({ row: rowNo, column: 'سریال قطعه', partNumber: pn, reason: `سریال «${serial.trim()}» در همین فایل تکرار شده است — سریال باید یکتا باشد.` });
+      return true;
+    }
+    const dup = findDuplicateSerial(db, serial);
+    if (dup) {
+      skipped.push({ row: rowNo, column: 'سریال قطعه', partNumber: pn, reason: `سریال «${serial.trim()}» از قبل ثبت شده (قطعه #${dup.id} «${dup.title}») — سریال باید یکتا باشد.` });
+      return true;
+    }
+    usedSerials.add(key);
+    return false;
+  };
+
   const insertPartStmt = db.prepare(
     `INSERT INTO parts (device_id, title, tech_specs, part_number_1, part_serial_number, status, sold_at_jalali, sold_at_gregorian, created_by)
      VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`
@@ -1302,20 +1439,12 @@ function handleRowTemplateUpload(analysis: Analysis, req: Request, res: Response
     return id;
   };
 
-  const findPartByPn = (pn: string) =>
-    db.prepare(
-      `SELECT id, title, part_serial_number, device_id FROM parts
-       WHERE UPPER(REPLACE(COALESCE(part_number_1,''), ' ', '')) = ?
-          OR UPPER(REPLACE(COALESCE(part_number_2,''), ' ', '')) = ?
-       ORDER BY id LIMIT 1`
-    ).get(pn, pn) as { id: number; title: string; part_serial_number: string | null; device_id: number } | undefined;
-
   runTransaction(db, () => {
-    for (let i = 0; i < rt.rows.length; i++) {
-      const r = rt.rows[i];
-      const rowNo = i + 2;
+  for (let i = 0; i < rt.rows.length; i++) {
+    const r = rt.rows[i];
+    const rowNo = i + 2;
 
-      if (!r.partNumber && !r.partSerial) continue; // ردیف کاملاً خالی
+    if (!r.partNumber && !r.partSerial) continue; // ردیف کاملاً خالی
       if (!r.partSerial) {
         skipped.push({ row: rowNo, column: 'سریال قطعه', partNumber: r.partNumber, reason: 'سریال قطعه خالی است.' });
         continue;
@@ -1340,34 +1469,28 @@ function handleRowTemplateUpload(analysis: Analysis, req: Request, res: Response
         continue;
       }
 
-      // تطبیق اسلاتی داخل دستگاه مقصد
+      // یکتایی سریال — تکراری → skip با دلیل (نه شکست کل import)
+      if (isDuplicateSerial(r.partSerial, rowNo, r.partNumber)) continue;
+
+      // تطبیق اسلاتی داخل دستگاه مقصد — چند قطعه‌ی هم‌پارت‌نامبر روی یک تجهیز مجاز است؛
+      // پس از اتمام اسلات‌ها قطعه‌ی جدید ساخته می‌شود (یکسان‌سازی فقط در سطح کاتالوگ است)
       const matchedId = takeSlot(normalizePartNumber(r.partNumber), devId);
       if (matchedId !== undefined) {
         const t = db.prepare(`SELECT title FROM parts WHERE id = ?`).get(matchedId) as { title: string } | undefined;
         updatePartStmt.run(r.partSerial, matchedId);
         applied.push({ kind: 'part', partId: matchedId, serial: r.partSerial, title: t?.title ?? '' });
-      } else if (r.deviceSerial) {
-        // دستگاه موجود ولی اسلات خالی → قطعه‌ی جدید روی همان دستگاه (بدون انتقال رکورد)
+      } else {
+        // قطعه‌ی جدید روی همان تجهیز — هیچ رکوردی از دستگاه دیگری منتقل نمی‌شود
         const title = r.title || r.kind || r.partNumber;
         const specs = [r.kind, r.specs].filter(Boolean).join(' | ') || null;
         insertPartStmt.run(devId, title, specs, r.partNumber, r.partSerial, todayJ, todayG, req.user!.sub);
         applied.push({ kind: 'new-part', title, pn: r.partNumber, serial: r.partSerial });
-      } else {
-        // دستگاه جدید/نامشخص → اولین قطعه‌ی هم‌پارت‌نامبر در کل سامانه (رفتار پیشین)
-        const existing = findPartByPn(r.partNumber);
-        if (existing) {
-          updatePartStmt.run(r.partSerial, existing.id);
-          db.prepare(`UPDATE parts SET device_id = ? WHERE id = ?`).run(devId, existing.id);
-          applied.push({ kind: 'part', partId: existing.id, serial: r.partSerial, title: existing.title });
-        } else {
-          const title = r.title || r.kind || r.partNumber;
-          const specs = [r.kind, r.specs].filter(Boolean).join(' | ') || null;
-          insertPartStmt.run(devId, title, specs, r.partNumber, r.partSerial, todayJ, todayG, req.user!.sub);
-          applied.push({ kind: 'new-part', title, pn: r.partNumber, serial: r.partSerial });
-        }
       }
     }
   });
+
+  // یکسان‌سازی: قطعات تازه‌وارد به کاتالوگ وصل و با مرجع هم‌راستا می‌شوند
+  const catalogSynced = syncPartsToCatalog(getDb());
 
   res.json({
     ok: true,

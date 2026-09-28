@@ -6,6 +6,41 @@ import { getDb } from '../db/db.js';
  */
 const router = Router();
 
+/**
+ * GET /api/reports/part-replacement-history/:id — تاریخچه‌ی تعویض‌های یک قطعه
+ * (چه نقش قدیم چه نقش جدید) با اطلاعات پروژه/دستگاه برای صفحه‌ی جزئیات قطعه.
+ */
+router.get('/part-replacement-history/:id', (req, res) => {
+  const db = getDb();
+  const id = Number(req.params.id);
+  const part = db.prepare(`SELECT id, title, part_serial_number FROM parts WHERE id = ?`).get(id) as
+    | { id: number; title: string; part_serial_number: string | null }
+    | undefined;
+  if (!part) return res.status(404).json({ error: 'قطعه یافت نشد.' });
+
+  const rows = db.prepare(`
+    SELECT
+      wr.id, wr.replaced_at_jalali, wr.description,
+      d.id AS device_id, d.main_serial AS device_serial,
+      p.id AS project_id, p.name AS project_name,
+      op.id AS old_part_id, op.title AS old_part_title, op.part_serial_number AS old_part_serial,
+      np.id AS new_part_id, np.title AS new_part_title, np.part_serial_number AS new_part_serial,
+      te.name AS expert_name, fr.name AS failure_reason_name,
+      CASE WHEN wr.old_part_id = ? THEN 'old' ELSE 'new' END AS role
+    FROM warranty_replacements wr
+    LEFT JOIN devices d  ON d.id = wr.device_id
+    LEFT JOIN projects p ON p.id = d.project_id
+    LEFT JOIN parts op   ON op.id = wr.old_part_id
+    LEFT JOIN parts np   ON np.id = wr.new_part_id
+    LEFT JOIN technical_experts te ON te.id = wr.replaced_by_expert_id
+    LEFT JOIN failure_reasons fr  ON fr.id = wr.failure_reason_id
+    WHERE wr.old_part_id = ? OR wr.new_part_id = ?
+    ORDER BY wr.replaced_at_gregorian DESC
+  `).all(id, id, id);
+
+  res.json({ part, count: rows.length, replacements: rows });
+});
+
 /** ۱) قطعاتی که بیشترین خرابی دارند (بر اساس تعداد تعویض) */
 router.get('/most-failed-parts', (req, res) => {
   const db = getDb();
