@@ -9,6 +9,7 @@
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import Modal from './Modal';
+import JalaliDatePicker from './JalaliDatePicker';
 import { t } from '../i18n/fa';
 import { toFa } from '../lib/date';
 
@@ -41,6 +42,9 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
   const [format, setFormat] = useState<'xlsx' | 'csv'>('xlsx');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // بازه‌ی تاریخ شمسی (اختیاری) — از/تا
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // هر بار باز شدن، انتخاب‌ها به پیش‌فرض برگردد
   useEffect(() => {
@@ -48,6 +52,8 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
       setSelected(new Set(COLUMNS.map((c) => c.key)));
       setFormat('xlsx');
       setError('');
+      setDateFrom('');
+      setDateTo('');
     }
   }, [open]);
 
@@ -79,6 +85,8 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
       const qs = new URLSearchParams(baseQuery);
       qs.set('columns', [...selected].join(','));
       qs.set('format', format);
+      if (dateFrom.trim()) qs.set('date_from', dateFrom.trim());
+      if (dateTo.trim()) qs.set('date_to', dateTo.trim());
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/warranty/replacements/export?${qs.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -149,6 +157,30 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
               </div>
             </div>
           ))}
+        </div>
+
+        {/* بازه‌ی تاریخ شمسی (اختیاری) */}
+        <div>
+          <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 mb-1">بازه‌ی تاریخ تعویض (شمسی — اختیاری)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <JalaliDatePicker
+              label="از تاریخ"
+              value={dateFrom}
+              onChange={setDateFrom}
+              placeholder="مثل 1404/01/01"
+            />
+            <JalaliDatePicker
+              label="تا تاریخ"
+              value={dateTo}
+              onChange={setDateTo}
+              placeholder="مثل 1404/12/29"
+            />
+          </div>
+          {dateFrom && dateTo && dateFrom.replace(/\D/g, '') > dateTo.replace(/\D/g, '') && (
+            <p className="text-[11px] text-coral-dark dark:text-coral-light mt-1">
+              ⚠ «از» بعد از «تا» است — سرور خروجی را رد می‌کند.
+            </p>
+          )}
         </div>
 
         {/* فرمت خروجی */}

@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { getDb, runTransaction } from '../db/db.js';
-import { datePairFromJalali, todayJalali, todayGregorian } from '../lib/date.js';
+import { datePairFromJalali, todayJalali, todayGregorian, jalaliToGregorianISO } from '../lib/date.js';
 import { requireRole } from '../middleware/auth.js';
 import { findDuplicateSerial } from './parts.js';
 import * as XLSX from 'xlsx';
@@ -172,6 +172,8 @@ router.get('/replacements', (req, res) => {
 /**
  * GET /api/warranty/replacements/export — خروجی اکسل تعویض‌ها
  * همان فیلترهای فهرست (part_title/part_number/project_id) را می‌پذیرد.
+ * ?date_from=1404/01/01&date_to=1404/12/29 — بازه‌ی تاریخ شمسی (شامل خود روزها؛
+ *   هر دو یا یکی می‌تواند داده شود؛ نامعتبر → 400)
  * ?columns=col1,col2 — انتخاب ستون‌ها (پیش‌فرض: همه‌ی ستون‌ها)
  * ?format=xlsx (پیش‌فرض) | csv
  * کلیدهای مجاز ستون (ترتیب اینجا = ترتیب پیش‌فرض):
@@ -224,7 +226,27 @@ router.get('/replacements/export', (req, res) => {
   if (partNumber && partNumber !== '(بدون پارت‌نامبر)') params.push(partNumber);
   if (projectId) params.push(projectId);
 
-  const rows = db.prepare(`${BASE_SQL} ${partFilter} ${projectFilter} ORDER BY wr.replaced_at_gregorian DESC`).all(...params) as
+  // --- بازه‌ی تاریخ شمسی (از/تا) → تبدیل به ISO و فیلتر روی replaced_at_gregorian ---
+  // «تا» تا انتهای همان روز اعمال می‌شود (replaced_at_gregorian تاریخِ ISO است؛ <= خود روز کافی است)
+  const dateFromRaw = typeof req.query.date_from === 'string' ? req.query.date_from.trim() : '';
+  const dateToRaw = typeof req.query.date_to === 'string' ? req.query.date_to.trim() : '';
+  const dateFromISO = dateFromRaw ? jalaliToGregorianISO(dateFromRaw) : null;
+  const dateToISO = dateToRaw ? jalaliToGregorianISO(dateToRaw) : null;
+  if (dateFromRaw && !dateFromISO) return res.status(400).json({ error: `تاریخ «از» نامعتبر است: ${dateFromRaw} (قالب 1404/01/01)` });
+  if (dateToRaw && !dateToISO) return res.status(400).json({ error: `تاریخ «تا» نامعتبر است: ${dateToRaw} (قالب 1404/12/29)` });
+  if (dateFromISO && dateToISO && dateFromISO > dateToISO) {
+    return res.status(400).json({ error: 'بازه‌ی تاریخ نادرست است — «از» نباید بعد از «تا» باشد.' });
+  }
+  const dateConditions: string[] = [];
+  if (dateFromISO) dateConditions.push('wr.replaced_at_gregorian >= ?');
+  if (dateToISO) dateConditions.push('wr.replaced_at_gregorian <= ?');
+  if (dateFromISO) params.push(dateFromISO);
+  if (dateToISO) params.push(dateToISO);
+  const dateFilter = dateConditions.length > 0
+    ? `${partFilter || projectFilter ? 'AND' : 'WHERE'} ${dateConditions.join(' AND ')}`
+    : '';
+
+  const rows = db.prepare(`${BASE_SQL} ${partFilter} ${projectFilter} ${dateFilter} ORDER BY wr.replaced_at_gregorian DESC`).all(...params) as
     { replaced_at_jalali: string; description: string | null; device_serial: string | null; project_name: string | null;
       old_part_title: string | null; old_part_serial: string | null; old_part_pn: string | null;
       new_part_title: string | null; new_part_serial: string | null; new_part_pn: string | null;
