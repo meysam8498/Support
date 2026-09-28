@@ -6,6 +6,7 @@
 // استفاده:
 //   node scripts/bump-version.mjs 1.3.0            # فقط ویرایش فایل‌ها + چک
 //   node scripts/bump-version.mjs 1.3.0 --commit   # + کامیت موضوعی
+//   node scripts/bump-version.mjs 1.3.0 --commit --with src/a.ts --with src/b.ts  # + ضمیمه‌ی فایل‌های feature
 //   node scripts/bump-version.mjs 1.3.0 --commit --tag   # + تگ vX.Y.Z
 //   node scripts/bump-version.mjs 1.3.0 --commit --tag --hub  # + PATCH Overview هاب
 // نکته: --tag تگ محلی می‌سازد؛ برای راه‌اندازی workflow پابلیش باید push کنید:
@@ -25,6 +26,8 @@ const OPT = {
   tag: process.argv.includes('--tag'),
   hub: process.argv.includes('--hub'),
 };
+/** فایل‌های اضافه برای ضمیمه‌شدن به کامیت: --with <path> (قابل تکرار) */
+const EXTRA_PATHS = process.argv.flatMap((a, i) => (a === '--with' && process.argv[i + 1] ? [process.argv[i + 1]] : []));
 
 const read = (p) => readFileSync(p, 'utf8');
 const write = (p, s) => writeFileSync(p, s);
@@ -127,7 +130,8 @@ if (!checkOk || hasPlaceholder) {
 const FILES = ['package.json', 'server/package.json', 'client/package.json', 'package-lock.json', 'README.md', 'DOCKER_HUB_OVERVIEW.md', 'Dockerfile', 'docker-compose.yml'];
 const summary = `ورژن ${NEW}`;
 if (OPT.commit) {
-  execSync(`git add ${FILES.join(' ')}`, { stdio: 'inherit' });
+  const allFiles = [...FILES, ...EXTRA_PATHS];
+  execSync(`git add ${allFiles.join(' ')}`, { stdio: 'inherit' });
   execSync(`git commit -m "chore(release): ${summary} — bump نسخه و مستندات\n\n🤖 Generated with Codebuff\nCo-Authored-By: Codebuff <noreply@codebuff.com>"`, { stdio: 'inherit' });
   console.log('✓ کامیت ساخته شد (push: git push origin master)');
 }

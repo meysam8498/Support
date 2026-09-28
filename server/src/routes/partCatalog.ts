@@ -479,24 +479,73 @@ interface CatalogImportResult {
   created: { part_number_1: string; title: string }[];
   updated: { part_number_1: string; title: string; filled: string[] }[];
   skipped: { pn: string; reason: string }[];
+  /** ردیف‌های کامل برای ویرایش در UI (پیش‌نمایش) — حداکثر ۲۰۰ ردیف */
+  items: CatalogImportItem[];
+  itemsTotal: number;
+  itemsTruncated: boolean;
+}
+
+/** یک ردیف پیش‌نمایش import — مقادیر «نهایی اعمال‌شونده» (بعد از overrides) */
+interface CatalogImportItem {
+  pn: string;
+  title: string;
+  specs: string;
+  pn2: string;
+  status: 'created' | 'updated' | 'skipped';
+  filled?: string[];
+  reason?: string;
+  /** ردیف تکراری در همان فایل — قابل ویرایش نیست (ردیف اول اعمال می‌شود) */
+  duplicate?: boolean;
+  /** مرجع از قبل موجود بوده؟ */
+  existing: boolean;
+}
+
+/** ویرایش‌های کاربر روی پیش‌نمایش — کلید = PN نرمال‌شده؛ فیلد حاضر ولی خالی = «این مقدار اعمال نشود» */
+export type CatalogOverrides = Record<string, { title?: string; specs?: string; pn2?: string }>;
+
+/** پاک‌سازی overrides ورودی — کلیدها نرمال، مقادیر بریده به سقف فیلدها */
+function sanitizeOverrides(raw: unknown): CatalogOverrides {
+  const out: CatalogOverrides = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!v || typeof v !== 'object') continue;
+    const o = v as Record<string, unknown>;
+    const entry: { title?: string; specs?: string; pn2?: string } = {};
+    if (typeof o.title === 'string') entry.title = o.title.slice(0, 200);
+    if (typeof o.specs === 'string') entry.specs = o.specs.slice(0, 2000);
+    if (typeof o.pn2 === 'string') entry.pn2 = o.pn2.slice(0, 120);
+    const key = normalizePn(k);
+    if (key && Object.keys(entry).length > 0) out[key] = entry;
+  }
+  return out;
 }
 
 /** اجرای upsert آیتم‌های کاتالوگ — در تراکنش؛ dry_run فقط شبیه‌سازی می‌کند */
-function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean): CatalogImportResult {
+function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean, overrides: CatalogOverrides = {}): CatalogImportResult {
   const db = getDb();
-  const result: CatalogImportResult = { dryRun, createdCount: 0, updatedCount: 0, skippedCount: 0, created: [], updated: [], skipped: [] };
+  const result: CatalogImportResult = {
+    dryRun, createdCount: 0, updatedCount: 0, skippedCount: 0, created: [], updated: [], skipped: [],
+    items: [], itemsTotal: 0, itemsTruncated: false,
+  };
   const seen = new Set<string>();
 
   const step = () => {
     for (const it of items) {
       const key = normalizePn(it.pn);
-      if (!key) { result.skipped.push({ pn: it.pn, reason: 'پارت‌نامبر نامعتبر/خالی است.' }); continue; }
-      if (seen.has(key)) { result.skipped.push({ pn: key, reason: 'در همین فایل تکرار شده — فقط اولین ردیف اعمال شد.' }); continue; }
+      const rec = (r: CatalogImportItem) => {
+        result.itemsTotal++;
+        if (result.items.length < 200) result.items.push(r);
+        else result.itemsTruncated = true;
+      };
+      if (!key) { result.skipped.push({ pn: it.pn, reason: 'پارت‌نامبر نامعتبر/خالی است.' }); rec({ pn: it.pn, title: it.title, specs: it.specs, pn2: it.pn2, status: 'skipped', reason: 'پارت‌نامبر نامعتبر/خالی است.', existing: false }); continue; }
+      if (seen.has(key)) { result.skipped.push({ pn: key, reason: 'در همین فایل تکرار شده — فقط اولین ردیف اعمال شد.' }); rec({ pn: key, title: it.title, specs: it.specs, pn2: it.pn2, status: 'skipped', reason: 'در همین فایل تکرار شده — فقط اولین ردیف اعمال شد.', duplicate: true, existing: false }); continue; }
       seen.add(key);
 
-      const title = it.title?.trim() || '';
-      const specs = it.specs?.trim() || '';
-      const pn2 = it.pn2?.trim() || '';
+      // ویرایش‌های کاربر روی پیش‌نمایش — فیلد حاضر ولی خالی = «این مقدار اعمال نشود»
+      const ov = overrides[key];
+      const title = ov && typeof ov.title === 'string' ? ov.title.trim() : (it.title?.trim() || '');
+      const specs = ov && typeof ov.specs === 'string' ? ov.specs.trim() : (it.specs?.trim() || '');
+      const pn2 = ov && typeof ov.pn2 === 'string' ? ov.pn2.trim() : (it.pn2?.trim() || '');
 
       const existing = db.prepare(`SELECT id, title, tech_specs, part_number_2 FROM part_catalog WHERE part_number_1 = ?`).get(key) as
         | { id: number; title: string; tech_specs: string | null; part_number_2: string | null }
@@ -509,10 +558,11 @@ function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean): Catalo
             .run(key, pn2 || null, title || key, specs || null);
         }
         result.created.push({ part_number_1: key, title: title || key });
+        rec({ pn: key, title: title || key, specs, pn2, status: 'created', existing: false });
         continue;
       }
 
-      // مرجع موجود — فقط فیلدهای «پرشده‌ی فایل» به‌روز می‌شوند؛ خالیِ فایل بی‌اثر است
+      // مرجع موجود — فقط فیلدهای «پرشده‌ی فایل/ویرایش‌شده» به‌روز می‌شوند
       const filled: string[] = [];
       const newTitle = title && title !== existing.title ? title : null;
       const newSpecs = specs && specs !== (existing.tech_specs ?? '') ? specs : null;
@@ -522,6 +572,7 @@ function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean): Catalo
       if (newPn2) filled.push('پارت‌نامبر ۲');
       if (filled.length === 0) {
         result.skipped.push({ pn: key, reason: 'موجود است و فایل مقدار جدیدی برای آن نداشت.' });
+        rec({ pn: key, title, specs, pn2, status: 'skipped', reason: 'موجود است و فایل مقدار جدیدی برای آن نداشت.', existing: true });
         continue;
       }
       if (!dryRun) {
@@ -535,6 +586,7 @@ function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean): Catalo
         `).run(newTitle, newSpecs, newPn2, existing.id);
       }
       result.updated.push({ part_number_1: key, title: existing.title, filled });
+      rec({ pn: key, title, specs, pn2, status: 'updated', filled, existing: true });
     }
   };
 
@@ -564,10 +616,12 @@ router.post('/import-text', requireRole('admin'), (req: Request, res: Response) 
     const schema = z.object({
       text: z.string().min(1).max(200_000),
       dry_run: z.boolean().optional().default(false),
+      overrides: z.unknown().optional(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'متن الزامی است.', detail: parsed.error.flatten() });
     const { text, dry_run } = parsed.data;
+    const overrides = sanitizeOverrides(parsed.data.overrides);
 
     const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((l) => l.trim() !== '');
     if (lines.length === 0) return res.status(400).json({ error: 'متن خالی است.' });
@@ -585,7 +639,7 @@ router.post('/import-text', requireRole('admin'), (req: Request, res: Response) 
     if (items.length === 0) {
       return res.status(400).json({ error: 'قالب شناسایی نشد — سرستون «پارت‌نامبر» یا ردیف‌های عنوان/توضیح/پارت‌نامبر لازم است.' });
     }
-    return res.json({ ok: true, result: applyCatalogUpserts(items, dry_run) });
+    return res.json({ ok: true, result: applyCatalogUpserts(items, dry_run, overrides) });
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ error: 'خطا در پردازش متن.', detail: (err as Error).message });
   }
@@ -662,7 +716,13 @@ router.post('/import', requireRole('admin'), (req: Request, res: Response) => {
       }
 
       const dryRun = String(req.headers['x-dry-run'] ?? '') === '1';
-      return void res.json({ ok: true, file: file.filename, result: applyCatalogUpserts(items, dryRun) });
+      // ویرایش‌های پیش‌نمایش در هدر JSON-encoded می‌آیند (چون بدنه multipart است)
+      let overrides: CatalogOverrides = {};
+      const ovHeader = req.headers['x-overrides'];
+      if (typeof ovHeader === 'string') {
+        try { overrides = sanitizeOverrides(JSON.parse(ovHeader)); } catch { /* هدر نامعتبر → بدون overrides */ }
+      }
+      return void res.json({ ok: true, file: file.filename, result: applyCatalogUpserts(items, dryRun, overrides) });
     } catch (err) {
       if (!res.headersSent) res.status(500).json({ error: 'خطا در پردازش فایل.', detail: (err as Error).message });
     }

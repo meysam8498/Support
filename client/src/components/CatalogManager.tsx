@@ -16,6 +16,18 @@ import InlineEditCell from './InlineEditCell';
 import { useAuth } from '../context/AuthContext';
 import { downloadAuthenticated } from '../lib/download';
 
+interface ImportResultItem {
+  pn: string;
+  title: string;
+  specs: string;
+  pn2: string;
+  status: 'created' | 'updated' | 'skipped';
+  filled?: string[];
+  reason?: string;
+  duplicate?: boolean;
+  existing: boolean;
+}
+
 interface ImportResult {
   dryRun: boolean;
   createdCount: number;
@@ -24,6 +36,10 @@ interface ImportResult {
   created: { part_number_1: string; title: string }[];
   updated: { part_number_1: string; title: string; filled: string[] }[];
   skipped: { pn: string; reason: string }[];
+  /** ردیف‌های قابل ویرایش در پیش‌نمایش — مقادیر نهایی اعمال‌شونده */
+  items: ImportResultItem[];
+  itemsTotal: number;
+  itemsTruncated: boolean;
 }
 
 const IMPORT_STATUS_META: Record<'created' | 'updated' | 'skipped', { label: string; cls: string }> = {
@@ -32,25 +48,81 @@ const IMPORT_STATUS_META: Record<'created' | 'updated' | 'skipped', { label: str
   skipped: { label: 'بدون تغییر', cls: 'bg-stone-100 text-stone-500 dark:bg-stone-700 dark:text-stone-400 border-stone-200 dark:border-stone-600' },
 };
 
-function ImportResultList({ result }: { result: ImportResult }) {
-  const any = result.createdCount + result.updatedCount + result.skippedCount;
-  if (any === 0) return null;
+/**
+ * جدول پیش‌نمایش قابل ویرایش — هر ردیف: وضعیت + PN + عنوان/مشخصات/PN2 قابل ویرایش.
+ * ویرایش‌ها در edits (کلید = PN) جمع و هنگام ثبت به‌صورت overrides به سرور می‌روند.
+ */
+function ImportEditableList({
+  items,
+  edits,
+  onChange,
+}: {
+  items: ImportResultItem[];
+  edits: Record<string, { title?: string; specs?: string; pn2?: string }>;
+  onChange: (pn: string, field: 'title' | 'specs' | 'pn2', value: string) => void;
+}) {
+  if (items.length === 0) return null;
   return (
-    <div className="space-y-2 max-h-72 overflow-y-auto">
-      {[...result.created.map((c) => ({ ...c, st: 'created' as const, filled: [] as string[] })),
-        ...result.updated.map((u) => ({ ...u, st: 'updated' as const })),
-        ...result.skipped.map((s) => ({ part_number_1: s.pn, title: s.reason, st: 'skipped' as const, filled: [] as string[] }))]
-        .map((it, i) => {
-          const meta = IMPORT_STATUS_META[it.st];
-          return (
-            <div key={i} className="flex flex-wrap items-center gap-2 text-xs rounded-lg border border-stone-200 dark:border-stone-700 px-2.5 py-1.5">
+    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+      {items.map((it, i) => {
+        const meta = IMPORT_STATUS_META[it.status];
+        const editable = it.status !== 'skipped' || !it.duplicate; // ردیف تکراری فقط نمایش
+        const edit = edits[it.pn] ?? {};
+        const isEdited = Object.keys(edit).length > 0;
+        return (
+          <div
+            key={`${it.pn}-${i}`}
+            className={`rounded-lg border px-2.5 py-2 text-xs space-y-1.5 ${
+              isEdited ? 'border-gold/50 bg-gold/5' : 'border-stone-200 dark:border-stone-700'
+            }`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
               <span className={`badge border ${meta.cls}`}>{meta.label}</span>
-              <span className="font-bold fa-nums" dir="ltr">{it.part_number_1}</span>
-              {it.title && <span className="text-stone-600 dark:text-stone-300 truncate" dir="auto">{it.title}</span>}
-              {it.filled.length > 0 && <span className="text-[10px] text-stone-400 dark:text-stone-500">({it.filled.join('، ')})</span>}
+              <span className="font-bold fa-nums" dir="ltr">{it.pn}</span>
+              {it.existing && <span className="text-[10px] text-stone-400 dark:text-stone-500">(موجود)</span>}
+              {it.filled && it.filled.length > 0 && (
+                <span className="text-[10px] text-sky-dark dark:text-sky-light">اعمال: {it.filled.join('، ')}</span>
+              )}
+              {it.reason && <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate">{it.reason}</span>}
+              {isEdited && <span className="badge bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40">ویرایش‌شده</span>}
             </div>
-          );
-        })}
+            {editable && it.status !== 'skipped' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                <input
+                  className="input !min-h-0 !py-1 !text-[11px]"
+                  value={edit.title ?? it.title}
+                  onChange={(e) => onChange(it.pn, 'title', e.target.value)}
+                  placeholder="عنوان…"
+                  dir="auto"
+                  title="عنوان مرجع — قابل ویرایش"
+                />
+                <input
+                  className="input !min-h-0 !py-1 !text-[11px]"
+                  value={edit.specs ?? it.specs}
+                  onChange={(e) => onChange(it.pn, 'specs', e.target.value)}
+                  placeholder="مشخصات…"
+                  dir="auto"
+                  title="مشخصات فنی — قابل ویرایش"
+                />
+                <input
+                  className="input !min-h-0 !py-1 !text-[11px]"
+                  value={edit.pn2 ?? it.pn2}
+                  onChange={(e) => onChange(it.pn, 'pn2', e.target.value)}
+                  placeholder="پارت‌نامبر ۲…"
+                  dir="ltr"
+                  title="پارت‌نامبر ۲ — قابل ویرایش"
+                />
+              </div>
+            ) : (
+              (it.title || it.specs) && (
+                <p className="text-stone-500 dark:text-stone-400 truncate" dir="auto">
+                  {it.title}{it.specs ? ` — ${it.specs}` : ''}
+                </p>
+              )
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -87,6 +159,8 @@ export default function CatalogManager() {
   const [importMode, setImportMode] = useState<'file' | 'paste'>('file');
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState('');
+  /** ویرایش‌های کاربر روی پیش‌نمایش — کلید = PN؛ هنگام ثبت به‌صورت overrides به سرور می‌رود */
+  const [importEdits, setImportEdits] = useState<Record<string, { title?: string; specs?: string; pn2?: string }>>({});
   const importInputRef = useRef<HTMLInputElement>(null);
   const [templateBusy, setTemplateBusy] = useState(false);
 
@@ -212,13 +286,17 @@ export default function CatalogManager() {
   // ---------- آپدیت از اکسل / Paste ----------
   const runCatalogImport = async (dryRun: boolean) => {
     setImportError('');
-    setImportResult(null);
+    if (dryRun) setImportResult(null);
     setBusy(true);
     try {
       let result: ImportResult;
       if (importMode === 'paste') {
         if (!importText.trim()) throw new Error('لیست را از اکسل کپی و اینجا بچسبانید.');
-        const res = await api.post<{ result: ImportResult }>('/part-catalog/import-text', { text: importText, dry_run: dryRun });
+        const res = await api.post<{ result: ImportResult }>('/part-catalog/import-text', {
+          text: importText,
+          dry_run: dryRun,
+          ...(dryRun ? {} : { overrides: importEdits }),
+        });
         result = res.result;
       } else {
         if (!importFile) throw new Error('فایل اکسل را انتخاب کنید.');
@@ -227,7 +305,10 @@ export default function CatalogManager() {
         const token = localStorage.getItem('token');
         const res = await fetch('/api/part-catalog/import', {
           method: 'POST',
-          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(dryRun ? { 'X-Dry-Run': '1' } : {}) },
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(dryRun ? { 'X-Dry-Run': '1' } : { 'X-Overrides': JSON.stringify(importEdits) }),
+          },
           body: fd,
         });
         const data = await res.json().catch(() => ({}));
@@ -236,10 +317,15 @@ export default function CatalogManager() {
       }
       setImportResult(result);
       if (!dryRun) {
-        setMsg(`کاتالوگ به‌روز شد — ${toFa(result.createdCount)} جدید، ${toFa(result.updatedCount)} به‌روزرسانی، ${toFa(result.skippedCount)} بدون تغییر.`);
+        const editedCount = Object.keys(importEdits).length;
+        setMsg(
+          `کاتالوگ به‌روز شد — ${toFa(result.createdCount)} جدید، ${toFa(result.updatedCount)} به‌روزرسانی، ${toFa(result.skippedCount)} بدون تغییر` +
+            (editedCount > 0 ? ` (${toFa(editedCount)} ویرایش دستی اعمال شد).` : '.'),
+        );
         setImportText('');
         setImportFile(null);
         if (importInputRef.current) importInputRef.current.value = '';
+        setImportEdits({});
         setShowImport(false);
         await load();
         setTimeout(() => setMsg(''), 6000);
@@ -247,6 +333,14 @@ export default function CatalogManager() {
     } catch (e) {
       setImportError((e as Error).message);
     } finally { setBusy(false); }
+  };
+
+  /** تغییر یک فیلد در پیش‌نمایش — فیلد حاضر ولی خالی = «این مقدار اعمال نشود» */
+  const onEditChange = (pn: string, field: 'title' | 'specs' | 'pn2', value: string) => {
+    setImportEdits((s) => {
+      const cur = s[pn] ?? {};
+      return { ...s, [pn]: { ...cur, [field]: value } };
+    });
   };
 
   return (
@@ -273,7 +367,7 @@ export default function CatalogManager() {
               ＋ مرجع جدید
             </button>
             <button
-              onClick={() => { setShowImport(true); setImportResult(null); setImportError(''); }}
+              onClick={() => { setShowImport(true); setImportResult(null); setImportError(''); setImportEdits({}); }}
               className="btn-secondary text-xs !min-h-[34px]"
               title="آپدیت گروهی کاتالوگ از فایل اکسل یا چسباندن لیست — بدون حذف هیچ رکوردی"
             >
@@ -454,10 +548,17 @@ export default function CatalogManager() {
           {importResult && (
             <div className="rounded-xl bg-surface-card dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 p-3 space-y-2">
               <p className="text-xs font-bold text-brand-700 dark:text-brand-300">
-                {importResult.dryRun ? '🔍 پیش‌نمایش — هیچ تغییری ذخیره نشده:' : 'نتیجه:'}{' '}
+                {importResult.dryRun ? '🔍 پیش‌نمایش — هیچ تغییری ذخیره نشده؛ عنوان/مشخصات هر ردیف را ویرایش کنید:' : 'نتیجه:'}{' '}
                 {toFa(importResult.createdCount)} جدید · {toFa(importResult.updatedCount)} به‌روزرسانی · {toFa(importResult.skippedCount)} بدون تغییر
+                {importResult.itemsTruncated ? ' (نمایش اولین ۲۰۰ ردیف)' : ''}
               </p>
-              <ImportResultList result={importResult} />
+              {importResult.dryRun ? (
+                <ImportEditableList items={importResult.items} edits={importEdits} onChange={onEditChange} />
+              ) : (
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                  {toFa(Object.keys(importEdits).length)} ویرایش دستی همراه ثبت اعمال شد.
+                </p>
+              )}
             </div>
           )}
           <div className="flex flex-wrap gap-2 justify-end">
