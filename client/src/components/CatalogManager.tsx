@@ -683,10 +683,11 @@ export default function CatalogManager() {
               onClick={downloadExport}
               disabled={exportBusy}
               className="underline font-bold cursor-pointer"
+              title="مراجع فعلی کاتالوگ با همان قالب ردیف‌های قابل ویرایش صادر می‌شوند — ویرایش در اکسل و بازبارگذاری در همین دیالوگ"
             >
-              {exportBusy ? '...' : '📥 خروجی اکسل کاتالوگ فعلی'}
+              {exportBusy ? '...' : '📥 دانلود با داده‌های موجود'}
             </button>
-            {' — همین ساختار؛ ویرایشش کنید و مستقیم بازبارگذاری کنید (چرخه‌ی کامل دوطرفه).'}
+            {' — همه‌ی مراجع فعلی به‌صورت ردیف‌های قابل ویرایش با همین قالب؛ ویرایشش کنید و مستقیم بازبارگذاری کنید (چرخه‌ی کامل دوطرفه).'}
           </p>
           {importMode === 'paste' ? (
             <textarea
