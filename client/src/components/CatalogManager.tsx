@@ -26,6 +26,8 @@ interface ImportResultItem {
   reason?: string;
   duplicate?: boolean;
   existing: boolean;
+  /** PN مشابه یک مرجع موجود = احتمال غلط تایپی — پیشنهاد ادغام */
+  similarTo?: { id: number; part_number_1: string; title: string };
 }
 
 interface ImportResult {
@@ -40,6 +42,8 @@ interface ImportResult {
   items: ImportResultItem[];
   itemsTotal: number;
   itemsTruncated: boolean;
+  /** تعداد ردیف‌هایی که به‌جای مرجع جدید در مرجع موجود ادغام شدند */
+  mergedCount: number;
 }
 
 const IMPORT_STATUS_META: Record<'created' | 'updated' | 'skipped', { label: string; cls: string }> = {
@@ -51,33 +55,49 @@ const IMPORT_STATUS_META: Record<'created' | 'updated' | 'skipped', { label: str
 /**
  * جدول پیش‌نمایش قابل ویرایش — هر ردیف: وضعیت + PN + عنوان/مشخصات/PN2 قابل ویرایش.
  * ویرایش‌ها در edits (کلید = PN) جمع و هنگام ثبت به‌صورت overrides به سرور می‌روند.
+ * ردیف‌های با PN مشابه مرجع موجود (احتمال غلط تایپی) با بج هشدار + انتخاب «ادغام/جدید».
  */
 function ImportEditableList({
   items,
   edits,
   onChange,
+  resolutions,
+  onResolve,
 }: {
   items: ImportResultItem[];
   edits: Record<string, { title?: string; specs?: string; pn2?: string }>;
   onChange: (pn: string, field: 'title' | 'specs' | 'pn2', value: string) => void;
+  resolutions: Record<string, 'new' | { mergeInto: number }>;
+  onResolve: (pn: string, r: 'new' | { mergeInto: number } | null) => void;
 }) {
   if (items.length === 0) return null;
   return (
     <div className="space-y-1.5 max-h-80 overflow-y-auto">
       {items.map((it, i) => {
         const meta = IMPORT_STATUS_META[it.status];
-        const editable = it.status !== 'skipped' || !it.duplicate; // ردیف تکراری فقط نمایش
+        const reso = resolutions[it.pn];
+        const decided = !!reso;
+        const editable = it.status !== 'skipped' || (!it.duplicate && (decided || !it.similarTo)); // ردیف تکراری فقط نمایش
         const edit = edits[it.pn] ?? {};
         const isEdited = Object.keys(edit).length > 0;
+        const isSimilar = !!it.similarTo && !it.duplicate;
         return (
           <div
             key={`${it.pn}-${i}`}
             className={`rounded-lg border px-2.5 py-2 text-xs space-y-1.5 ${
-              isEdited ? 'border-gold/50 bg-gold/5' : 'border-stone-200 dark:border-stone-700'
+              isSimilar && !decided
+                ? 'border-coral/50 bg-coral/5'
+                : isEdited || (isSimilar && decided)
+                  ? 'border-gold/50 bg-gold/5'
+                  : 'border-stone-200 dark:border-stone-700'
             }`}
           >
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`badge border ${meta.cls}`}>{meta.label}</span>
+              {isSimilar && !decided ? (
+                <span className="badge bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/40">⚠ PN مشابه</span>
+              ) : (
+                <span className={`badge border ${meta.cls}`}>{meta.label}</span>
+              )}
               <span className="font-bold fa-nums" dir="ltr">{it.pn}</span>
               {it.existing && <span className="text-[10px] text-stone-400 dark:text-stone-500">(موجود)</span>}
               {it.filled && it.filled.length > 0 && (
@@ -86,7 +106,34 @@ function ImportEditableList({
               {it.reason && <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate">{it.reason}</span>}
               {isEdited && <span className="badge bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40">ویرایش‌شده</span>}
             </div>
-            {editable && it.status !== 'skipped' ? (
+            {isSimilar && (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-md bg-stone-50 dark:bg-stone-800/60 px-2 py-1.5 border border-stone-200 dark:border-stone-700">
+                <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                  شبیه مرجع موجود <b dir="ltr" className="fa-nums">{it.similarTo!.part_number_1}</b>
+                  {it.similarTo!.title ? ` — ${it.similarTo!.title}` : ''}:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onResolve(it.pn, { mergeInto: it.similarTo!.id })}
+                  className={reso && typeof reso === 'object' ? 'chip chip-active cursor-pointer !text-[11px]' : 'chip chip-default cursor-pointer !text-[11px]'}
+                >
+                  ⧉ ادغام در {it.similarTo!.part_number_1}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onResolve(it.pn, 'new')}
+                  className={reso === 'new' ? 'chip chip-active cursor-pointer !text-[11px]' : 'chip chip-default cursor-pointer !text-[11px]'}
+                >
+                  ＋ مرجع جدید است
+                </button>
+                {decided && (
+                  <button type="button" onClick={() => onResolve(it.pn, null)} className="text-[10px] text-stone-400 dark:text-stone-500 underline cursor-pointer">
+                    لغو تصمیم
+                  </button>
+                )}
+              </div>
+            )}
+            {editable && (it.status !== 'skipped' || decided) ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                 <input
                   className="input !min-h-0 !py-1 !text-[11px]"
@@ -164,6 +211,8 @@ export default function CatalogManager() {
   const [showImport, setShowImport] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importText, setImportText] = useState('');
+  /** تصمیم‌های کاربر برای PNهای برخوردی مشابه — کلید = PN؛ 'new' = ثبت جدید، {mergeInto} = ادغام */
+  const [importResolutions, setImportResolutions] = useState<Record<string, 'new' | { mergeInto: number }>>({});
   const [importMode, setImportMode] = useState<'file' | 'paste'>('file');
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState('');
@@ -338,7 +387,7 @@ export default function CatalogManager() {
   // ---------- آپدیت از اکسل / Paste ----------
   const runCatalogImport = async (dryRun: boolean) => {
     setImportError('');
-    if (dryRun) setImportResult(null);
+    if (dryRun) setImportResult(null); setImportResolutions({});
     setBusy(true);
     try {
       let result: ImportResult;
@@ -347,7 +396,7 @@ export default function CatalogManager() {
         const res = await api.post<{ result: ImportResult }>('/part-catalog/import-text', {
           text: importText,
           dry_run: dryRun,
-          ...(dryRun ? {} : { overrides: importEdits }),
+          ...(dryRun ? {} : { overrides: importEdits, resolutions: importResolutions }),
         });
         result = res.result;
       } else {
@@ -359,7 +408,9 @@ export default function CatalogManager() {
           method: 'POST',
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(dryRun ? { 'X-Dry-Run': '1' } : { 'X-Overrides': JSON.stringify(importEdits) }),
+            ...(dryRun
+              ? { 'X-Dry-Run': '1' }
+              : { 'X-Overrides': JSON.stringify(importEdits), 'X-Resolutions': JSON.stringify(importResolutions) }),
           },
           body: fd,
         });
@@ -370,14 +421,17 @@ export default function CatalogManager() {
       setImportResult(result);
       if (!dryRun) {
         const editedCount = Object.keys(importEdits).length;
+        const mergedCount = result.mergedCount ?? 0;
         setMsg(
           `کاتالوگ به‌روز شد — ${toFa(result.createdCount)} جدید، ${toFa(result.updatedCount)} به‌روزرسانی، ${toFa(result.skippedCount)} بدون تغییر` +
+            (mergedCount > 0 ? ` — ${toFa(mergedCount)} ردیف در مراجع موجود ادغام شد` : '') +
             (editedCount > 0 ? ` (${toFa(editedCount)} ویرایش دستی اعمال شد).` : '.'),
         );
         setImportText('');
         setImportFile(null);
         if (importInputRef.current) importInputRef.current.value = '';
         setImportEdits({});
+        setImportResolutions({});
         setShowImport(false);
         await load();
         setTimeout(() => setMsg(''), 6000);
@@ -385,6 +439,16 @@ export default function CatalogManager() {
     } catch (e) {
       setImportError((e as Error).message);
     } finally { setBusy(false); }
+  };
+
+  /** تصمیم ادغام/جدید برای PN برخوردی مشابه */
+  const onResolve = (pn: string, r: 'new' | { mergeInto: number } | null) => {
+    setImportResolutions((s) => {
+      const next = { ...s };
+      if (r === null) delete next[pn];
+      else next[pn] = r;
+      return next;
+    });
   };
 
   /** تغییر یک فیلد در پیش‌نمایش — فیلد حاضر ولی خالی = «این مقدار اعمال نشود» */
@@ -419,7 +483,7 @@ export default function CatalogManager() {
               ＋ مرجع جدید
             </button>
             <button
-              onClick={() => { setShowImport(true); setImportResult(null); setImportError(''); setImportEdits({}); }}
+              onClick={() => { setShowImport(true); setImportResult(null); setImportResolutions({}); setImportError(''); setImportEdits({}); }}
               className="btn-secondary text-xs !min-h-[34px]"
               title="آپدیت گروهی کاتالوگ از فایل اکسل یا چسباندن لیست — بدون حذف هیچ رکوردی"
             >
@@ -600,10 +664,10 @@ export default function CatalogManager() {
               dir="ltr"
               placeholder={'پارت‌نامبر\tعنوان قطعه\tمشخصات فنی\tپارت‌نامبر ۲\n840758-001\t32GB DDR4\tPC4-2666\t840758-B21\nP19776-B21\tPSU 800W\t800W Platinum'}
               value={importText}
-              onChange={(e) => { setImportText(e.target.value); setImportResult(null); }}
+              onChange={(e) => { setImportText(e.target.value); setImportResult(null); setImportResolutions({}); }}
             />
           ) : (
-            <input ref={importInputRef} type="file" accept=".xlsx,.xls" className="input" onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportResult(null); }} />
+            <input ref={importInputRef} type="file" accept=".xlsx,.xls" className="input" onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportResult(null); setImportResolutions({}); }} />
           )}
           {importError && <p className="p-2 bg-coral/10 text-coral-dark rounded-lg text-xs border border-coral/30 dark:text-coral-light">{importError}</p>}
           {importResult && (
@@ -614,7 +678,7 @@ export default function CatalogManager() {
                 {importResult.itemsTruncated ? ' (نمایش اولین ۲۰۰ ردیف)' : ''}
               </p>
               {importResult.dryRun ? (
-                <ImportEditableList items={importResult.items} edits={importEdits} onChange={onEditChange} />
+                <ImportEditableList items={importResult.items} edits={importEdits} onChange={onEditChange} resolutions={importResolutions} onResolve={onResolve} />
               ) : (
                 <p className="text-[11px] text-stone-500 dark:text-stone-400">
                   {toFa(Object.keys(importEdits).length)} ویرایش دستی همراه ثبت اعمال شد.

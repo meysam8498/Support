@@ -539,6 +539,8 @@ interface CatalogImportResult {
   created: { part_number_1: string; title: string }[];
   updated: { part_number_1: string; title: string; filled: string[] }[];
   skipped: { pn: string; reason: string }[];
+  /** تعداد ردیف‌هایی که به‌جای مرجع جدید، در مرجع موجود ادغام شدند */
+  mergedCount: number;
   /** ردیف‌های کامل برای ویرایش در UI (پیش‌نمایش) — حداکثر ۲۰۰ ردیف */
   items: CatalogImportItem[];
   itemsTotal: number;
@@ -558,10 +560,15 @@ interface CatalogImportItem {
   duplicate?: boolean;
   /** مرجع از قبل موجود بوده؟ */
   existing: boolean;
+  /** PN مشابه یک مرجع موجود است (احتمال غلط تایپی) — پیشنهاد ادغام */
+  similarTo?: { id: number; part_number_1: string; title: string };
 }
 
 /** ویرایش‌های کاربر روی پیش‌نمایش — کلید = PN نرمال‌شده؛ فیلد حاضر ولی خالی = «این مقدار اعمال نشود» */
 export type CatalogOverrides = Record<string, { title?: string; specs?: string; pn2?: string }>;
+
+/** تصمیم کاربر برای PN برخوردی مشابه — کلید = PN نرمال‌شده‌ی فایل */
+export type CatalogResolutions = Record<string, 'new' | { mergeInto: number }>;
 
 /** پاک‌سازی overrides ورودی — کلیدها نرمال، مقادیر بریده به سقف فیلدها */
 function sanitizeOverrides(raw: unknown): CatalogOverrides {
@@ -580,12 +587,63 @@ function sanitizeOverrides(raw: unknown): CatalogOverrides {
   return out;
 }
 
+/** پاک‌سازی resolutions ورودی — کلیدها نرمال، merge_id عددی مثبت */
+function sanitizeResolutions(raw: unknown): CatalogResolutions {
+  const out: CatalogResolutions = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const key = normalizePn(k);
+    if (!key) continue;
+    if (v === 'new') { out[key] = 'new'; continue; }
+    if (v && typeof v === 'object' && Number.isInteger((v as { mergeInto?: unknown }).mergeInto) && (v as { mergeInto: number }).mergeInto > 0) {
+      out[key] = { mergeInto: (v as { mergeInto: number }).mergeInto };
+    }
+  }
+  return out;
+}
+
+/** فاصله‌ی لِوِنشتاین — سقف ۴۹۹ برای جلوگیری از O(n²) سنگین روی رشته‌های عجیب */
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const curr = [i];
+    for (let j = 1; j <= b.length; j++) {
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = curr;
+  }
+  return prev[b.length];
+}
+
+/** آستانه‌ی «احتمال غلط تایپی»: حداکثر ۲ ویرایش یا ≤ ۲۰٪ طول (هر کدام بیشتر است) */
+function pnSimilarityThreshold(len: number): number {
+  return Math.min(3, Math.max(2, Math.ceil(len * 0.2)));
+}
+
+/** نزدیک‌ترین مرجع موجود به یک PN — فقط PNهایی که طولشان ±۳ است (شاخص گذر سریع) */
+function findSimilarCatalogEntry(db: ReturnType<typeof getDb>, key: string): { id: number; part_number_1: string; title: string; dist: number } | null {
+  const all = db.prepare(`SELECT id, part_number_1, title FROM part_catalog`).all() as
+    Array<{ id: number; part_number_1: string; title: string }>;
+  let best: { id: number; part_number_1: string; title: string; dist: number } | null = null;
+  for (const r of all) {
+    if (Math.abs(r.part_number_1.length - key.length) > 3) continue;
+    const d = levenshtein(key, r.part_number_1);
+    if (d === 0) continue;
+    const max = Math.min(pnSimilarityThreshold(key.length), pnSimilarityThreshold(r.part_number_1.length));
+    if (d <= max && (!best || d < best.dist)) best = { ...r, dist: d }; 
+  }
+  return best;
+}
+
 /** اجرای upsert آیتم‌های کاتالوگ — در تراکنش؛ dry_run فقط شبیه‌سازی می‌کند */
-function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean, overrides: CatalogOverrides = {}): CatalogImportResult {
+function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean, overrides: CatalogOverrides = {}, resolutions: CatalogResolutions = {}): CatalogImportResult {
   const db = getDb();
   const result: CatalogImportResult = {
     dryRun, createdCount: 0, updatedCount: 0, skippedCount: 0, created: [], updated: [], skipped: [],
-    items: [], itemsTotal: 0, itemsTruncated: false,
+    items: [], itemsTotal: 0, itemsTruncated: false, mergedCount: 0,
   };
   const seen = new Set<string>();
 
@@ -608,8 +666,54 @@ function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean, overrid
       const pn2 = ov && typeof ov.pn2 === 'string' ? ov.pn2.trim() : (it.pn2?.trim() || '');
 
       const existing = db.prepare(`SELECT id, title, tech_specs, part_number_2 FROM part_catalog WHERE part_number_1 = ?`).get(key) as
-        | { id: number; title: string; tech_specs: string | null; part_number_2: string | null }
+        | { id: number; part_number_1: string; title: string; tech_specs: string | null; part_number_2: string | null }
         | undefined;
+
+      // ⚠ PN مشابه یک مرجع دیگر = احتمال غلط تایپی — مگر آن‌که کاربر تصمیم گرفته باشد
+      const reso = resolutions[key];
+      const decidedNew = reso === 'new';
+      const targetId = reso && typeof reso === 'object' ? reso.mergeInto : null;
+      if (!existing && !decidedNew) {
+        const sim = findSimilarCatalogEntry(db, key);
+        const target = targetId
+          ? (db.prepare(`SELECT id, part_number_1, title, tech_specs, part_number_2 FROM part_catalog WHERE id = ?`).get(targetId) as
+              | { id: number; part_number_1: string; title: string; tech_specs: string | null; part_number_2: string | null }
+              | undefined)
+          : sim
+            ? (db.prepare(`SELECT id, part_number_1, title, tech_specs, part_number_2 FROM part_catalog WHERE id = ?`).get(sim.id) as
+                | { id: number; part_number_1: string; title: string; tech_specs: string | null; part_number_2: string | null }
+                | undefined)
+            : undefined;
+        if (target) {
+          if (!targetId) {
+            // بدون تصمیم کاربر → فقط هشدار و پیشنهاد (هیچ تغییری نوشته نمی‌شود)
+            rec({ pn: key, title: title || key, specs, pn2, status: 'skipped', reason: `PN مشابه مرجع موجود «${target.part_number_1}» است — احتمال غلط تایپی؛ تصمیم بگیرید: ادغام یا ثبت جدید.`, existing: false, similarTo: { id: target.id, part_number_1: target.part_number_1, title: target.title } });
+            result.skipped.push({ pn: key, reason: `مشابه «${target.part_number_1}» — ادغام یا ثبت جدید؟` });
+            continue;
+          }
+          // کاربر ادغام در target را انتخاب کرده: مقادیر فایل را در مرجع موجود می‌ریزیم (فقط فیلدهای پرشده)
+          const filledM: string[] = [];
+          const mTitle = title && title !== target.title ? title : null;
+          const mSpecs = specs && specs !== (target.tech_specs ?? '') ? specs : null;
+          const mPn2 = pn2 && pn2 !== (target.part_number_2 ?? '') ? pn2 : null;
+          if (mTitle) filledM.push('عنوان');
+          if (mSpecs) filledM.push('مشخصات');
+          if (mPn2) filledM.push('پارت‌نامبر ۲');
+          if (filledM.length > 0) {
+            if (!dryRun) {
+              db.prepare(`UPDATE part_catalog SET title = COALESCE(?, title), tech_specs = COALESCE(?, tech_specs), part_number_2 = COALESCE(?, part_number_2), updated_at = datetime('now') WHERE id = ?`)
+                .run(mTitle, mSpecs, mPn2, target.id);
+            }
+            result.updated.push({ part_number_1: target.part_number_1, title: mTitle || target.title, filled: filledM });
+            rec({ pn: key, title: title || key, specs, pn2, status: 'updated', filled: filledM, existing: true, similarTo: { id: target.id, part_number_1: target.part_number_1, title: target.title } });
+          } else {
+            result.skipped.push({ pn: key, reason: `در مرجع «${target.part_number_1}» ادغام شد ولی فایل مقدار جدیدی نداشت.` });
+            rec({ pn: key, title: title || key, specs, pn2, status: 'skipped', reason: `در مرجع «${target.part_number_1}» ادغام شد ولی فایل مقدار جدیدی نداشت.`, existing: true, similarTo: { id: target.id, part_number_1: target.part_number_1, title: target.title } });
+          }
+          result.mergedCount++;
+          continue;
+        }
+      }
 
       if (!existing) {
         // مرجع جدید — عنوان اجباری نیست؛ خالی باشد پارت‌نامبر می‌نشیند (قابل ویرایش بعدی)
@@ -677,11 +781,13 @@ router.post('/import-text', requireRole('admin'), (req: Request, res: Response) 
       text: z.string().min(1).max(200_000),
       dry_run: z.boolean().optional().default(false),
       overrides: z.unknown().optional(),
+      resolutions: z.unknown().optional(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'متن الزامی است.', detail: parsed.error.flatten() });
     const { text, dry_run } = parsed.data;
     const overrides = sanitizeOverrides(parsed.data.overrides);
+    const resolutions = sanitizeResolutions(parsed.data.resolutions);
 
     const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((l) => l.trim() !== '');
     if (lines.length === 0) return res.status(400).json({ error: 'متن خالی است.' });
@@ -699,7 +805,7 @@ router.post('/import-text', requireRole('admin'), (req: Request, res: Response) 
     if (items.length === 0) {
       return res.status(400).json({ error: 'قالب شناسایی نشد — سرستون «پارت‌نامبر» یا ردیف‌های عنوان/توضیح/پارت‌نامبر لازم است.' });
     }
-    return res.json({ ok: true, result: applyCatalogUpserts(items, dry_run, overrides) });
+    return res.json({ ok: true, result: applyCatalogUpserts(items, dry_run, overrides, resolutions) });
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ error: 'خطا در پردازش متن.', detail: (err as Error).message });
   }
@@ -776,13 +882,18 @@ router.post('/import', requireRole('admin'), (req: Request, res: Response) => {
       }
 
       const dryRun = String(req.headers['x-dry-run'] ?? '') === '1';
-      // ویرایش‌های پیش‌نمایش در هدر JSON-encoded می‌آیند (چون بدنه multipart است)
+      // ویرایش/تصمیم‌های پیش‌نمایش در هدرهای JSON-encoded می‌آیند (چون بدنه multipart است)
       let overrides: CatalogOverrides = {};
       const ovHeader = req.headers['x-overrides'];
       if (typeof ovHeader === 'string') {
         try { overrides = sanitizeOverrides(JSON.parse(ovHeader)); } catch { /* هدر نامعتبر → بدون overrides */ }
       }
-      return void res.json({ ok: true, file: file.filename, result: applyCatalogUpserts(items, dryRun, overrides) });
+      let resolutions: CatalogResolutions = {};
+      const resHeader = req.headers['x-resolutions'];
+      if (typeof resHeader === 'string') {
+        try { resolutions = sanitizeResolutions(JSON.parse(resHeader)); } catch { /* هدر نامعتبر → بدون resolutions */ }
+      }
+      return void res.json({ ok: true, file: file.filename, result: applyCatalogUpserts(items, dryRun, overrides, resolutions) });
     } catch (err) {
       if (!res.headersSent) res.status(500).json({ error: 'خطا در پردازش فایل.', detail: (err as Error).message });
     }
