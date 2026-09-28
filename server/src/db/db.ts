@@ -82,6 +82,8 @@ const COLUMN_MIGRATIONS: ColumnMigration[] = [
   // users — active
   { table: 'users', column: 'active', ddl: "INTEGER NOT NULL DEFAULT 1" },
   { table: 'users', column: 'email', ddl: "TEXT" },
+  // parts — اتصال به کاتالوگ قطعات
+  { table: 'parts', column: 'catalog_id', ddl: "INTEGER REFERENCES part_catalog(id)" },
 ];
 
 /**
@@ -95,6 +97,29 @@ export function migrateSchema(db: DatabaseSync): void {
   );
   if (tables.size === 0) return; // دیتابیس تازه — schema.sql همه را می‌سازد
 
+  // جدول کاتالوگ (اگر نیست) — قبل از ستون catalog_id که به آن ارجاع دارد
+  if (!tables.has('part_catalog')) {
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS part_catalog (
+          id             INTEGER PRIMARY KEY AUTOINCREMENT,
+          part_number_1  TEXT NOT NULL,
+          part_number_2  TEXT,
+          title          TEXT NOT NULL,
+          tech_specs     TEXT,
+          notes          TEXT,
+          created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at     TEXT,
+          UNIQUE (part_number_1)
+        );
+        CREATE INDEX IF NOT EXISTS idx_part_catalog_pn ON part_catalog(part_number_1);
+      `);
+      console.log('→ مهاجرت: جدول part_catalog ساخته شد.');
+    } catch (err) {
+      console.error('⚠ مهاجرت ناموفق (part_catalog):', (err as Error).message);
+    }
+  }
+
   for (const m of COLUMN_MIGRATIONS) {
     if (!tables.has(m.table)) continue;
     const cols = tableColumns(db, m.table);
@@ -106,6 +131,97 @@ export function migrateSchema(db: DatabaseSync): void {
         console.error(`⚠ مهاجرت ناموفق (${m.table}.${m.column}):`, (err as Error).message);
       }
     }
+  }
+
+  // یکتایی سریال قطعه — هر سریال فقط یک بار در کل سامانه (مقدار خالی/NULL مجاز است)
+  // اگر داده‌ی تکراری جامانده باشد، ایندکس نمی‌سازیم و هشدار می‌دهیم تا کاربر اصلاح کند
+  try {
+    const dup = db.prepare(`
+      SELECT COUNT(*) AS c FROM (
+        SELECT part_serial_number FROM parts
+        WHERE part_serial_number IS NOT NULL AND TRIM(part_serial_number) != ''
+        GROUP BY UPPER(TRIM(part_serial_number)) HAVING COUNT(*) > 1
+      )
+    `).get() as { c: number };
+    if (dup.c > 0) {
+      console.warn(`⚠ مهاجرت: ${dup.c} سریال قطعه‌ی تکراری در داده‌ها هست — ایندکس یکتا ساخته نشد. ابتدا تکراری‌ها را رفع کنید.`);
+    } else {
+      db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_parts_serial_unique
+        ON parts(UPPER(TRIM(part_serial_number)))
+        WHERE part_serial_number IS NOT NULL AND TRIM(part_serial_number) != ''
+      `);
+    }
+  } catch (err) {
+    console.error('⚠ مهاجرت ناموفق (idx_parts_serial_unique):', (err as Error).message);
+  }
+
+  seedPartCatalog(db);
+}
+
+/**
+ * پرکردن اولیه‌ی کاتالوگ از قطعات موجود — فقط یک بار؛ برای هر پارت‌نامبر
+ * یک تعریف مرجع از رایج‌ترین (modal) عنوان/مشخصات ساخته و همه‌ی رکوردهای
+ * هم‌پارت‌نامبر به آن وصل می‌شود. توضیحات ناهمگون در notes یادداشت می‌شود.
+ */
+export function seedPartCatalog(db: DatabaseSync): void {
+  const done = db.prepare(`SELECT COUNT(*) AS c FROM part_catalog`).get() as { c: number };
+  const linked = db.prepare(`SELECT COUNT(*) AS c FROM parts WHERE catalog_id IS NOT NULL AND part_number_1 != ''`).get() as { c: number };
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM parts WHERE COALESCE(part_number_1, '') != ''`).get() as { c: number };
+  if (done.c > 0 && linked.c >= total.c) return; // قبلاً کامل sync شده
+
+  try {
+    db.exec('BEGIN');
+    const groups = db.prepare(`
+      SELECT COALESCE(NULLIF(TRIM(part_number_1), ''), '(NO-PN)') AS pn,
+             title, tech_specs, COUNT(*) AS cnt
+      FROM parts
+      WHERE COALESCE(part_number_1, '') != ''
+      GROUP BY pn, title, tech_specs
+      ORDER BY pn, cnt DESC
+    `).all() as { pn: string; title: string; tech_specs: string | null; cnt: number }[];
+
+    // بهترین (پرتکرارترین) عنوان/توضیح برای هر pn — به‌صورت درون‌حافظه‌ای
+    const best = new Map<string, { title: string; tech_specs: string | null; cnt: number; variants: string[] }>();
+    for (const g of groups) {
+      const key = g.pn;
+      const cur = best.get(key);
+      const specKey = (g.tech_specs || '').trim();
+      if (!cur) {
+        best.set(key, { title: g.title, tech_specs: specKey || null, cnt: g.cnt, variants: specKey ? [specKey] : [] });
+      } else {
+        if (g.cnt > cur.cnt) { cur.title = g.title; cur.cnt = g.cnt; }
+        if (specKey && !cur.variants.includes(specKey)) cur.variants.push(specKey);
+      }
+    }
+
+    const insCat = db.prepare(`
+      INSERT INTO part_catalog (part_number_1, title, tech_specs, notes)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(part_number_1) DO NOTHING
+    `);
+    for (const [pn, b] of best) {
+      const notes = b.variants.length > 1
+        ? `توضیحات ناهمگون پیش از یکسان‌سازی: ${b.variants.join(' | ')}`
+        : null;
+      insCat.run(pn, b.title, b.tech_specs, notes);
+    }
+
+    // اتصال رکوردها به کاتالوگ + یکسان‌سازی عنوان/توضیح با مرجع
+    db.exec(`
+      UPDATE parts SET
+        catalog_id = (SELECT id FROM part_catalog WHERE part_number_1 = COALESCE(NULLIF(TRIM(parts.part_number_1), ''), '(NO-PN)')),
+        title = COALESCE((SELECT title FROM part_catalog WHERE part_number_1 = COALESCE(NULLIF(TRIM(parts.part_number_1), ''), '(NO-PN)')), title),
+        tech_specs = COALESCE((SELECT tech_specs FROM part_catalog WHERE part_number_1 = COALESCE(NULLIF(TRIM(parts.part_number_1), ''), '(NO-PN)')), tech_specs)
+      WHERE COALESCE(part_number_1, '') != ''
+    `);
+
+    db.exec('COMMIT');
+    const catCount = db.prepare(`SELECT COUNT(*) AS c FROM part_catalog`).get() as { c: number };
+    console.log(`→ مهاجرت: کاتالوگ قطعات با ${catCount.c} تعریف مرجع آماده شد.`);
+  } catch (err) {
+    try { db.exec('ROLLBACK'); } catch { /* noop */ }
+    console.error('⚠ seedPartCatalog ناموفق:', (err as Error).message);
   }
 }
 

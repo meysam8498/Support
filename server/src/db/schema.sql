@@ -146,6 +146,25 @@ CREATE TABLE IF NOT EXISTS devices (
   FOREIGN KEY (created_by)          REFERENCES users(id)
 );
 
+-- کاتالوگ قطعات — تعریف مرجع یکتا برای هر «مدل قطعه»
+-- یک قطعه‌ی مشخص (پارت‌نامبر) که در پروژه‌ها/تجهیزات مختلف با سریال‌های
+-- متفاوت نصب می‌شود، فقط یک بار اینجا تعریف می‌شود: عنوان، مشخصات فنی،
+-- پارت‌نامبر ۱ و ۲. رکوردهای جدول parts به این تعریف وصل می‌شوند تا
+-- توضیحات همیشه یکسان بماند و ورودی به کمترین حد برسد.
+CREATE TABLE IF NOT EXISTS part_catalog (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  part_number_1  TEXT NOT NULL,                    -- کلید کاتالوگ (نرمال‌شده: بدون فاصله، حروف بزرگ)
+  part_number_2  TEXT,                             -- پارت‌نامبر دوم (اختیاری)
+  title          TEXT NOT NULL,                    -- عنوان مرجع
+  tech_specs     TEXT,                             -- مشخصات فنی مرجع
+  notes          TEXT,                             -- یادداشت داخلی
+  created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at     TEXT,
+  UNIQUE (part_number_1)
+);
+
+CREATE INDEX IF NOT EXISTS idx_part_catalog_pn ON part_catalog(part_number_1);
+
 -- قطعات (هر تجهیز می‌تواند چند قطعه داشته باشد)
 CREATE TABLE IF NOT EXISTS parts (
   id                    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -247,6 +266,10 @@ CREATE INDEX IF NOT EXISTS idx_devices_project_serial ON devices(project_id, mai
 CREATE INDEX IF NOT EXISTS idx_devices_pn1            ON devices(part_number_1);
 CREATE INDEX IF NOT EXISTS idx_devices_pn2            ON devices(part_number_2);
 CREATE INDEX IF NOT EXISTS idx_parts_serial           ON parts(part_serial_number);
+-- یکتایی سریال قطعه در کل سامانه (مقدار خالی/NULL مجاز است)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_parts_serial_unique
+  ON parts(UPPER(TRIM(part_serial_number)))
+  WHERE part_serial_number IS NOT NULL AND TRIM(part_serial_number) != '';
 CREATE INDEX IF NOT EXISTS idx_parts_pn1              ON parts(part_number_1);
 CREATE INDEX IF NOT EXISTS idx_parts_pn2              ON parts(part_number_2);
 CREATE INDEX IF NOT EXISTS idx_projects_name          ON projects(name);
