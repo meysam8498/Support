@@ -23,6 +23,11 @@
 //     (ردیف ۲) + پارت‌نامبر (ردیف ۳) روی دستگاه هدف ساخته می‌شود.
 //   • ستونی که پارت‌نامبرش مال خودِ دستگاه هدف باشد → main_serial به‌روز می‌شود.
 //   • هیچ داده‌ای حذف نمی‌شود؛ اجرای دوباره امن است.
+// پیشنهاد کاتالوگ:
+//   • پارت‌نامبرهای ناشناس (هیچ قطعه‌ای در کل سامانه ندارند) با عنوان/توضیحات
+//     ردیف‌های فایل در پیش‌نمایش به‌عنوان «مرجع کاتالوگ پیشنهادی» دیده می‌شوند
+//     و با create_catalog=true (پیش‌فرض) هنگام ثبت ساخته می‌شوند تا قطعات
+//     تازه‌وارد از همان ابتدا به مرجع درست وصل شوند (نه مرجع خالی از sync).
 // ============================================================
 import { Router } from 'express';
 import type { Request, Response } from 'express';
@@ -31,7 +36,7 @@ import jalaali from 'jalaali-js';
 import { z } from 'zod';
 import { getDb, runTransaction } from '../db/db.js';
 import { requireRole } from '../middleware/auth.js';
-import { syncPartsToCatalog } from './partCatalog.js';
+import { syncPartsToCatalog, upsertCatalogEntry } from './partCatalog.js';
 import { findDuplicateSerial } from './parts.js';
 
 const router = Router();
@@ -70,6 +75,14 @@ interface DescConflict {
   note: string;
 }
 
+/** پیشنهاد ساخت مرجع کاتالوگ برای پارت‌نامبر ناشناس — از عنوان/توضیحات ردیف‌های فایل */
+interface CatalogSuggestion {
+  partNumber: string;       // نرمال‌شده (کلید کاتالوگ)
+  title: string;            // عنوان دیده‌شده در فایل (عنوان قطعه/ردیف ۱)
+  techSpecs: string | null; // جمع توضیحات/مشخصات/نوع قطعه ردیف‌های فایل
+  firstRow: number;         // اولین ردیف فایل که این PN دیده شد (۰ = مسیر ستون‌محور بدون شماره ردیف)
+}
+
 interface DeviceTemplate {
   device_type_id: number;
   device_model_id: number | null;
@@ -106,6 +119,10 @@ interface Analysis {
   descConflicts: DescConflict[];
   deviceTemplate: DeviceTemplate | undefined;
   rowTemplate: RowTemplateData | null; // قالب ردیف‌محور در صورت شناسایی
+  /** ساخت مراجع کاتالوگ برای پارت‌نامبرهای ناشناس هنگام ثبت (پیش‌فرض: بله) */
+  create_catalog: boolean;
+  /** تجربه‌ی پیشنهادها: متن → ردیف‌محور؛ اکسل → ردیف‌محور/ستون‌محور */
+  suggestSource: 'row_template' | 'column';
 }
 
 /** نرمال‌سازی پارت‌نامبر: حذف فاصله‌ها و نویسه‌های نامرئی، بزرگ‌کردن لاتین */
@@ -114,6 +131,68 @@ function normalizePartNumber(s: unknown): string {
     .replace(/[\u200c\u200f\u200e\uFEFF]/g, '')
     .replace(/\s+/g, '')
     .toUpperCase();
+}
+
+// ---------- پیشنهاد مرجع کاتالوگ ----------
+/** مراجع کاتالوگ موجود به تفکیک PN نرمال‌شده (برای تمایز ناشناس/شناخته‌شده) */
+function loadCatalogMap(db: ReturnType<typeof getDb>): Map<string, number> {
+  const rows = db.prepare(`SELECT id, part_number_1 FROM part_catalog`).all() as { id: number; part_number_1: string }[];
+  const map = new Map<string, number>();
+  for (const r of rows) map.set(normalizePartNumber(r.part_number_1), r.id);
+  return map;
+}
+
+/** پرچم create_catalog از فیلدهای multipart — پیش‌فرض: فعال */
+function parseCreateCatalogFlag(fields: Record<string, string>): boolean {
+  const v = (fields.create_catalog ?? '1').toLowerCase();
+  return v !== '0' && v !== 'false';
+}
+
+/**
+ * پیشنهاد ساخت مرجع کاتالوگ برای پارت‌نامبرهای ناشناس.
+ * ناشناس = نه مرجع کاتالوگ دارند و نه قطعه‌ی جدیدی از آن‌ها ساخته خواهد شد؛
+ * فقط برای PNهایی پیشنهاد داده می‌شود که در همین import قطعه‌ی جدید می‌گیرند،
+ * تا مرجع با عنوان/توضیحات فایل ساخته شود (نه مرجع خالی از sync پس از ثبت).
+ */
+function collectCatalogSuggestions(
+  items: { partNumber: string; title: string; specs: string[]; firstRow: number; willCreate: boolean }[],
+  catalogMap: Map<string, number>,
+): CatalogSuggestion[] {
+  const seen = new Set<string>();
+  const suggestions: CatalogSuggestion[] = [];
+  for (const item of items) {
+    const key = normalizePartNumber(item.partNumber);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    if (catalogMap.has(key)) continue; // مرجع از قبل هست
+    if (!item.willCreate) continue;   // از این PN قطعه‌ی جدیدی ساخته نمی‌شود
+    suggestions.push({
+      partNumber: key,
+      title: item.title || key,
+      techSpecs: item.specs.filter(Boolean).join(' | ') || null,
+      firstRow: item.firstRow,
+    });
+  }
+  return suggestions;
+}
+
+/**
+ * ساخت مراجع کاتالوگ جمع‌آوری‌شده در زمان ثبت (upsert؛ فیلدهای خالی مرجع موجود غنی می‌شود).
+ * تعداد مراجعی که «واقعاً جدید» ساخته شدند را برمی‌گرداند — enrichment مرجع موجود نمی‌شمارد.
+ */
+function createCatalogEntries(
+  db: ReturnType<typeof getDb>,
+  catalogCreations: Map<string, { title: string; specs: string | null }>,
+): number {
+  let created = 0;
+  for (const [pn, meta] of catalogCreations) {
+    const key = normalizePartNumber(pn);
+    if (!key) continue;
+    const existed = db.prepare(`SELECT id FROM part_catalog WHERE part_number_1 = ?`).get(key);
+    upsertCatalogEntry(db, pn, { title: meta.title, tech_specs: meta.specs });
+    if (!existed) created++;
+  }
+  return created;
 }
 
 /** تبدیل شماره‌ی ستون اکسل (۱-مبنا) به حرف: 1→A, 27→AA */
@@ -211,13 +290,14 @@ function analyzeTextPayload(req: Request, res: Response): Analysis | null {
     project_id: z.coerce.number().int().positive(),
     device_id: z.coerce.number().int().positive().optional(),
     create_per_row: z.boolean().optional().default(false),
+    create_catalog: z.boolean().optional().default(true), // ساخت مرجع کاتالوگ برای پارت‌نامبرهای ناشناس
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: 'ورودی نامعتبر است — متن و پروژه‌ی مقصد الزامی است.', detail: parsed.error.flatten() });
     return null;
   }
-  const { text, project_id, device_id, create_per_row } = parsed.data;
+  const { text, project_id, device_id, create_per_row, create_catalog } = parsed.data;
 
   const db = getDb();
   let device: TargetDevice | undefined;
@@ -256,6 +336,8 @@ function analyzeTextPayload(req: Request, res: Response): Analysis | null {
     descConflicts: [],
     deviceTemplate: undefined,
     rowTemplate,
+    create_catalog,
+    suggestSource: 'row_template',
   };
 }
 
@@ -440,8 +522,7 @@ function analyzeUpload(body: Buffer, contentType: string, res: Response): Analys
   // این قالب برای «یک سرور با چند قطعه» است: تفکیک صریح می‌گوید هر قطعه روی
   // کدام دستگاه نصب شده. اگر شناسایی شد، مسیر ستون‌محور قدیمی اجرا نمی‌شود.
   const rowTemplate = parseRowTemplate(rows);
-  if (rowTemplate) {
-    // قالب ردیف‌محور: چک تعویق‌شده‌ی مقصد دیگر لازم نیست — سریال تجهیز ستون صریح فایل است.
+  if (rowTemplate) {    // قالب ردیف‌محور: چک تعویق‌شده‌ی مقصد دیگر لازم نیست — سریال تجهیز ستون صریح فایل است.
     void deferredTargetCheck;
     return {
       file,
@@ -458,6 +539,8 @@ function analyzeUpload(body: Buffer, contentType: string, res: Response): Analys
       descConflicts: [],
       deviceTemplate: undefined,
       rowTemplate,
+      create_catalog: parseCreateCatalogFlag(fields),
+      suggestSource: 'row_template',
     };
   }
 
@@ -653,6 +736,8 @@ function analyzeUpload(body: Buffer, contentType: string, res: Response): Analys
     descConflicts,
     deviceTemplate,
     rowTemplate: null,
+    create_catalog: parseCreateCatalogFlag(fields),
+    suggestSource: 'column',
   };
 }
 
@@ -799,6 +884,24 @@ function buildPreview(analysis: Analysis): Record<string, unknown> {
     }
   }
 
+  // پیشنهاد کاتالوگ: ستون‌های «قطعه‌ی جدید» (ناشناس در کل سامانه) با عنوان/توضیحات ردیف‌های فایل
+  // فقط وقتی ساخت مرجع فعال است (چک‌باکس خاموش = پیشنهاد هم بی‌معنا)
+  const catalogMap = loadCatalogMap(db);
+  const catalogSuggestions = analysis.create_catalog
+    ? collectCatalogSuggestions(
+        columns
+          .filter((c) => c.isNew)
+          .map((c) => ({
+            partNumber: c.partNumber,
+            title: c.titleVariants.length > 1 ? c.titleVariants.join(' | ') : c.title,
+            specs: c.descVariants,
+            firstRow: 0,
+            willCreate: true,
+          })),
+        catalogMap,
+      )
+    : [];
+
   const previewColumns = columns.map((c) => {
     const isDevicePn = !!devicePn && c.partNumber === devicePn;
     const positiveIds = [...new Set(c.partIds.filter((id) => id > 0))];
@@ -836,11 +939,13 @@ function buildPreview(analysis: Analysis): Record<string, unknown> {
     willCreateParts: createdParts,
     willCreateDevices: createdDevices,
     willUpdateMainSerial: mainSerialUpdates > 0,
+    willCreateCatalog: catalogSuggestions.length,
     columns: previewColumns,
     actions,
     actionsTruncated: truncated,
     actionsCap: PREVIEW_ACTIONS_CAP,
     descConflicts: analysis.descConflicts,
+    catalogSuggestions,
     warnings,
   };
 }
@@ -861,6 +966,29 @@ function buildRowTemplatePreview(analysis: Analysis): Record<string, unknown> {
   const db = getDb();
   const rt = analysis.rowTemplate!;
   const { project_id, device_id } = analysis;
+
+  // مراجع کاتالوگ موجود — مبنای تمایز «پارت‌نامبر ناشناس»
+  const catalogMap = loadCatalogMap(db);
+  // از هر PN ناشناس: عنوان و مشخصات دیده‌شده (چند ردیف ممکن است همان PN را داشته باشند)
+  const unknownItems = new Map<string, { partNumber: string; title: string; specs: string[]; firstRow: number; willCreate: boolean }>();
+  const recordUnknown = (r: RowTemplateRow, rowNo: number, willCreate: boolean) => {
+    const key = normalizePartNumber(r.partNumber);
+    if (!key || catalogMap.has(key)) return;
+    const item = unknownItems.get(key);
+    if (item) {
+      const specs = [...new Set([...item.specs, r.specs, r.kind].filter(Boolean))];
+      item.specs = specs;
+      if (willCreate) item.willCreate = true;
+      return;
+    }
+    unknownItems.set(key, {
+      partNumber: key,
+      title: r.title || r.kind || key,
+      specs: [...new Set([r.specs, r.kind].filter(Boolean))],
+      firstRow: rowNo,
+      willCreate,
+    });
+  };
 
   const actions: PreviewAction[] = [];
   const warnings: string[] = [];
@@ -936,6 +1064,7 @@ function buildRowTemplatePreview(analysis: Analysis): Record<string, unknown> {
       const devPn = devPnRow ? normalizePartNumber(devPnRow.part_number_1 || devPnRow.part_number_2 || '') : '';
       if (devPn && normalizePartNumber(r.partNumber) === devPn) {
         mainSerialUpdates++;
+        recordUnknown(r, rowNo, false); // سریال دستگاه است — پیشنهاد کاتالوگ نمی‌خواهد
         actions.push({ row: rowNo, col: '—', partNumber: r.partNumber, serial: r.partSerial, action: 'set_main_serial', target: `تجهیز موجود #${devInfo.id}` });
         continue;
       }
@@ -950,11 +1079,14 @@ function buildRowTemplatePreview(analysis: Analysis): Record<string, unknown> {
     if (matchedId !== undefined) {
       const t = db.prepare(`SELECT title FROM parts WHERE id = ?`).get(matchedId) as { title: string } | undefined;
       updatedParts++;
+      recordUnknown(r, rowNo, false); // قطعه‌ی موجود به‌روز می‌شود — مرجعش از قبل باید باشد
       actions.push({ row: rowNo, col: '—', partNumber: r.partNumber, serial: r.partSerial, action: 'update_part', target: `قطعه #${matchedId} «${t?.title ?? ''}» → ${targetLabel}` });
-    } else if (devInfo?.exists || device_id) {
-      // اسلات‌های دستگاه مقصد تمام شد (چند قطعه‌ی هم‌پارت‌نامبر مجاز است) یا مقصد انتخابی → قطعه‌ی جدید روی همان تجهیز
+    } else if (devInfo?.exists || device_id || r.deviceSerial) {
+      // اسلات‌های دستگاه مقصد تمام شد، مقصد انتخابی است، یا سریال تجهیز در فایل هست
+      // (ثبت واقعی برای سریالِ نه‌موجود دستگاه جدید می‌سازد) → قطعه‌ی جدید روی همان تجهیز
       // یکسان‌سازی فقط در سطح کاتالوگ است؛ رکورد هر نمونه مستقل می‌ماند و از دستگاه دیگر انتقال نمی‌یابد
       createdParts++;
+      recordUnknown(r, rowNo, true); // قطعه‌ی جدید = کاندیدای مرجع کاتالوگ از عنوان/مشخصات فایل
       actions.push({ row: rowNo, col: '—', partNumber: r.partNumber, serial: r.partSerial, action: 'create_part', target: `${r.title || r.kind || r.partNumber} → ${targetLabel}` });
     } else {
       // نه سریال تجهیز در فایل هست و نه مقصد انتخابی → نادیده (مطابق ثبت واقعی)
@@ -968,6 +1100,10 @@ function buildRowTemplatePreview(analysis: Analysis): Record<string, unknown> {
     warnings.push('برخی ردیف‌ها «سریال تجهیز» ندارند و هیچ تجهیز مقصدی هم انتخاب نشده — این ردیف‌ها نادیده گرفته می‌شوند.');
   }
   const newDevices = [...deviceCache.values()].filter((d) => !d.exists).length;
+  // پیشنهاد کاتالوگ فقط وقتی ساخت مرجع فعال است (چک‌باکس خاموش = پیشنهاد هم بی‌معنا)
+  const catalogSuggestions = analysis.create_catalog
+    ? collectCatalogSuggestions([...unknownItems.values()], catalogMap)
+    : [];
 
   return {
     file: analysis.file.filename,
@@ -983,11 +1119,13 @@ function buildRowTemplatePreview(analysis: Analysis): Record<string, unknown> {
     willCreateParts: createdParts,
     willCreateDevices: newDevices,
     willUpdateMainSerial: mainSerialUpdates > 0,
+    willCreateCatalog: catalogSuggestions.length,
     columns: [],
     actions,
     actionsTruncated: false,
     actionsCap: PREVIEW_ACTIONS_CAP,
     descConflicts: [],
+    catalogSuggestions,
     warnings,
   };
 }
@@ -1019,6 +1157,8 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
     `INSERT INTO parts (device_id, title, tech_specs, part_number_1, part_serial_number, status, sold_at_jalali, sold_at_gregorian, created_by)
      VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`
   );
+  // مراجع کاتالوگ برای ساخت هنگام ثبت (پارت‌نامبرهای ناشناس) — در حین تراکنش جمع می‌شود
+  const catalogCreations = new Map<string, { title: string; specs: string | null }>();
   // یکتایی سریال قطعه — سریال‌های مصرف‌شده در همین import + چک دیتابیس
   const usedSerials = new Set<string>();
   const isDuplicateSerial = (serial: string, rowNo: number, pn: string): boolean => {
@@ -1137,6 +1277,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
         if (create_per_row) {
           if (isDuplicateSerial(s.value, row.rowNumber, col.partNumber)) continue;
           const mergedDesc = col.descVariants.length > 0 ? col.descVariants.join(' | ') : null;
+          if (analysis.create_catalog) catalogCreations.set(col.partNumber, { title: col.titleVariants.length > 1 ? col.titleVariants.join(' | ') : col.title, specs: mergedDesc });
           const info = insertPartStmt.run(
             rowDeviceId,
             col.titleVariants.length > 1 ? col.titleVariants.join(' | ') : col.title,
@@ -1162,6 +1303,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
           // سریال‌های مازاد یک پارت‌نامبر موجود → قطعه‌ی جدید روی دستگاه مقصد همان ردیف
           if (isDuplicateSerial(s.value, row.rowNumber, col.partNumber)) continue;
           const mergedDesc = col.descVariants.length > 0 ? col.descVariants.join(' | ') : null;
+          if (analysis.create_catalog) catalogCreations.set(col.partNumber, { title: col.titleVariants.length > 1 ? col.titleVariants.join(' | ') : col.title, specs: mergedDesc });
           const info = insertPartStmt.run(
             targetDevice!,
             col.titleVariants.length > 1 ? col.titleVariants.join(' | ') : col.title,
@@ -1190,6 +1332,10 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
     }
   });
 
+  // پیشنهاد کاتالوگ: ساخت مراجع پارت‌نامبرهای ناشناس با عنوان/مشخصات فایل —
+  // پیش از sync تا قطعات تازه‌وارد به مراجع غنی وصل شوند (نه مرجع خالی)
+  const catalogCreated = analysis.create_catalog ? createCatalogEntries(getDb(), catalogCreations) : 0;
+
   // یکسان‌سازی: قطعات تازه‌وارد به کاتالوگ وصل و با مرجع هم‌راستا می‌شوند
   const catalogSynced = syncPartsToCatalog(getDb());
 
@@ -1208,6 +1354,7 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
       serialRows: serialRows.length,
       partsUpdated: applied.filter((a) => a.kind === 'part').length,
       partsCreated: applied.filter((a) => a.kind === 'new-part').length,
+      catalogCreated,
       deviceSerialUpdated: applied.some((a) => a.kind === 'device'),
     },
     descConflicts: analysis.descConflicts,
@@ -1369,6 +1516,8 @@ function handleRowTemplateUpload(analysis: Analysis, req: Request, res: Response
     `INSERT INTO parts (device_id, title, tech_specs, part_number_1, part_serial_number, status, sold_at_jalali, sold_at_gregorian, created_by)
      VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`
   );
+  // مراجع کاتالوگ برای ساخت هنگام ثبت (پارت‌نامبرهای ناشناس)
+  const catalogCreations = new Map<string, { title: string; specs: string | null }>();
   const insertDeviceStmt = db.prepare(
     `INSERT INTO devices (project_id, main_serial, device_type_id, device_model_id, brand_id, status, created_by)
      VALUES (?, ?, ?, ?, ?, 'active', ?)`
@@ -1483,11 +1632,16 @@ function handleRowTemplateUpload(analysis: Analysis, req: Request, res: Response
         // قطعه‌ی جدید روی همان تجهیز — هیچ رکوردی از دستگاه دیگری منتقل نمی‌شود
         const title = r.title || r.kind || r.partNumber;
         const specs = [r.kind, r.specs].filter(Boolean).join(' | ') || null;
+        if (analysis.create_catalog) catalogCreations.set(r.partNumber, { title, specs });
         insertPartStmt.run(devId, title, specs, r.partNumber, r.partSerial, todayJ, todayG, req.user!.sub);
         applied.push({ kind: 'new-part', title, pn: r.partNumber, serial: r.partSerial });
       }
     }
   });
+
+  // پیشنهاد کاتالوگ: ساخت مراجع پارت‌نامبرهای ناشناس با عنوان/مشخصات فایل —
+  // پیش از sync تا قطعات تازه‌وارد به مراجع غنی وصل شوند (نه مرجع خالی)
+  const catalogCreated = analysis.create_catalog ? createCatalogEntries(getDb(), catalogCreations) : 0;
 
   // یکسان‌سازی: قطعات تازه‌وارد به کاتالوگ وصل و با مرجع هم‌راستا می‌شوند
   const catalogSynced = syncPartsToCatalog(getDb());
@@ -1507,6 +1661,7 @@ function handleRowTemplateUpload(analysis: Analysis, req: Request, res: Response
       serialRows: rt.rows.length,
       partsUpdated: applied.filter((a) => a.kind === 'part').length,
       partsCreated: applied.filter((a) => a.kind === 'new-part').length,
+      catalogCreated,
       deviceSerialUpdated: applied.some((a) => a.kind === 'device'),
       mode: 'row_template',
     },

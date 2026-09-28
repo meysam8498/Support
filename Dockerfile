@@ -9,7 +9,7 @@
 #
 # امکانات: کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، ورود سریال از اکسل یا paste،
 #          گرید جدولی قطعات، گارانتی، تأمین قطعات، تقویم شمسی.
-# نسخه: 1.1.0
+# نسخه: 1.2.0
 # ============================================================
 
 # ───────────────────────── Stage 1: Build ─────────────────────────
@@ -53,7 +53,7 @@ EXPOSE 4000
 # برچسب‌های OCI برای شناسایی image (شامل اطلاعات طراح)
 LABEL org.opencontainers.image.title="Support Equipment Management" \
       org.opencontainers.image.description="پلتفرم مدیریت پروژه و تجهیزات — فارسی RTL، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، گارانتی و ورود سریال از اکسل" \
-      org.opencontainers.image.version="1.1.0" \
+      org.opencontainers.image.version="1.2.0" \
       org.opencontainers.image.author="Meysam Ijadi <M.Ijadi@Hotmail.com>" \
       org.opencontainers.image.authors="میثم ایجادی / Meysam Ijadi — +98 902 296 4006" \
       org.opencontainers.image.source="https://github.com/meysam8498/Support" \

@@ -26,6 +26,8 @@ interface ImportSummary {
   serialRows: number;
   partsUpdated: number;
   partsCreated: number;
+  /** تعداد مراجع کاتالوگ ساخته‌شده از پارت‌نامبرهای ناشناس */
+  catalogCreated?: number;
   deviceSerialUpdated: boolean;
 }
 
@@ -36,6 +38,14 @@ interface DescConflict {
   note: string;
 }
 
+/** پیشنهاد ساخت مرجع کاتالوگ برای پارت‌نامبر ناشناس — از عنوان/توضیحات فایل */
+interface CatalogSuggestion {
+  partNumber: string;
+  title: string;
+  techSpecs: string | null;
+  firstRow: number;
+}
+
 interface ImportResult {
   ok: boolean;
   summary: ImportSummary;
@@ -43,6 +53,8 @@ interface ImportResult {
   unmatchedPartNumbers: string[];
   skipped: { row: number; column: string; partNumber: string; reason: string }[];
 }
+
+// ---------- پیش‌نمایش خشک (dry-run) ----------
 
 // ---------- پیش‌نمایش خشک (dry-run) ----------
 type PreviewColumnStatus = 'matched' | 'new' | 'device_serial';
@@ -81,11 +93,14 @@ interface ImportPreview {
   willCreateParts: number;
   willCreateDevices: number;
   willUpdateMainSerial: boolean;
+  /** تعداد مراجع کاتالوگ که با ثبت فعلی ساخته می‌شوند */
+  willCreateCatalog: number;
   columns: PreviewColumn[];
   actions: PreviewAction[];
   actionsTruncated: boolean;
   actionsCap: number;
   descConflicts: DescConflict[];
+  catalogSuggestions: CatalogSuggestion[];
   warnings: string[];
 }
 
@@ -109,6 +124,8 @@ export default function SerialImportPage() {
   // ---------- حالت «چسباندن لیست» (بدون فایل) ----------
   const [pasteMode, setPasteMode] = useState(false);
   const [pastedText, setPastedText] = useState('');
+  /** ساخت مرجع کاتالوگ برای پارت‌نامبرهای ناشناس هنگام ثبت (پیش‌فرض: فعال) */
+  const [createCatalog, setCreateCatalog] = useState(true);
 
   /** دانلود قالب نمونه — با توکن (لینک ساده ۴۰۱ می‌دهد) */
   const downloadTemplate = async () => {
@@ -172,6 +189,7 @@ export default function SerialImportPage() {
             project_id: projectId,
             device_id: deviceId || undefined,
             create_per_row: perRow,
+            create_catalog: createCatalog,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -194,6 +212,7 @@ export default function SerialImportPage() {
       fd.append('project_id', String(projectId));
       if (deviceId) fd.append('device_id', String(deviceId));
       if (perRow) fd.append('create_per_row', '1');
+      fd.append('create_catalog', createCatalog ? '1' : '0');
       const token = localStorage.getItem('token');
       const res = await fetch('/api/serial-import/preview', {
         method: 'POST',
@@ -237,6 +256,7 @@ export default function SerialImportPage() {
             project_id: projectId,
             device_id: deviceId || undefined,
             create_per_row: perRow,
+            create_catalog: createCatalog,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -259,6 +279,7 @@ export default function SerialImportPage() {
       fd.append('project_id', String(projectId));
       if (deviceId) fd.append('device_id', String(deviceId));
       if (perRow) fd.append('create_per_row', '1');
+      fd.append('create_catalog', createCatalog ? '1' : '0');
       const token = localStorage.getItem('token');
       const res = await fetch('/api/serial-import', {
         method: 'POST',
@@ -391,6 +412,21 @@ export default function SerialImportPage() {
           </button>
         </div>
 
+        {/* گزینه‌ی ساخت مرجع کاتالوگ برای پارت‌نامبرهای ناشناس */}
+        <label className="flex items-start gap-2 text-xs text-brand-600 dark:text-brand-300 cursor-pointer select-none rounded-xl bg-gold/5 border border-gold/25 px-3 py-2">
+          <input
+            type="checkbox"
+            checked={createCatalog}
+            onChange={(e) => { setCreateCatalog(e.target.checked); setPreview(null); }}
+            className="w-4 h-4 mt-0.5 accent-brand-500"
+          />
+          <span className="leading-5">
+            <b>🧩 ساخت مرجع کاتالوگ برای پارت‌نامبرهای ناشناس</b> — پارت‌نامبرهایی که در سامانه نیستند،
+            با «عنوان قطعه» و «مشخصات/توضیحات» همین فایل به‌عنوان مرجع کاتالوگ ثبت می‌شوند تا همه‌ی قطعات
+            هم‌پارت‌نامبر آینده اطلاعات یکسان بگیرند.
+          </span>
+        </label>
+
         {/* نوار مقصد انتخاب‌شده */}
         {(selectedDevice || perRow) && (
           <div className="rounded-2xl bg-surface-card border-2 border-stone-200 px-4 py-3 text-sm text-stone-800 dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100">
@@ -495,6 +531,9 @@ export default function SerialImportPage() {
             {(s.devicesCreated ?? 0) > 0 && (
               <Stat label="دستگاه‌های جدید ساخته‌شده">{toFa(s.devicesCreated!)}</Stat>
             )}
+            {(s.catalogCreated ?? 0) > 0 && (
+              <Stat label="🧩 مراجع کاتالوگ ساخته‌شده">{toFa(s.catalogCreated!)}</Stat>
+            )}
           </div>
           {s.deviceSerialUpdated && (
             <p className="text-sm text-brand-600 dark:text-brand-300">
@@ -590,12 +629,41 @@ function PreviewPanel({ p }: { p: ImportPreview }) {
         <Stat label="قطعات به‌روزرسانی‌شونده">{toFa(p.willUpdateParts)}</Stat>
         <Stat label="قطعات ساخته‌شونده">{toFa(p.willCreateParts)}</Stat>
         <Stat label="دستگاه‌های ساخته‌شونده">{toFa(p.willCreateDevices)}</Stat>
+        {p.willCreateCatalog > 0 && (
+          <Stat label="🧩 مراجع کاتالوگ ساخته‌شونده">{toFa(p.willCreateCatalog)}</Stat>
+        )}
       </div>
 
       {p.willUpdateMainSerial && (
         <p className="text-sm text-sky-dark dark:text-sky-light">
           ★ سریال اصلی دستگاه نیز به‌روزرسانی خواهد شد.
         </p>
+      )}
+
+      {/* پیشنهاد مرجع کاتالوگ — پارت‌نامبرهای ناشناس با اطلاعات فایل */}
+      {p.catalogSuggestions.length > 0 && (
+        <div className="rounded-2xl bg-gold/10 border-2 border-gold/40 px-4 py-3 text-sm space-y-2">
+          <p className="font-bold text-[#8a6d00] dark:text-gold-light">
+            🧩 پیشنهاد مرجع کاتالوگ ({toFa(p.catalogSuggestions.length)} پارت‌نامبر ناشناس):
+            {' '}با ثبت این فایل، مراجع زیر ساخته می‌شوند تا اطلاعات همه‌ی قطعات هم‌پارت‌نامبر یکسان بماند.
+          </p>
+          <ul className="space-y-1.5">
+            {p.catalogSuggestions.map((s) => (
+              <li key={s.partNumber} className="rounded-xl bg-surface-card dark:bg-stone-800/70 border border-gold/30 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="badge bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-200" dir="ltr">{s.partNumber}</span>
+                  <span className="font-bold" dir="auto">{s.title}</span>
+                  {s.firstRow > 0 && (
+                    <span className="text-[11px] text-stone-500 dark:text-stone-400">ردیف {toFa(s.firstRow)}</span>
+                  )}
+                </div>
+                {s.techSpecs && (
+                  <p className="text-xs text-stone-600 dark:text-stone-300 mt-1" dir="auto">مشخصات: {s.techSpecs}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {p.warnings.length > 0 && (
