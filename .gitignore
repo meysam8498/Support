@@ -28,3 +28,10 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# TypeScript incremental build cache
+tsunbuildinfo
+*.tsbuildinfo
+
+# Freebuff agent workspace
+.freebuff/
