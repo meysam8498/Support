@@ -1,0 +1,60 @@
+# ============================================================
+# تایپ‌چک سرور و کلاینت در CI — هر دو به‌صورت موازی
+# سامانه‌ی مدیریت تجهیزات و قطعات یدکی — طراح: میثم ایجادی / Meysam Ijadi
+# ----------------------------------------------------------------
+# روی هر push (هر شاخه)، هر PR و اجرای دستی اجرا می‌شود و دو job مستقل دارد:
+#   • server  → npx tsc -p server/tsconfig.json --noEmit
+#   • client  → npx tsc -b --force (داخل client)
+# کش کامل وابستگی‌ها روی package-lock.json — بدنه‌ی خالی (بدون تگ) → بدون انتشار.
+# ============================================================
+name: Typecheck (server & client)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: Server — tsc --noEmit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck server
+        run: npx tsc -p server/tsconfig.json --noEmit
+
+  client:
+    name: Client — tsc -b
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck client
+        run: npx tsc -b --force
+        working-directory: client
