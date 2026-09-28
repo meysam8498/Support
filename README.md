@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.2.1`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.2.2`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -129,9 +129,9 @@ curl http://localhost:4000/api/health
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.2.1
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.2.2
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.2.1
+docker push meysam8498/support-equipment-management:1.2.2
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
@@ -141,8 +141,8 @@ docker push meysam8498/support-equipment-management:1.2.1
 با push کردن تگ ورژن، image به‌صورت خودکار بیلد و روی Docker Hub منتشر می‌شود:
 
 ```bash
-git tag v1.2.1
-git push origin v1.2.1
+git tag v1.2.2
+git push origin v1.2.2
 ```
 
 - تریگرهای دیگر: انتشار **Release** در گیت‌هاب و اجرای دستی (تب Actions ← Run workflow).
@@ -152,6 +152,21 @@ git push origin v1.2.1
   hub.docker.com ← Account Settings ← Security).
 - نسخه‌ی OCI LABEL داخل image هم از تگ گیت پر می‌شود (`ARG APP_VERSION`).
 - فایل workflow: [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
+
+### ۷) یادآور همگام‌سازی مستندات و نسخه‌ها
+
+ورژن و مستندات نباید از هم جا بمانند؛ سه لایه‌ی چک خودکار وجود دارد:
+
+| لایه | فایل | کِی اجرا می‌شود |
+|------|------|----------------|
+| اسکریپت چک | `scripts/check-docs-sync.mjs` | دستی: `node scripts/check-docs-sync.mjs` |
+| هوک pre-commit | `.githooks/pre-commit` | قبل از هر کامیت محلی (نیازمند فعال‌سازی یک‌باره: `git config core.hooksPath .githooks`) |
+| CI گیت‌هاب | `.github/workflows/docs-check.yml` | هر push/PR + گام مشابه قبل از پابلیش داکر |
+
+چک سازگاری است، نه اجبار محتوا: کامیت‌های عادی (کد/فیکس بدون تغییر نسخه) آزادند؛ فقط اگر ورژن‌ها با هم یا با مستندات ناهماهنگ شوند، کامیت/CI رد می‌شود.
+رد موقت برای موارد خاص: `git commit --no-verify`.
+
+آن‌چه بررسی می‌شود: ورژن هر سه `package.json` (+lock)، بج «نسخه‌ی فعلی» و ردیف تاریخچه در README، بج نسخه‌ی image و جدول تگ‌ها و تاریخچه در DOCKER_HUB_OVERVIEW، هدر و `ARG APP_VERSION` داکرفایل و هدر compose و namespace هاب.
 
 ---
 
@@ -272,6 +287,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.2.2** | 2026-09-28 | 🔔 چک خودکار همگام‌سازی مستندات/نسخه‌ها: اسکریپت `scripts/check-docs-sync.mjs` + هوک pre-commit محلی + workflow CI (`docs-check`) و گام چک پیش از پابلیش داکر |
 | **1.2.1** | 2026-09-28 | ⚙️ workflow گیت‌هاب اکشنز برای پابلیش خودکار image با تگ ورژن (`v*`)، Release یا اجرای دستی — تگ‌های semver + latest، کش لایه‌های GHA و LABEL نسخه‌ی پویا از تگ گیت |
 | **1.2.0** | 2026-09-28 | 🧩 پیشنهاد ساخت مرجع کاتالوگ در ورود سریال (اکسل/Paste) — پارت‌نامبرهای ناشناس با عنوان/مشخصات فایل در پیش‌نمایش دیده و با ثبت ساخته می‌شوند · هم‌راستاسازی پیش‌نمایش قالب ردیف‌محور با منطق واقعی ثبت (دستگاه‌های سریال‌دار جدید) |
 | **1.1.0** | 2026-09-28 | 🧩 کاتالوگ قطعات (مرجع پارت‌نامبر + sync و merge) · 🔒 یکتایی سریال با ایندکس یکتا و دیالوگ «صاحبان سریال» · 🔎 جست‌وجوی پیشرفته با فیلتر نوع · 📋 ورود سریال با Paste بدون فایل · 🔩 گرید جدولی قطعات با paste چندردیفی و autocomplete · 📊 فهرست تعویض‌ها با فیلتر پروژه/قطعه + خروجی اکسل · سابقه‌ی تعویض هر قطعه · بازطراحی گرافیکی Ember Studio (تراکوتا/کهربا) · اصلاح namespace داکر به `meysam8498` |

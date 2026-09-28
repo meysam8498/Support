@@ -1,0 +1,36 @@
+# ============================================================
+# چک همگام‌سازی مستندات و ورژن‌ها در CI
+# سامانه‌ی مدیریت تجهیزات و قطعات یدکی — طراح: میثم ایجادی / Meysam Ijadi
+# ----------------------------------------------------------------
+# روی هر push/PR اجرا می‌شود و تضمین می‌کند که:
+#   • README.md و DOCKER_HUB_OVERVIEW.md با ورژن جاری هماهنگ‌اند
+#   • ورژن هر سه package.json (+ lock) یکی است
+#   • هدر/LABEL داکر همان نسخه را نشان می‌دهد
+# اسکریپت چک: scripts/check-docs-sync.mjs
+# ============================================================
+name: Docs & version sync check
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-sync:
+    name: README / Docker Hub docs / versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run docs & version sync check
+        run: node scripts/check-docs-sync.mjs

@@ -39,6 +39,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Docs & version sync check
+        run: node scripts/check-docs-sync.mjs
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
