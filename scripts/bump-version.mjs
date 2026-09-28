@@ -109,7 +109,9 @@ let checkOk = true;
 try { execSync('node scripts/check-docs-sync.mjs', { stdio: 'inherit' }); } catch { checkOk = false; }
 
 // شرح‌های جای‌نویز نباید داخل کامیت/تگ بروند — پیش از هر اقدام متوقف شو
-const hasPlaceholder = /اینجا بنویسید/.test(read('README.md')) || /اینجا بنویسید/.test(read('DOCKER_HUB_OVERVIEW.md'));
+// (فقط متن دقیق جای‌نویز چک می‌شود، نه عبارت عمومی که در راهنمای README هم هست)
+const PLACEHOLDER_TEXTS = ['«شرح تغییرات این نسخه را اینجا بنویسید»', '«شرح تگ جدید را اینجا بنویسید»'];
+const hasPlaceholder = PLACEHOLDER_TEXTS.some((p) => read('README.md').includes(p) || read('DOCKER_HUB_OVERVIEW.md').includes(p));
 if (!checkOk || hasPlaceholder) {
   if (hasPlaceholder) {
     console.log('\n✖ شرح‌های جای‌نویز («… را اینجا بنویسید») هنوز در README/DOCKER_HUB_OVERVIEW هستند:');
