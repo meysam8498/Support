@@ -172,8 +172,27 @@ router.get('/replacements', (req, res) => {
 /**
  * GET /api/warranty/replacements/export — خروجی اکسل تعویض‌ها
  * همان فیلترهای فهرست (part_title/part_number/project_id) را می‌پذیرد.
- * قالب: تاریخ | پروژه | دستگاه | قطعه‌ی قدیم | سریال قدیم | قطعه‌ی جدید | سریال جدید | دلیل خرابی | کارشناس | توضیحات
+ * ?columns=col1,col2 — انتخاب ستون‌ها (پیش‌فرض: همه‌ی ستون‌ها)
+ * ?format=xlsx (پیش‌فرض) | csv
+ * کلیدهای مجاز ستون (ترتیب اینجا = ترتیب پیش‌فرض):
+ *   date, project, device_serial, old_title, old_pn, old_serial,
+ *   new_title, new_pn, new_serial, failure_reason, expert, description
  */
+const REPLACEMENT_COLUMNS: { key: string; label: string; get: (r: Record<string, string | null>) => string }[] = [
+  { key: 'date',           label: 'تاریخ تعویض',      get: (r) => r.replaced_at_jalali || '' },
+  { key: 'project',        label: 'پروژه',            get: (r) => r.project_name || '' },
+  { key: 'device_serial',  label: 'سریال دستگاه',     get: (r) => r.device_serial || '' },
+  { key: 'old_title',      label: 'قطعه‌ی قدیم',      get: (r) => r.old_part_title || '' },
+  { key: 'old_pn',         label: 'پارت‌نامبر قدیم',  get: (r) => r.old_part_pn || '' },
+  { key: 'old_serial',     label: 'سریال قدیم',       get: (r) => r.old_part_serial || '' },
+  { key: 'new_title',      label: 'قطعه‌ی جدید',      get: (r) => r.new_part_title || '' },
+  { key: 'new_pn',         label: 'پارت‌نامبر جدید',  get: (r) => r.new_part_pn || '' },
+  { key: 'new_serial',     label: 'سریال جدید',       get: (r) => r.new_part_serial || '' },
+  { key: 'failure_reason', label: 'دلیل خرابی',       get: (r) => r.failure_reason_name || '' },
+  { key: 'expert',         label: 'کارشناس',          get: (r) => r.expert_name || '' },
+  { key: 'description',    label: 'توضیحات',          get: (r) => r.description || '' },
+];
+
 router.get('/replacements/export', (req, res) => {
   const db = getDb();
   const projectId = req.query.project_id ? Number(req.query.project_id) : null;
@@ -211,22 +230,40 @@ router.get('/replacements/export', (req, res) => {
       new_part_title: string | null; new_part_serial: string | null; new_part_pn: string | null;
       expert_name: string | null; failure_reason_name: string | null }[];
 
-  const HEADERS = ['تاریخ تعویض', 'پروژه', 'سریال دستگاه', 'قطعه‌ی قدیم', 'پارت‌نامبر قدیم', 'سریال قدیم', 'قطعه‌ی جدید', 'پارت‌نامبر جدید', 'سریال جدید', 'دلیل خرابی', 'کارشناس', 'توضیحات'];
-  const data = rows.map((r) => [
-    r.replaced_at_jalali, r.project_name || '', r.device_serial || '',
-    r.old_part_title || '', r.old_part_pn || '', r.old_part_serial || '',
-    r.new_part_title || '', r.new_part_pn || '', r.new_part_serial || '',
-    r.failure_reason_name || '', r.expert_name || '', r.description || '',
-  ]);
-  const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...data]);
-  ws['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 16 }, { wch: 24 }, { wch: 14 }, { wch: 16 }, { wch: 24 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 32 }];
+  // --- انتخاب ستون‌ها (whitelist) — ترتیب خروجی = ترتیب انتخاب کاربر ---
+  const requestedCols = typeof req.query.columns === 'string' ? req.query.columns.split(',').map((s) => s.trim()) : [];
+  let selectedCols = REPLACEMENT_COLUMNS.filter((c) => requestedCols.includes(c.key));
+  if (selectedCols.length === 0) selectedCols = REPLACEMENT_COLUMNS; // پیش‌فرض: همه
+
+  const data = rows.map((r) => selectedCols.map((c) => c.get(r as unknown as Record<string, string | null>)));
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  const fname = partTitle ? `replacements-${safeFileName(partTitle)}-${stamp}` : `replacements-${stamp}`;
+
+  // --- فرمت CSV (برای اکسل فارسی/ساده) در صورت درخواست ---
+  if (String(req.query.format ?? 'xlsx') === 'csv') {
+    const csvEscape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const lines = [
+      selectedCols.map((c) => csvEscape(c.label)).join(','),
+      ...data.map((row) => row.map((v) => csvEscape(String(v))).join(',')),
+    ];
+    // BOM برای نمایش درست فارسی در اکسل ویندوز
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFileName(fname + '.csv')}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    return void res.send('\uFEFF' + lines.join('\r\n'));
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet([selectedCols.map((c) => c.label), ...data]);
+  // عرض ستون‌ها بر اساس label — خوانا در حالت انتخابی هم
+  ws['!cols'] = selectedCols.map((c) => ({
+    wch: Math.max(10, Math.min(32, c.label.length + 8)),
+  }));
   ws['!freeze'] = { xSplit: '0', ySplit: '1' };
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'تعویض‌ها');
 
-  const stamp = new Date().toISOString().slice(0, 10);
-  const fname = partTitle ? `replacements-${safeFileName(partTitle)}-${stamp}.xlsx` : `replacements-${stamp}.xlsx`;
-  sendWorkbook(res, wb, fname);
+  sendWorkbook(res, wb, fname + '.xlsx');
 });
 
 void todayGregorian;

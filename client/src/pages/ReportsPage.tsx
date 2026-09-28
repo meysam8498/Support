@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
+import ExportColumnsDialog from '../components/ExportColumnsDialog';
 
 interface FailedPart { part_title: string; part_number_1?: string; replacement_count: number; affected_devices: number; }
 interface FailureByCustomer { project_id: number; project_name: string; claims_count: number; affected_devices: number; distinct_failures: number; }
@@ -83,6 +84,7 @@ export default function ReportsPage() {
   const [service, setService] = useState<ServiceNeed[]>([]);
   const [replacements, setReplacements] = useState<ReplacementRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // جست‌وجوی متنی + بازه‌ی تاریخ شمسی (از/تا)
   const [q, setQ] = useState('');
@@ -185,17 +187,7 @@ export default function ReportsPage() {
         <h1 className="text-xl font-bold dark:text-stone-50">{t.navReports}</h1>
         <button
           type="button"
-          onClick={() => {
-            fetch('/api/warranty/replacements/export', { headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` } })
-              .then((r) => { if (!r.ok) throw new Error('خطا در تولید فایل'); return r.blob(); })
-              .then((b) => {
-                const url = URL.createObjectURL(b);
-                const a = document.createElement('a');
-                a.href = url; a.download = `replacements-${new Date().toISOString().slice(0, 10)}.xlsx`;
-                a.click(); URL.revokeObjectURL(url);
-              })
-              .catch((err) => alert((err as Error).message));
-          }}
+          onClick={() => setExportOpen(true)}
           className="btn-secondary !min-h-[34px] text-xs"
         >
           ⬇ خروجی اکسل تعویض‌ها
@@ -391,6 +383,9 @@ export default function ReportsPage() {
           </div>
         )}
       </div>
+
+      {/* دیالوگ خروجی اکسل با انتخاب ستون‌ها */}
+      <ExportColumnsDialog open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   );
 }

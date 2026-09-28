@@ -14,6 +14,7 @@ import { toFa } from '../lib/date';
 import Modal from './Modal';
 import InlineEditCell from './InlineEditCell';
 import { useAuth } from '../context/AuthContext';
+import { downloadAuthenticated } from '../lib/download';
 
 interface ImportResult {
   dryRun: boolean;
@@ -87,6 +88,19 @@ export default function CatalogManager() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [templateBusy, setTemplateBusy] = useState(false);
+
+  /** دانلود قالب اکسل آپدیت کاتالوگ — با توکن (لینک ساده ۴۰۱ می‌دهد) */
+  const downloadTemplate = async () => {
+    setTemplateBusy(true);
+    try {
+      await downloadAuthenticated('/part-catalog/template', 'part-catalog-template.xlsx');
+    } catch (e) {
+      setImportError((e as Error).message);
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -412,6 +426,18 @@ export default function CatalogManager() {
             <button type="button" onClick={() => setImportMode('file')} className={!importMode || importMode === 'file' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer'}>📄 فایل اکسل</button>
             <button type="button" onClick={() => setImportMode('paste')} className={importMode === 'paste' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer'}>📋 چسباندن لیست</button>
           </div>
+          <p className="text-[11px] text-brand-600 dark:text-brand-300">
+            {'→ '}
+            <button
+              type="button"
+              onClick={downloadTemplate}
+              disabled={templateBusy}
+              className="underline font-bold cursor-pointer"
+            >
+              {templateBusy ? '...' : 'دانلود قالب اکسل آپدیت کاتالوگ'}
+            </button>
+            {' — فایل نمونه با شیت راهنما؛ پرشده‌اش را در همین دیالوگ بارگذاری کنید.'}
+          </p>
           {importMode === 'paste' ? (
             <textarea
               className="input font-mono text-xs"

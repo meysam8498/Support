@@ -15,6 +15,7 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import * as XLSX from 'xlsx';
+import jalaali from 'jalaali-js';
 import { getDb } from '../db/db.js';
 import { requireRole } from '../middleware/auth.js';
 
@@ -139,6 +140,57 @@ router.get('/', (req: Request, res: Response) => {
   rows.sort((a: CatalogListRow, b: CatalogListRow) => rank(a) - rank(b) || a.title.localeCompare(b.title));
 
   res.json(rows);
+});
+
+// ---------- GET /api/part-catalog/template — دانلود قالب اکسل آپدیت کاتالوگ (admin) ----------
+// شیت ۱ «کاتالوگ»: سرستون‌ها + ردیف‌های نمونه — پارسر import-text/import همین سرستون‌ها را می‌خواند
+// شیت ۲ «راهنما»: توضیح فارسی ستون‌ها و قواعد upsert
+router.get('/template', requireRole('admin'), (_req: Request, res: Response) => {
+  const j = jalaali.toJalaali(new Date());
+  const today = `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
+
+  const headers = ['پارت‌نامبر', 'عنوان قطعه', 'مشخصات فنی', 'پارت‌نامبر ۲'];
+  const sample = [
+    ['840758-001', '32GB DDR4 RDIMM', 'PC4-2666V ECC Registered', '840758-B21'],
+    ['P19776-B21', 'PSU 800W', '800W Platinum Redundant', ''],
+    ['781518-B21', '1TB SAS 10K', '2.5in SAS', ''],
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
+  ws['!cols'] = [{ wch: 16 }, { wch: 26 }, { wch: 30 }, { wch: 16 }];
+  ws['!freeze'] = { xSplit: '0', ySplit: '1' };
+  XLSX.utils.book_append_sheet(wb, ws, 'کاتالوگ');
+
+  const guide: (string | null)[][] = [
+    ['راهنمای قالب آپدیت کاتالوگ قطعات'],
+    [''],
+    ['ستون', 'الزامی', 'توضیح'],
+    ['پارت‌نامبر', 'بله', 'کلید یکتای مرجع — حروف بزرگ/کوچک و فاصله‌ها نادیده گرفته می‌شود. مرجع جدید ساخته یا مرجع موجود به‌روز می‌شود.'],
+    ['عنوان قطعه', 'پیشنهاد می‌شود', 'عنوان نمایشی مرجع. اگر مرجع موجود باشد و این ستون پر باشد، عنوان جایگزین می‌شود.'],
+    ['مشخصات فنی', 'خیر', 'توضیحات/مدل. اگر مرجع موجود و فیلدش خالی باشد پر می‌شود؛ اگر مقدار جدید بدهد، جایگزین می‌شود.'],
+    ['پارت‌نامبر ۲', 'خیر', 'پارت‌نامبر دوم/جایگزین (اختیاری).'],
+    [''],
+    ['قواعد آپدیت:'],
+    ['۱)', '', 'ردیف با پارت‌نامبر تازه → مرجع جدید ساخته می‌شود.'],
+    ['۲)', '', 'ردیف با پارت‌نامبر موجود → فقط فیلدهای «پرشده‌ی فایل» به‌روز می‌شوند؛ سلول خالی هیچ‌چیز را خراب نمی‌کند.'],
+    ['۳)', '', 'هیچ رکوردی حذف نمی‌شود — اجرای دوباره‌ی همین فایل امن است (idempotent).'],
+    ['۴)', '', 'پیش از ثبت، در دیالوگ «آپدیت از اکسل / Paste» دکمه‌ی «پیش‌نمایش» را بزنید.'],
+    [''],
+    ['نکته', '', 'ستون «ردیف» نگذارید — فقط همین چهار ستون به‌ترتیب. حداکثر حجم فایل ۱۰ مگابایت.'],
+    [''],
+    ['تاریخ تولید قالب', '', today],
+    ['سامانه', '', 'Support Equipment Management — طراحی: میثم ایجادی / M.Ijadi@Hotmail.com'],
+  ];
+  const wsGuide = XLSX.utils.aoa_to_sheet(guide);
+  wsGuide['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 100 }];
+  XLSX.utils.book_append_sheet(wb, wsGuide, 'راهنما');
+
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="part-catalog-template.xlsx"');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(buf);
 });
 
 // ---------- GET /api/part-catalog/lookup?pn= ----------

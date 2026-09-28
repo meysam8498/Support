@@ -12,6 +12,49 @@ import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
 import { useAuth } from '../context/AuthContext';
 
+/** ورژن جاری — از /api/version (در داکر از APP_VERSION/تگ گیت) */
+function AboutCard() {
+  const [version, setVersion] = useState<string>('…');
+  useEffect(() => {
+    api.get<{ version: string }>('/version').then((r) => setVersion(r.version)).catch(() => setVersion('—'));
+  }, []);
+  return (
+    <section className="card !py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-900/40 flex items-center justify-center text-lg shrink-0">ℹ️</span>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-stone-800 dark:text-stone-100">درباره‌ی سامانه</p>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+              مدیریت تجهیزات و قطعات یدکی · نسخه <b className="fa-nums" dir="ltr">{version}</b> · طراحی: میثم ایجادی
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href="https://hub.docker.com/r/meysam8498/support-equipment-management"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-ghost !min-h-[32px] text-xs"
+            title="مشاهده‌ی image و راهنمای اجرا در Docker Hub"
+          >
+            🐳 Docker Hub
+          </a>
+          <a
+            href="https://github.com/meysam8498/Support"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-ghost !min-h-[32px] text-xs"
+            title="سورس کد در گیت‌هاب"
+          >
+            🐙 GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** رنگ چرخه‌ای برای نوار کارت‌های آمار و آواتار پروژه‌ها — گرم و هماهنگ با پالت */
 const ACCENTS = [
   'bg-brand-500',       // تراکوتا
@@ -82,6 +125,9 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 space-y-8">
+      {/* ---------- درباره‌ی سامانه: ورژن + لینک هاب ---------- */}
+      <AboutCard />
+
       {/* ---------- هدر خوش‌آمد: سِری نمایشی + Overline ---------- */}
       <header className="pt-2">
         <p className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">

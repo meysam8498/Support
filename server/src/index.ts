@@ -38,9 +38,14 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
-// --- سلامت سرور ---
+// --- سلامت و ورژن سرور ---
+// APP_VERSION در Dockerfile/runtime ست می‌شود؛ fallback برای اجرای dev محلی
+const APP_VERSION = process.env.APP_VERSION || 'dev';
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
+});
+app.get('/api/version', (_req, res) => {
+  res.json({ version: APP_VERSION });
 });
 
 // --- مسیرهای عمومی ---
