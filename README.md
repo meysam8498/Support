@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.2.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.2.1`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -129,12 +129,29 @@ curl http://localhost:4000/api/health
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.1.0
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.2.1
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.1.0
+docker push meysam8498/support-equipment-management:1.2.1
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
+
+### ۶) انتشار خودکار با GitHub Actions
+
+با push کردن تگ ورژن، image به‌صورت خودکار بیلد و روی Docker Hub منتشر می‌شود:
+
+```bash
+git tag v1.2.1
+git push origin v1.2.1
+```
+
+- تریگرهای دیگر: انتشار **Release** در گیت‌هاب و اجرای دستی (تب Actions ← Run workflow).
+- تگ‌های ساخته‌شده از `v1.2.1`: **1.2.1**، **1.2**، **1** و **latest**.
+- پیش‌نیاز یک‌باره: دو Secret در تنظیمات ریپو (Settings ← Secrets and variables ← Actions):
+  `DOCKERHUB_USERNAME=meysam8498` و `DOCKERHUB_TOKEN` (Access Token با دسترسی Read/Write از
+  hub.docker.com ← Account Settings ← Security).
+- نسخه‌ی OCI LABEL داخل image هم از تگ گیت پر می‌شود (`ARG APP_VERSION`).
+- فایل workflow: [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
 
 ---
 
@@ -255,6 +272,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.2.1** | 2026-09-28 | ⚙️ workflow گیت‌هاب اکشنز برای پابلیش خودکار image با تگ ورژن (`v*`)، Release یا اجرای دستی — تگ‌های semver + latest، کش لایه‌های GHA و LABEL نسخه‌ی پویا از تگ گیت |
 | **1.2.0** | 2026-09-28 | 🧩 پیشنهاد ساخت مرجع کاتالوگ در ورود سریال (اکسل/Paste) — پارت‌نامبرهای ناشناس با عنوان/مشخصات فایل در پیش‌نمایش دیده و با ثبت ساخته می‌شوند · هم‌راستاسازی پیش‌نمایش قالب ردیف‌محور با منطق واقعی ثبت (دستگاه‌های سریال‌دار جدید) |
 | **1.1.0** | 2026-09-28 | 🧩 کاتالوگ قطعات (مرجع پارت‌نامبر + sync و merge) · 🔒 یکتایی سریال با ایندکس یکتا و دیالوگ «صاحبان سریال» · 🔎 جست‌وجوی پیشرفته با فیلتر نوع · 📋 ورود سریال با Paste بدون فایل · 🔩 گرید جدولی قطعات با paste چندردیفی و autocomplete · 📊 فهرست تعویض‌ها با فیلتر پروژه/قطعه + خروجی اکسل · سابقه‌ی تعویض هر قطعه · بازطراحی گرافیکی Ember Studio (تراکوتا/کهربا) · اصلاح namespace داکر به `meysam8498` |
 | **1.0.0** | 2026-07-31 | انتشار اولیه: مدیریت پروژه/تجهیزات/قطعات، گارانتی و تعویض، تأمین قطعات، تقویم شمسی، ورود سریال از اکسل، نقش‌ها، تم روشن/تاریک و سیستم طراحی Flip7 |

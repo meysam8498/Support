@@ -9,7 +9,7 @@
 #
 # امکانات: کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، ورود سریال از اکسل یا paste،
 #          گرید جدولی قطعات، گارانتی، تأمین قطعات، تقویم شمسی.
-# نسخه: 1.2.0
+# نسخه: 1.2.1 (پیش‌فرض؛ در CI از تگ گیت با ARG APP_VERSION پر می‌شود)
 # ============================================================
 
 # ───────────────────────── Stage 1: Build ─────────────────────────
@@ -50,10 +50,13 @@ VOLUME /app/server/data
 # فقط پورت API؛ فرانت‌اند هم روی همان پورت serve می‌شود
 EXPOSE 4000
 
+# نسخه‌ی image — در CI با ARG APP_VERSION از تگ گیت (v1.2.1) بازنویسی می‌شود
+ARG APP_VERSION=1.2.1
+
 # برچسب‌های OCI برای شناسایی image (شامل اطلاعات طراح)
 LABEL org.opencontainers.image.title="Support Equipment Management" \
       org.opencontainers.image.description="پلتفرم مدیریت پروژه و تجهیزات — فارسی RTL، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، گارانتی و ورود سریال از اکسل" \
-      org.opencontainers.image.version="1.2.0" \
+      org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.author="Meysam Ijadi <M.Ijadi@Hotmail.com>" \
       org.opencontainers.image.authors="میثم ایجادی / Meysam Ijadi — +98 902 296 4006" \
       org.opencontainers.image.source="https://github.com/meysam8498/Support" \
