@@ -74,6 +74,8 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
+          # بدون provenance/sbom — image تک‌معماری و تمیز (بدون unknown/unknown روی هاب)
+          provenance: false
           # نسخه‌ی OCI LABEL داخل Dockerfile از تگ گیت پر می‌شود
           build-args: |
             APP_VERSION=${{ steps.meta.outputs.version }}
