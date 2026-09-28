@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { api, type Device, type Part } from '../api/api';
 import { t } from '../i18n/fa';
 import JalaliDatePicker from '../components/JalaliDatePicker';
+import CatalogAutocomplete from '../components/CatalogAutocomplete';
 import { useAuth } from '../context/AuthContext';
 
 export default function PartFormPage() {
@@ -111,8 +112,21 @@ export default function PartFormPage() {
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="label">{t.partNumber1}</label>
-            <input className="input" dir="ltr" value={form.part_number_1} onChange={(e) => set('part_number_1', e.target.value)} />
+            <label className="label">{t.partNumber1} <span className="text-[10px] text-stone-400">(از کاتالوگ — عنوان و مشخصات خودکار پر می‌شود)</span></label>
+            <CatalogAutocomplete
+              value={form.part_number_1}
+              placeholder="پارت‌نامبر… (۲+ نویسه)"
+              onChange={(v) => set('part_number_1', v)}
+              onPick={(sel) =>
+                setForm((f) => ({
+                  ...f,
+                  title: sel.title || f.title,
+                  tech_specs: sel.tech_specs || f.tech_specs,
+                  part_number_1: sel.part_number_1 || f.part_number_1,
+                  part_number_2: sel.part_number_2 || f.part_number_2,
+                }))
+              }
+            />
           </div>
           <div>
             <label className="label">{t.partNumber2}</label>

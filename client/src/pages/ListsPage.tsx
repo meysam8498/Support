@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { api, type Lists, type SelectItem } from '../api/api';
 import { t } from '../i18n/fa';
 import Modal from '../components/Modal';
+import CatalogManager from '../components/CatalogManager';
 import { useAuth } from '../context/AuthContext';
 
 interface ItemDef {
@@ -33,6 +34,8 @@ export default function ListsPage() {
   const { isAdmin } = useAuth();
   const [lists, setLists] = useState<Lists | null>(null);
   const [active, setActive] = useState<ItemDef>(DEFS[0]);
+  // تب ویژه‌ی کاتالوگ قطعات (خارج از DEFS چپ ساختار لیست معمولی را ندارد)
+  const [showCatalog, setShowCatalog] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<{ name: string; phone: string; brand_id: string; contract_number: string; sales_expert_id: string }>({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '' });
@@ -130,14 +133,25 @@ export default function ListsPage() {
         {DEFS.map((d) => (
           <button
             key={d.key}
-            onClick={() => setActive(d)}
-            className={`px-3 py-1.5 rounded-lg text-sm transition ${active.key === d.key ? 'bg-brand-600 text-white' : 'bg-white dark:bg-stone-800 border dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-surface-card dark:hover:bg-stone-700'}`}
+            onClick={() => { setActive(d); setShowCatalog(false); }}
+            className={`px-3 py-1.5 rounded-lg text-sm transition ${!showCatalog && active.key === d.key ? 'bg-brand-600 text-white' : 'bg-white dark:bg-stone-800 border dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-surface-card dark:hover:bg-stone-700'}`}
           >
             {d.label}
           </button>
         ))}
+        <button
+          onClick={() => setShowCatalog(true)}
+          className={`px-3 py-1.5 rounded-lg text-sm transition ${showCatalog ? 'bg-brand-600 text-white' : 'bg-gold/15 text-[#8a6d00] dark:text-gold-light border border-gold/40 hover:bg-gold/25'}`}
+          title="تعریف مرجع قطعات — ویرایش و ادغام"
+        >
+          🧩 کاتالوگ قطعات
+        </button>
       </div>
 
+      {showCatalog ? (
+        <CatalogManager />
+      ) : (
+      <>
       <div className="card">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-base font-semibold dark:text-stone-50">{active.label}</h2>
@@ -201,7 +215,7 @@ export default function ListsPage() {
         )}
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={modalTitle}>
+      <Modal open={modalOpen && !showCatalog} onClose={() => setModalOpen(false)} title={modalTitle}>
         <div className="space-y-4">
           {active.key !== 'projects' && (
             <div>
@@ -249,6 +263,8 @@ export default function ListsPage() {
           </div>
         </div>
       </Modal>
+      </>
+      )}
     </div>
   );
 }

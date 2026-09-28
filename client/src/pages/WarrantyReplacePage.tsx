@@ -7,6 +7,7 @@ import { formatJalaliLong, toFa } from '../lib/date';
 import JalaliDatePicker from '../components/JalaliDatePicker';
 import SelectField from '../components/SelectField';
 import StatusBadge from '../components/StatusBadge';
+import CatalogAutocomplete from '../components/CatalogAutocomplete';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -339,7 +340,19 @@ export default function WarrantyReplacePage() {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="label">{t.partNumber1}</label>
-              <input className="input" dir="ltr" value={form.part_number_1} onChange={(e) => set('part_number_1', e.target.value)} />
+              <div className="flex gap-2">
+                <CatalogAutocomplete
+                  value={form.part_number_1}
+                  placeholder="پارت‌نامبر… (از کاتالوگ)"
+                  onPick={(v) => setForm((f) => ({
+                    ...f,
+                    part_number_1: v.part_number_1 || f.part_number_1,
+                    title: v.title || f.title,
+                    tech_specs: v.tech_specs || f.tech_specs,
+                  }))}
+                  onChange={(v) => set('part_number_1', v)}
+                />
+              </div>
             </div>
             <div>
               <label className="label">{t.partNumber2}</label>
