@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.13.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.13.1`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -133,9 +133,9 @@ curl http://localhost:4000/api/health
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.13.0
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.13.1
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.13.0
+docker push meysam8498/support-equipment-management:1.13.1
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
@@ -303,6 +303,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.13.1** | 2026-09-28 | 📤 دکمه‌ی مستقل «خروجی اکسل کل کاتالوگ» در نوار ابزار کاتالوگ (علاوه بر دکمه‌ی داخل دیالوگ آپدیت) — صادر/ویرایش/بازبارگذاری در یک نگاه |
 | **1.13.0** | 2026-09-28 | 📋 گزارش دوره‌ای اکسل تعویض‌ها (ماهانه/فصلی) — endpoint `GET /api/warranty/replacements/periodic-report` با پارامتر بازه‌ی شمسی (`period_start` یا `date_from/date_to`)، اکسل سه‌شیتی (خلاصه‌ی تفکیکی + ریز تعویض‌ها + راهنما) · دیالوگ «گزارش دوره‌ای» در گزارش‌ها و فهرست تعویض‌ها |
 | **1.12.0** | 2026-09-28 | 🗄️ پشتیبان‌گیری خودکار روزانه از دیتابیس SQLite — اسنپ‌شات `VACUUM INTO` سازگار با WAL + `integrity_check` بعد از هر بکاپ · زمان‌بند داخلی سرور (پیش‌فرض ۰۳:۳۰) با نگهداری ۳۰ نسخه · volume جدا `backup-data` در compose · endpointهای ادمین: فهرست/اجرای دستی/دانلود (با محافظت path traversal) · قابل تنظیم با `BACKUP_DIR`/`BACKUP_KEEP`/`BACKUP_AT` |
 | **1.11.0** | 2026-09-28 | 📊 دو نمودار در داشبورد — روند تعویض‌های ماهانه (۱۲ ماه شمسی اخیر با ستون‌های خالی صفر و شمارنده‌ی مجموع) + قطعات پرمصرف (بیشترین تعویض با نوار رتبه‌ای) · endpoint جدید `GET /api/reports/replacement-trend` |

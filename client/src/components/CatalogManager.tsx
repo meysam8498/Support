@@ -512,6 +512,14 @@ export default function CatalogManager() {
             >
               📥 آپدیت از اکسل / Paste
             </button>
+            <button
+              onClick={downloadExport}
+              disabled={exportBusy}
+              className="btn-secondary text-xs !min-h-[34px]"
+              title="صادرکردن همه‌ی مراجع با همان قالب import — ویرایش در اکسل و بازبارگذاری مستقیم (چرخه‌ی کامل صادر/ویرایش/بارگذاری)"
+            >
+              {exportBusy ? '...' : '📤 خروجی اکسل کل کاتالوگ'}
+            </button>
           </>
         )}
         <button
