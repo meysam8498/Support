@@ -71,11 +71,18 @@ patch('بج نسخه', 'README.md', (s) =>
   s.replace(`**نسخه‌ی فعلی: \`${current}\`**`, `**نسخه‌ی فعلی: \`${NEW}\`**`)
    .replace(/meysam8498\/support-equipment-management:(\d+\.\d+\.\d+)/g, (m, v) => (v === current ? m.replace(current, NEW) : m))
 );
+// درج ردیف جدید در «بالای» جدول (بعد از سطر جدول‌کننده‌ی زیر هدر) تا ترتیب نزولی نسخه‌ها حفظ شود
+const insertUnderHead = (s, heading, newRow) => {
+  const hi = s.indexOf(heading);
+  if (hi < 0) return null;
+  const m = s.slice(hi).match(/^(\|(?:-{2,}\|)+)(\r?\n)/m);
+  if (!m) return null;
+  const at = hi + m.index;
+  return s.slice(0, at) + m[0] + newRow + m[2] + s.slice(at + m[0].length);
+};
+
 patch('ردیف تاریخچه', 'README.md', (s) =>
-  s.replace(
-    new RegExp(`^\\| \\*\\*${current.replace('.', '\\.')}\\*\\* \\| ${TODAY} \\| (.+) \\|$`, 'm'),
-    (m, desc) => m + `\n| **${NEW}** | ${TODAY} | «شرح تغییرات این نسخه را اینجا بنویسید» |`
-  )
+  insertUnderHead(s, '## 📋 تاریخچه‌ی نسخه‌ها', `| **${NEW}** | ${TODAY} | «شرح تغییرات این نسخه را اینجا بنویسید» |`) ?? s
 );
 
 // --- ۳) DOCKER_HUB_OVERVIEW ---
@@ -84,16 +91,10 @@ patch('بج نسخه image', 'DOCKER_HUB_OVERVIEW.md', (s) =>
    .replace(`| \`latest\` | آخرین نسخه‌ی پایدار (v${current}) |`, `| \`latest\` | آخرین نسخه‌ی پایدار (v${NEW}) |`)
 );
 patch('جدول تگ‌ها', 'DOCKER_HUB_OVERVIEW.md', (s) =>
-  s.replace(
-    new RegExp(`^\\| \`${current.replace('.', '\\.')}\` \\| (.+) \\|$`, 'm'),
-    (m) => m + `\n| \`${NEW}\` | «شرح تگ جدید را اینجا بنویسید» |`
-  )
+  insertUnderHead(s, '## 🏷️ تگ‌های موجود', `| \`${NEW}\` | «شرح تگ جدید را اینجا بنویسید» |`) ?? s
 );
 patch('تاریخچه هاب', 'DOCKER_HUB_OVERVIEW.md', (s) =>
-  s.replace(
-    new RegExp(`^\\| \\*\\*${current.replace('.', '\\.')}\\*\\* \\| (.+) \\|$`, 'm'),
-    (m) => m + `\n| **${NEW}** | «شرح تغییرات این نسخه را اینجا بنویسید» |`
-  )
+  insertUnderHead(s, '## 🗂️ تاریخچه‌ی نسخه‌ها', `| **${NEW}** | «شرح تغییرات این نسخه را اینجا بنویسید» |`) ?? s
 );
 
 // --- ۴) Dockerfile + compose ---
