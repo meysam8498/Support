@@ -193,6 +193,55 @@ router.get('/template', requireRole('admin'), (_req: Request, res: Response) => 
   res.send(buf);
 });
 
+// ---------- GET /api/part-catalog/export — خروجی اکسل کاتالوگ فعلی (admin) ----------
+// عمداً با همان ساختار template (شیت «کاتالوگ» + شیت «راهنما») تولید می‌شود تا
+// فایل خروجی بدون دست‌کاری مستقیم به import-text/import بازبارگذاری شود — چرخه‌ی کامل دوطرفه.
+router.get('/export', requireRole('admin'), (_req: Request, res: Response) => {
+  const db = getDb();
+  const j = jalaali.toJalaali(new Date());
+  const today = `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
+
+  const rows = db
+    .prepare(
+      `SELECT part_number_1, title, tech_specs, part_number_2
+       FROM part_catalog
+       ORDER BY part_number_1 COLLATE NOCASE`,
+    )
+    .all() as Array<{ part_number_1: string; title: string; tech_specs: string | null; part_number_2: string | null }>;
+
+  const headers = ['پارت‌نامبر', 'عنوان قطعه', 'مشخصات فنی', 'پارت‌نامبر ۲'];
+  const data = rows.map((r) => [r.part_number_1, r.title, r.tech_specs ?? '', r.part_number_2 ?? '']);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  ws['!cols'] = [{ wch: 16 }, { wch: 26 }, { wch: 30 }, { wch: 16 }];
+  ws['!freeze'] = { xSplit: '0', ySplit: '1' };
+  XLSX.utils.book_append_sheet(wb, ws, 'کاتالوگ');
+
+  const guide: (string | null)[][] = [
+    ['خروجی کاتالوگ قطعات — قابل بازبارگذاری در «آپدیت از اکسل / Paste»'],
+    [''],
+    ['ستون', 'الزامی', 'توضیح'],
+    ['پارت‌نامبر', 'بله', 'کلید یکتای مرجع — حروف بزرگ/کوچک و فاصله‌ها نادیده گرفته می‌شود.'],
+    ['عنوان قطعه', 'پیشنهاد می‌شود', 'عنوان نمایشی مرجع — ویرایشش پس از بازبارگذاری، عنوان همه‌ی قطعات وصل را هم‌راستا می‌کند.'],
+    ['مشخصات فنی', 'خیر', 'توضیحات/مدل — خالی‌اش رها کنید تا تغییری نکند؛ مقدار جدید جایگزین می‌شود.'],
+    ['پارت‌نامبر ۲', 'خیر', 'پارت‌نامبر دوم/جایگزین (اختیاری).'],
+    [''],
+    ['آمار این خروجی', '', `تعداد مراجع: ${rows.length}`],
+    ['تاریخ خروجی', '', today],
+    ['سامانه', '', 'Support Equipment Management — طراحی: میثم ایجادی / M.Ijadi@Hotmail.com'],
+  ];
+  const wsGuide = XLSX.utils.aoa_to_sheet(guide);
+  wsGuide['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 100 }];
+  XLSX.utils.book_append_sheet(wb, wsGuide, 'راهنما');
+
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="part-catalog-export-${today.replace(/\//g, '-')}.xlsx"`); 
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(buf);
+});
+
 // ---------- GET /api/part-catalog/lookup?pn= ----------
 router.get('/lookup', (req: Request, res: Response) => {
   const db = getDb();

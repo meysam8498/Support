@@ -171,6 +171,7 @@ export default function CatalogManager() {
   const [importEdits, setImportEdits] = useState<Record<string, { title?: string; specs?: string; pn2?: string }>>({});
   const importInputRef = useRef<HTMLInputElement>(null);
   const [templateBusy, setTemplateBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
 
   /** دانلود قالب اکسل آپدیت کاتالوگ — با توکن (لینک ساده ۴۰۱ می‌دهد) */
   const downloadTemplate = async () => {
@@ -181,6 +182,19 @@ export default function CatalogManager() {
       setImportError((e as Error).message);
     } finally {
       setTemplateBusy(false);
+    }
+  };
+
+  /** خروجی اکسل کاتالوگ فعلی — هم‌قالب با template؛ مستقیم قابل بازبارگذاری در همین دیالوگ */
+  const downloadExport = async () => {
+    setExportBusy(true);
+    try {
+      const j = new Date().toLocaleDateString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' }).replace(/\//g, '-');
+      await downloadAuthenticated('/part-catalog/export', `part-catalog-export-${j}.xlsx`);
+    } catch (e) {
+      setImportError((e as Error).message);
+    } finally {
+      setExportBusy(false);
     }
   };
 
@@ -568,7 +582,16 @@ export default function CatalogManager() {
             >
               {templateBusy ? '...' : 'دانلود قالب اکسل آپدیت کاتالوگ'}
             </button>
-            {' — فایل نمونه با شیت راهنما؛ پرشده‌اش را در همین دیالوگ بارگذاری کنید.'}
+            {' — فایل نمونه با شیت راهنما؛ پرشده‌اش را در همین دیالوگ بارگذاری کنید. | '}
+            <button
+              type="button"
+              onClick={downloadExport}
+              disabled={exportBusy}
+              className="underline font-bold cursor-pointer"
+            >
+              {exportBusy ? '...' : '📥 خروجی اکسل کاتالوگ فعلی'}
+            </button>
+            {' — همین ساختار؛ ویرایشش کنید و مستقیم بازبارگذاری کنید (چرخه‌ی کامل دوطرفه).'}
           </p>
           {importMode === 'paste' ? (
             <textarea
