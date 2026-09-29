@@ -6,7 +6,11 @@ import { mkdirSync, existsSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// مسیر فایل پایگاه داده — قابل تنظیم با متغیر محیطی
+/** مسیر فایل پایگاه داده — قابل تنظیم با متغیر محیطی */
+export function dbFilePath(): string {
+  return resolveDbPath();
+}
+
 function resolveDbPath(): string {
   const fromEnv = process.env.DB_PATH;
   if (fromEnv) return resolve(process.cwd(), fromEnv);

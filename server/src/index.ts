@@ -15,7 +15,7 @@ import { existsSync } from 'node:fs';
 import { getDb, applySchema, migrateSchema } from './db/db.js';
 import { seedIfEmpty } from './db/init.js';
 import { authRequired, requireRole, errorHandler } from './middleware/auth.js';
-import { startBackupScheduler, backupOnce, backupStatus, listBackups, backupDir } from './lib/backup.js';
+import { startBackupScheduler, backupOnce, backupStatus, listBackups, backupDir, prepareRestore, confirmRestore, restorePendingMarkerPath } from './lib/backup.js';
 import authRoutes from './routes/auth.js';
 import listsRoutes from './routes/lists.js';
 import devicesRoutes from './routes/devices.js';
@@ -71,9 +71,26 @@ app.get('/api/backups', authRequired, requireRole('admin'), (_req, res) => {
   res.json({ ...backupStatus(), items: listBackups() });
 });
 // POST /api/backups/run — بکاپ دستی (فوری)
-app.post('/api/backups/run', authRequired, requireRole('admin'), (_req, res) => {
-  const r = backupOnce(getDb());
+app.post('/api/backups/run', authRequired, requireRole('admin'), async (_req, res) => {
+  const r = await backupOnce(getDb());
   res.status(r.ok ? 200 : 500).json(r);
+});
+// POST /api/backups/restore/prepare — مرحله‌ی ۱ بازیابی: اعتبارسنجی + بکاپ ایمنی + توکن
+app.post('/api/backups/restore/prepare', authRequired, requireRole('admin'), (req, res) => {
+  const file = String((req.body as { file?: string })?.file ?? '');
+  const r = prepareRestore(getDb(), file, String(req.user!.sub));
+  res.status(r.ok ? 200 : 400).json(r);
+});
+// POST /api/backups/restore/confirm — مرحله‌ی ۲ بازیابی: جایگزینی + ری‌استارت (توکن یک‌بارمصرف ۱۵دقیقه‌ای)
+app.post('/api/backups/restore/confirm', authRequired, requireRole('admin'), (req, res) => {
+  const token = String((req.body as { token?: string })?.token ?? '');
+  const r = confirmRestore(getDb(), token);
+  if (r.ok) {
+    // پاسخ ارسال می‌شود و بلافاصله‌ی بعد پروسه خاتمه می‌یابد تا کانتینر با دیتابیس بازیابی‌شده بالا بیاید
+    res.json(r);
+  } else {
+    res.status(400).json(r);
+  }
 });
 // GET /api/backups/:file — دانلود یک بکاپ (نام محدودشده به الگوی خودمان — بدون path traversal)
 app.get('/api/backups/:file', authRequired, requireRole('admin'), (req, res) => {
@@ -101,6 +118,17 @@ app.use(errorHandler);
 // مقداردهی اولیه پایگاه داده هنگام راه‌اندازی:
 // اعمال اسکما (idempotent) و سپس، در صورت خالی بودن، seed اولیه (مهم برای Docker).
 const db = getDb();
+
+// اگر مرحله‌ی ۲ بازیابی تازه انجام شده، نشانگرش را پاک کن و گزارش بده
+try {
+  const marker = restorePendingMarkerPath();
+  if (existsSync(marker)) {
+    const { readFileSync, unlinkSync } = await import('node:fs');
+    try { console.log(`♻️ بازیابی دیتابیس انجام شد: ${readFileSync(marker, 'utf8')}`); } catch { /* noop */ }
+    unlinkSync(marker);
+  }
+} catch { /* noop */ }
+
 migrateSchema(db);   // اول ستون‌های جاافتاده‌ی نسخه‌های قدیمی اضافه می‌شود
 applySchema(db);     // سپس جداول/ایندکس‌های جدید ساخته می‌شوند (idempotent)
 seedIfEmpty();

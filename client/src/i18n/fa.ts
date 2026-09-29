@@ -29,6 +29,7 @@ export const t = {
   navLists: 'مدیریت لیست‌ها',
   navSerialImport: 'ورود سریال از اکسل',
   navUsers: 'مدیریت کاربران',
+  navBackups: 'مدیریت پشتیبان‌ها',
   navSettings: 'تنظیمات',
 
   // تم

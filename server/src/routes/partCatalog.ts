@@ -191,23 +191,40 @@ router.get('/template', requireRole('admin'), (_req: Request, res: Response) => 
   res.setHeader('Content-Disposition', 'attachment; filename="part-catalog-template.xlsx"');
   res.setHeader('Cache-Control', 'no-store');
   res.send(buf);
-});
-
-// ---------- GET /api/part-catalog/export — خروجی اکسل کاتالوگ فعلی (admin) ----------
+});// ---------- GET /api/part-catalog/export — خروجی اکسل کاتالوگ فعلی (admin) ----------
 // عمداً با همان ساختار template (شیت «کاتالوگ» + شیت «راهنما») تولید می‌شود تا
 // فایل خروجی بدون دست‌کاری مستقیم به import-text/import بازبارگذاری شود — چرخه‌ی کامل دوطرفه.
-router.get('/export', requireRole('admin'), (_req: Request, res: Response) => {
+// ?q= جست‌وجو (عنوان/PN1/PN2) و ?project_id= فیلتر اختیاری — فقط مراجع منطبق صادر می‌شوند.
+router.get('/export', requireRole('admin'), (req: Request, res: Response) => {
   const db = getDb();
   const j = jalaali.toJalaali(new Date());
   const today = `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
 
+  // --- فیلترهای اختیاری: جست‌وجوی متنی + پروژه ---
+  const q = String(req.query.q ?? '').trim();
+  const projectId = req.query.project_id ? Number(req.query.project_id) : null;
+  const like = q ? `%${q.replace(/[\\%_]/g, (ch) => '\\' + ch)}%` : '';
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+  if (q) {
+    conditions.push("(pc.title LIKE ? ESCAPE '\\' OR pc.part_number_1 LIKE ? ESCAPE '\\' OR pc.part_number_2 LIKE ? ESCAPE '\\')");
+    params.push(like, like, like);
+  }
+  if (projectId) {
+    // فقط مراجعی که حداقل یک قطعه‌ی نصب‌شده در آن پروژه دارند
+    conditions.push('EXISTS (SELECT 1 FROM parts p WHERE p.catalog_id = pc.id AND p.device_id IN (SELECT id FROM devices WHERE project_id = ?))');
+    params.push(projectId);
+  }
+  const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
   const rows = db
     .prepare(
-      `SELECT part_number_1, title, tech_specs, part_number_2
-       FROM part_catalog
-       ORDER BY part_number_1 COLLATE NOCASE`,
+      `SELECT pc.part_number_1, pc.title, pc.tech_specs, pc.part_number_2
+       FROM part_catalog pc
+       ${whereSql}
+       ORDER BY pc.part_number_1 COLLATE NOCASE`,
     )
-    .all() as Array<{ part_number_1: string; title: string; tech_specs: string | null; part_number_2: string | null }>;
+    .all(...params) as Array<{ part_number_1: string; title: string; tech_specs: string | null; part_number_2: string | null }>; 
 
   const headers = ['پارت‌نامبر', 'عنوان قطعه', 'مشخصات فنی', 'پارت‌نامبر ۲'];
   const data = rows.map((r) => [r.part_number_1, r.title, r.tech_specs ?? '', r.part_number_2 ?? '']);
@@ -227,7 +244,9 @@ router.get('/export', requireRole('admin'), (_req: Request, res: Response) => {
     ['مشخصات فنی', 'خیر', 'توضیحات/مدل — خالی‌اش رها کنید تا تغییری نکند؛ مقدار جدید جایگزین می‌شود.'],
     ['پارت‌نامبر ۲', 'خیر', 'پارت‌نامبر دوم/جایگزین (اختیاری).'],
     [''],
-    ['آمار این خروجی', '', `تعداد مراجع: ${rows.length}`],
+    ['آمار این خروجی', '', `تعداد مراجع: ${rows.length}${q || projectId ? ' (فیلترشده)' : ''}`],
+    ...(q ? [['عبارت جست‌وجو', '', q] as (string | null)[]] : []),
+    ...(projectId ? [['فیلتر پروژه', '', `#${projectId}`] as (string | null)[]] : []),
     ['تاریخ خروجی', '', today],
     ['سامانه', '', 'Support Equipment Management — طراحی: میثم ایجادی / M.Ijadi@Hotmail.com'],
   ];
@@ -236,8 +255,9 @@ router.get('/export', requireRole('admin'), (_req: Request, res: Response) => {
   XLSX.utils.book_append_sheet(wb, wsGuide, 'راهنما');
 
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  const suffix = q || projectId ? '-filtered' : '';
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="part-catalog-export-${today.replace(/\//g, '-')}.xlsx"`); 
+  res.setHeader('Content-Disposition', `attachment; filename="part-catalog-export-${today.replace(/\//g, '-')}${suffix}.xlsx"`); 
   res.setHeader('Cache-Control', 'no-store');
   res.send(buf);
 });

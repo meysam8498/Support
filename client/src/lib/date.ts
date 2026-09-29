@@ -44,6 +44,41 @@ export function todayJalali(): string {
   return gregorianToJalali(new Date())!;
 }
 
+/** طول ماه شمسی (روز) */
+export function jalaliMonthLength(jy: number, jm: number): number {
+  return jalaali.jalaaliMonthLength(jy, jm);
+}
+
+/**
+ * میان‌برهای بازه‌ی تاریخ شمسی — خروجی: [از, تا] به قالب YYYY/MM/DD یا null
+ *   this-month  → از اول این ماه تا امروز
+ *   last-month  → کل ماه قبل
+ *   last-3      → از اول ماهِ ۲ ماه قبل تا امروز (۳ ماه اخیر شامل ماه جاری)
+ *   this-year   → از ۱ فروردین امسال تا امروز
+ */
+export function jalaliRangePreset(preset: 'this-month' | 'last-month' | 'last-3' | 'this-year', today: string = todayJalali()): [string, string] | null {
+  const norm = normalizeJalali(today);
+  if (!norm) return null;
+  const [jy, jm, jd] = norm.split('/').map(Number);
+  const pad = (y: number, m: number, d: number) => `${y}/${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`;
+  switch (preset) {
+    case 'this-month':
+      return [pad(jy, jm, 1), norm];
+    case 'last-month': {
+      let y = jy, m = jm - 1;
+      if (m < 1) { m = 12; y -= 1; }
+      return [pad(y, m, 1), pad(y, m, jalaliMonthLength(y, m))];
+    }
+    case 'last-3': {
+      let y = jy, m = jm - 2;
+      while (m < 1) { m += 12; y -= 1; }
+      return [pad(y, m, 1), norm];
+    }
+    case 'this-year':
+      return [pad(jy, 1, 1), norm];
+  }
+}
+
 export const JALALI_MONTHS = [
   'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
   'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',

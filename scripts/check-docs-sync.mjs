@@ -14,6 +14,7 @@
 // ============================================================
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { checkDescendingTable, cmpVersions } from './docs-version-table.mjs';
 
 const root = process.cwd();
 const read = (p) => readFileSync(path.join(root, p), 'utf8');
@@ -99,58 +100,16 @@ try {
   }
 
   // --- ۷) ترتیب نزولی ردیف‌های جدول‌های تاریخچه/تگ‌ها ---
+  // از ماژول مشترک docs-version-table.mjs استفاده می‌شود (همان منطق درج bump-version) —
   // هر جدول باید از نسخه‌ی جدید به قدیمی مرتب باشد؛ latest بالای جدول تگ‌ها و ember پایین آن.
-  // خروجی: نام فهرست در صورت ناقضی + شماره‌ی ردیف جدول (نه شماره خط فایل)
-  const parseVersion = (cell) => {
-    const m = /v?(\d+)\.(\d+)\.(\d+)/.exec(cell);
-    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-  };
-  /** مقایسه‌ی عددی عنصر به عنصر دو ورژن — خروجی: مثبت اگر a > b */
-  const cmpVersions = (a, b) => {
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      const da = a[i] ?? 0;
-      const db = b[i] ?? 0;
-      if (da !== db) return da > db ? 1 : -1;
+  const checkDescending = (label, text, heading, opts = {}) => {
+    const errs = checkDescendingTable(text, heading, opts);
+    if (errs.length > 0) {
+      for (const e of errs) errors.push(`${label}: ${e}`);
+    } else {
+      const t = text.indexOf(heading);
+      ok.push(`${label}: ترتیب نزولی رعایت شده (منطق مشترک).`);
     }
-    return 0;
-  };
-  const checkDescending = (label, text, heading, { latestTop = false, emberBottom = false } = {}) => {
-    const hi = text.indexOf(heading);
-    if (hi < 0) { errors.push(`${label}: سرفصل «${heading.trim()}» یافت نشد.`); return; }
-    const rest = text.slice(hi);
-    const sep = rest.match(/^\|(?:-{2,}\|)+\r?\n/m);
-    if (!sep) { errors.push(`${label}: سطر جدول‌کننده زیر «${heading.trim()}» یافت نشد.`); return; }
-    const lines = [];
-    let pos = hi + sep.index + sep[0].length;
-    for (;;) {
-      const nl = text.indexOf('\n', pos);
-      const line = text.slice(pos, nl < 0 ? text.length : nl).replace(/\r$/, '');
-      if (!line.startsWith('|') || !line.trim()) break;
-      lines.push(line);
-      if (nl < 0) break;
-      pos = nl + 1;
-    }
-    let prev = null;
-    for (let i = 0; i < lines.length; i++) {
-      const cell = (lines[i].split('|')[1] ?? '').trim().replace(/[`*]/g, '');
-      let v;
-      if (cell === 'latest') {
-        if (!latestTop) { errors.push(`${label}: ردیف «latest» فقط باید بالای جدول تگ‌ها باشد (ردیف جدول ${i + 1}).`); }
-        v = [Number.POSITIVE_INFINITY];
-      } else if (cell === 'ember') {
-        if (!emberBottom) { errors.push(`${label}: ردیف «ember» باید پایین جدول تگ‌ها باشد (ردیف جدول ${i + 1}).`); }
-        v = [Number.NEGATIVE_INFINITY];
-      } else {
-        v = parseVersion(cell);
-        if (!v) continue; // ردیف غیرنسخه‌ای (مثلاً سرگروه) — نادیده گرفته می‌شود
-        // ⚠ مقایسه‌ی آرایه‌ها با > در JS رشته‌ای می‌شود ('1.9.0' > '1.10.0' = true!) — عنصر به عنصر:
-        if (prev && cmpVersions(v, prev) > 0) {
-          errors.push(`${label}: ترتیب نزولی رعایت نشده — ردیف جدول ${i + 1} (نسخه ${cell}) بعد از نسخه‌ی بزرگ‌تر آمده است. ردیف نسخه‌ی جدید باید بالای جدول (بعد از سطر هدر) درج شود.`);
-        }
-      }
-      if (v) prev = v;
-    }
-    ok.push(`${label}: ترتیب نزولی رعایت شده (${lines.length} ردیف).`);
   };
   checkDescending('README تاریخچه', readme, '## 📋 تاریخچه‌ی نسخه‌ها');
   checkDescending('OVERVIEW جدول تگ‌ها', overview, '## 🏷️ تگ‌های موجود', { latestTop: true, emberBottom: true });

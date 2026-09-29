@@ -341,6 +341,20 @@ router.get('/replacements/periodic-report', requireRole('admin'), (req, res) => 
   if (!toISO) return res.status(400).json({ error: `تاریخ پایان نامعتبر است: ${toJ} (قالب 1404/12/29)` });
   if (fromISO >= toISO) return res.status(400).json({ error: 'بازه نامعتبر است — پایان باید بعد از شروع باشد.' });
 
+  // --- فیلتر اختیاری پروژه و قطعه (خلاصه فقط برای همان فیلتر) ---
+  const projectId = req.query.project_id ? Number(req.query.project_id) : null;
+  const partTitle = typeof req.query.part_title === 'string' ? req.query.part_title.trim() : '';
+  const partNumber = typeof req.query.part_number === 'string' ? req.query.part_number.trim() : '';
+  const extraConditions: string[] = [];
+  const extraParams: (string | number | null)[] = [];
+  if (projectId) { extraConditions.push('d.project_id = ?'); extraParams.push(projectId); }
+  if (partTitle) { extraConditions.push("COALESCE(NULLIF(op.title, ''), '(بدون عنوان)') = ?"); extraParams.push(partTitle); }
+  if (partNumber) {
+    extraConditions.push(partNumber === '(بدون پارت‌نامبر)' ? 'op.part_number_1 IS NULL' : 'op.part_number_1 = ?');
+    if (partNumber !== '(بدون پارت‌نامبر)') extraParams.push(partNumber);
+  }
+  const extraWhere = extraConditions.length > 0 ? ` AND ${extraConditions.join(' AND ')}` : '';
+
   const rows = db.prepare(`
     SELECT
       wr.replaced_at_jalali,
@@ -355,9 +369,9 @@ router.get('/replacements/periodic-report', requireRole('admin'), (req, res) => 
     LEFT JOIN parts np   ON np.id = wr.new_part_id
     LEFT JOIN technical_experts te ON te.id = wr.replaced_by_expert_id
     LEFT JOIN failure_reasons fr  ON fr.id = wr.failure_reason_id
-    WHERE wr.replaced_at_gregorian >= ? AND wr.replaced_at_gregorian < ?
+    WHERE wr.replaced_at_gregorian >= ? AND wr.replaced_at_gregorian < ?${extraWhere}
     ORDER BY wr.replaced_at_gregorian DESC
-  `).all(fromISO, toISO) as Array<Record<string, string | null>>;
+  `).all(fromISO, toISO, ...extraParams) as Array<Record<string, string | null>>;
 
   // --- خلاصه‌ی دوره ---
   const byProject = new Map<string, number>();
@@ -376,12 +390,18 @@ router.get('/replacements/periodic-report', requireRole('admin'), (req, res) => 
   const periodText = `${fromJ} تا ${toJ}`;
   const j = jalaali.toJalaali(new Date());
   const today = `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
+  // برچسب فیلتر فعال — اگر پروژه/قطعه فیلتر شده باشد در خروجی هم ذکر می‌شود
+  const filterParts: string[] = [];
+  if (partTitle) filterParts.push(`قطعه: ${partTitle}${partNumber && partNumber !== '(بدون پارت‌نامبر)' ? ` [${partNumber}]` : ''}`);
+  if (projectId) filterParts.push(`پروژه: #${projectId}`);
+  const filterText = filterParts.length > 0 ? filterParts.join(' · ') : 'همه';
 
   // --- شیت ۱: خلاصه‌ی دوره ---
   const summary: (string | number)[][] = [
     [`گزارش دوره‌ای تعویض‌های گارانتی — ${periodLabel}`],
     [''],
     ['بازه‌ی گزارش', periodText],
+    ['فیلتر', filterText],
     ['تاریخ تولید', today],
     ['مجموع تعویض‌های دوره', rows.length],
     [''],
@@ -422,6 +442,7 @@ router.get('/replacements/periodic-report', requireRole('admin'), (req, res) => 
     ['period', 'monthly یا quarterly (پیش‌فرض monthly)'],
     ['period_start', 'ماه شروع دوره به قالب 1404/07 — بازه خودکار ساخته می‌شود'],
     ['date_from / date_to', 'بازه‌ی صریح شمسی 1404/07/01 — بر period_start اولویت دارد'],
+    ['project_id / part_title / part_number', 'فیلتر اختیاری پروژه و قطعه — خلاصه فقط برای همان فیلتر محاسبه می‌شود'],
     [''],
     ['پیش‌فرض بدون پارامتر', 'آخرین دوره‌ی کامل قبل از امروز'],
     ['تاریخ شمسی تعویض‌ها', 'ستون «تاریخ تعویض» شیت تعویض‌ها، شمسی است'],
@@ -431,7 +452,7 @@ router.get('/replacements/periodic-report', requireRole('admin'), (req, res) => 
   wsGuide['!cols'] = [{ wch: 22 }, { wch: 60 }];
   XLSX.utils.book_append_sheet(wb, wsGuide, 'راهنما');
 
-  const fname = `periodic-${periodRaw}-${safeFileName(fromJ.replace(/\//g, '-'))}.xlsx`;
+  const fname = `periodic-${periodRaw}-${safeFileName(fromJ.replace(/\//g, '-'))}${partTitle || projectId ? '-filtered' : ''}.xlsx`;
   sendWorkbook(res, wb, fname);
 });
 

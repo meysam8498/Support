@@ -10,9 +10,11 @@
 //   با setInterval نیم‌ساعته — بدون وابستگی خارجی (cron نه node-cron).
 // ============================================================
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, existsSync, readdirSync, statSync, unlinkSync } from 'node:fs';
-import { join, dirname, resolve } from 'node:path';
+import { mkdirSync, existsSync, readdirSync, statSync, unlinkSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, dirname, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { dbFilePath } from '../db/db.js';
 
 /** نام فایل بکاپ: support-backup-YYYYMMDD-HHMMSS.db */
 export function backupFileName(now = new Date()): string {
@@ -39,6 +41,99 @@ export interface BackupResult {
   deletedOld?: string[];
   error?: string;
   durationMs?: number;
+  /** نتیجه‌ی push خودکار به مقصد خارجی (در صورت تنظیم BACKUP_PUSH_TARGET) */
+  push?: PushResult;
+}
+
+// ============================================================
+// Push خودکار بکاپ به مقصد خارجی — بعد از هر بکاپ موفق
+// BACKUP_PUSH_TARGET یکی از دو حالت:
+//   • مسیر پوشه (محلی یا UNC شبکه مثل \\server\share\backups) → کپی فایل
+//   • s3://bucket/prefix → آپلود S3 (SigV4 بدون وابستگی خارجی؛ با S3_ENDPOINT سازگار با MinIO)
+// AWS_REGION / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / S3_ENDPOINT
+// ============================================================
+export interface PushResult {
+  ok: boolean;
+  target: string;
+  kind?: 'dir' | 's3';
+  error?: string;
+  durationMs?: number;
+}
+
+/** مقصد push فعلی (برای نمایش وضعیت) — خالی یعنی غیرفعال */
+export function pushTarget(): string {
+  return (process.env.BACKUP_PUSH_TARGET || '').trim();
+}
+
+/** آپلود یک فایل در S3 با امضای SigV4 — بدون aws-sdk */
+async function s3PutObject(filePath: string, target: string): Promise<PushResult> {
+  const started = Date.now();
+  const m = /^s3:\/\/([^/]+)\/??(.*)$/.exec(target);
+  if (!m) return { ok: false, target, kind: 's3', error: 'قالب BACKUP_PUSH_TARGET نامعتبر است (s3://bucket/prefix).', durationMs: Date.now() - started };
+  const bucket = m[1];
+  const prefix = m[2].replace(/\/+$/, '');
+  const key = prefix ? `${prefix}/${basename(filePath)}` : basename(filePath);
+  const region = process.env.AWS_REGION || 'us-east-1';
+  const accessKey = process.env.AWS_ACCESS_KEY_ID || '';
+  const secretKey = process.env.AWS_SECRET_ACCESS_KEY || '';
+  if (!accessKey || !secretKey) {
+    return { ok: false, target, kind: 's3', error: 'AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY تنظیم نشده است.', durationMs: Date.now() - started };
+  }
+  try {
+    const endpoint = (process.env.S3_ENDPOINT || `https://s3.${region}.amazonaws.com`).replace(/\/+$/, '');
+    const host = new URL(endpoint).host;
+    const body = readFileSync(filePath);
+    const now = new Date();
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, ''); // YYYYMMDDTHHMMSSZ
+    const dateStamp = amzDate.slice(0, 8);
+    const payloadHash = createHash('sha256').update(body).digest('hex');
+    // path-style: /bucket/key — سازگار با MinIO و اکثر S3-سازگارها
+    const canonicalUri = `/${bucket}/${key.split('/').map(encodeURIComponent).join('/')}`;
+    const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+    const canonicalRequest = ['PUT', canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+    const scope = `${dateStamp}/${region}/s3/aws4_request`;
+    const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, createHash('sha256').update(canonicalRequest).digest('hex')].join('\n');
+    const hmac = (k: Buffer | string, d: string) => createHmac('sha256', k).update(d).digest();
+    const kSigning = hmac(hmac(hmac(hmac(`AWS4${secretKey}`, dateStamp), region), 's3'), 'aws4_request');
+    const signature = createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+    const auth = `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+    const res = await fetch(`${endpoint}${canonicalUri}`, {
+      method: 'PUT',
+      headers: { Authorization: auth, 'x-amz-content-sha256': payloadHash, 'x-amz-date': amzDate, 'Content-Length': String(body.length) },
+      body: new Uint8Array(body),
+    });
+    if (!res.ok) {
+      const txt = (await res.text().catch(() => '')).slice(0, 200);
+      return { ok: false, target, kind: 's3', error: `S3 ${res.status}: ${txt}`, durationMs: Date.now() - started };
+    }
+    return { ok: true, target, kind: 's3', durationMs: Date.now() - started };
+  } catch (e) {
+    return { ok: false, target, kind: 's3', error: (e as Error).message, durationMs: Date.now() - started };
+  }
+}
+
+/** کپی به پوشه‌ی خارجی (محلی/شبکه) */
+function pushToDir(filePath: string, target: string): PushResult {
+  const started = Date.now();
+  try {
+    if (!existsSync(target)) mkdirSync(target, { recursive: true });
+    copyFileSync(filePath, join(target, basename(filePath)));
+    return { ok: true, target, kind: 'dir', durationMs: Date.now() - started };
+  } catch (e) {
+    return { ok: false, target, kind: 'dir', error: (e as Error).message, durationMs: Date.now() - started };
+  }
+}
+
+/** push بکاپ به مقصد خارجی — اگر مقصد تنظیم نشده باشد بدون عملیات موفق است */
+export async function pushBackupFile(filePath: string): Promise<PushResult> {
+  const target = pushTarget();
+  if (!target) return { ok: true, target: '', kind: 'dir' };
+  const r = target.toLowerCase().startsWith('s3://')
+    ? await s3PutObject(filePath, target)
+    : pushToDir(filePath, target);
+  state.lastPush = { ...r, at: new Date().toISOString(), file: basename(filePath) };
+  return r;
 }
 
 /** اجرای یک بکاپ کامل + بررسی سلامت + اعمال سیاست نگهداری */
@@ -120,21 +215,35 @@ export const BACKUP_AT = (() => {
   return Number.isInteger(v) && v >= 0 && v <= 23 ? v : 3;
 })();
 
-const state = { lastRun: null as string | null, lastResult: null as BackupResult | null, running: false };
+const state = {
+  lastRun: null as string | null,
+  lastResult: null as BackupResult | null,
+  running: false,
+  lastPush: null as (PushResult & { at: string; file: string }) | null,
+};
 
 /** آخرین وضعیت بکاپ (برای endpoint وضعیت) */
-export function backupStatus(): { dir: string; keep: number; atHour: number; lastRun: string | null; lastResult: BackupResult | null; count: number } {
-  return { dir: backupDir(), keep: BACKUP_KEEP, atHour: BACKUP_AT, lastRun: state.lastRun, lastResult: state.lastResult, count: listBackups().length };
+export function backupStatus(): {
+  dir: string; keep: number; atHour: number; lastRun: string | null; lastResult: BackupResult | null; count: number;
+  push: { target: string; enabled: boolean; last: (PushResult & { at: string; file: string }) | null };
+} {
+  const target = pushTarget();
+  return { dir: backupDir(), keep: BACKUP_KEEP, atHour: BACKUP_AT, lastRun: state.lastRun, lastResult: state.lastResult, count: listBackups().length, push: { target, enabled: !!target, last: state.lastPush } };
 }
 
-/** اجرای بکاپ + ثبت وضعیت (با قفل ضدتداخل) */
-export function backupOnce(db: DatabaseSync): BackupResult {
+/** اجرای بکاپ + ثبت وضعیت + push خارجی (با قفل ضدتداخل) */
+export async function backupOnce(db: DatabaseSync): Promise<BackupResult> {
   if (state.running) return { ok: false, error: 'بکاپ قبلی هنوز در حال اجراست.' };
   state.running = true;
   try {
     const r = runBackup(db);
     state.lastRun = new Date().toISOString();
     state.lastResult = r;
+    // push خارجی فقط بعد از بکاپ موفق — شکستش بکاپ محلی را باطل نمی‌کند
+    if (r.ok && r.file) {
+      r.push = await pushBackupFile(r.file);
+      state.lastResult = r;
+    }
     return r;
   } finally {
     state.running = false;
@@ -153,19 +262,99 @@ function hasRunToday(): boolean {
 export function startBackupScheduler(db: DatabaseSync): void {
   // بکاپ راه‌اندازی: اگر هیچ بکاپی نیست، بلافاصله یکی بگیر
   if (listBackups().length === 0) {
-    const r = backupOnce(db);
-    console.log(`🗄️ بکاپ اولیه: ${r.ok ? r.file : ('خطا: ' + r.error)}`);
+    void backupOnce(db).then((r) => console.log(`🗄️ بکاپ اولیه: ${r.ok ? r.file : ('خطا: ' + r.error)}`));
   }
   setInterval(() => {
-    try {
-      const now = new Date();
-      if (hasRunToday()) return;
-      if (now.getHours() < BACKUP_AT) return;
-      const r = backupOnce(db);
-      if (r.ok) console.log(`🗄️ بکاپ روزانه: ${r.file} (${Math.round((r.sizeBytes ?? 0) / 1024)}KB, نگهداری ${BACKUP_KEEP} نسخه)`);
-      else console.error(`🗄️ بکاپ روزانه ناموفق: ${r.error}`);
-    } catch (e) {
-      console.error('خطای زمان‌بند بکاپ:', (e as Error).message);
-    }
+    (async () => {
+      try {
+        const now = new Date();
+        if (hasRunToday()) return;
+        if (now.getHours() < BACKUP_AT) return;
+        const r = await backupOnce(db);
+        if (r.ok) {
+          console.log(`🗄️ بکاپ روزانه: ${r.file} (${Math.round((r.sizeBytes ?? 0) / 1024)}KB, نگهداری ${BACKUP_KEEP} نسخه)`);
+          if (r.push && r.push.target && !r.push.ok) console.error(`🗄️ push خارجی ناموفق: ${r.push.error}`);
+        } else console.error(`🗄️ بکاپ روزانه ناموفق: ${r.error}`);
+      } catch (e) {
+        console.error('خطای زمان‌بند بکاپ:', (e as Error).message);
+      }
+    })();
   }, 30 * 60 * 1000).unref(); // unref: در تست/دستورات کوتاه پروسه معلق نماند
+}
+
+// ============================================================
+// بازیابی (restore) دو مرحله‌ای — از صفحه‌ی مدیریت بکاپ‌ها
+//   ۱) prepare: اعتبارسنجی فایل بکاپ + بکاپ ایمنی از وضعیت فعلی + صدور توکن (۱۵ دقیقه)
+//   ۲) confirm: جایگزینی فایل دیتابیس + ری‌استارت پروسه (کانتینر با unless-stopped بالا می‌آید)
+// ============================================================
+const RESTORE_TOKEN_TTL_MS = 15 * 60 * 1000;
+const pendingRestores = new Map<string, { file: string; requestedAt: number; by: string }>();
+
+export interface RestorePrepareResult {
+  ok: boolean;
+  token?: string;
+  file?: string;
+  safetyBackup?: string;
+  error?: string;
+}
+
+/** مرحله‌ی ۱ — اعتبارسنجی + بکاپ ایمنی + صدور توکن یک‌بارمصرف */
+export function prepareRestore(db: DatabaseSync, file: string, requestedBy: string): RestorePrepareResult {
+  if (!/^support-backup-\d{8}-\d{6}\.db$/.test(file)) return { ok: false, error: 'نام فایل بکاپ نامعتبر است.' };
+  const filePath = join(backupDir(), file);
+  if (!existsSync(filePath)) return { ok: false, error: 'فایل بکاپ یافت نشد.' };
+  // بررسی سلامت + وجود جداول حیاتی در فایل بکاپ
+  try {
+    const check = new DatabaseSync(filePath, { readOnly: true });
+    const ic = (check.prepare('PRAGMA integrity_check').get() as { integrity_check?: string } | undefined)?.integrity_check;
+    const tbl = (check.prepare(`SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name IN ('devices','parts','users')`).get() as { c: number }).c;
+    check.close();
+    if (ic !== 'ok') return { ok: false, error: `فایل بکاپ ناسالم است (${ic}).` };
+    if (tbl < 3) return { ok: false, error: 'ساختار فایل بکاپ معتبر نیست (جداول حیاتی پیدا نشد).' };
+  } catch (e) {
+    return { ok: false, error: `خواندن فایل بکاپ ناموفق بود: ${(e as Error).message}` };
+  }
+  // بکاپ ایمنی از وضعیت فعلی (بدون push — نتیجه‌ی restore نباید مقصد خارجی را آلوده کند)
+  const safety = runBackup(db);
+  if (!safety.ok) return { ok: false, error: `بکاپ ایمنی از وضعیت فعلی ناموفق بود: ${safety.error ?? '?'}` };
+  const token = randomBytes(16).toString('hex');
+  pendingRestores.set(token, { file, requestedAt: Date.now(), by: requestedBy });
+  return { ok: true, token, file, safetyBackup: basename(safety.file!) };
+}
+
+/** نشانگر restore در انتظار ری‌استارت — در startup بعدی خوانده و پاک می‌شود */
+export function restorePendingMarkerPath(): string {
+  return join(dirname(dbFilePath()), 'restore-pending.json');
+}
+
+export interface RestoreConfirmResult {
+  ok: boolean;
+  file?: string;
+  error?: string;
+  restarting?: boolean;
+}
+
+/** مرحله‌ی ۲ — تأیید با توکن: جایگزینی فایل دیتابیس + خروج برنامه (ری‌استارت کانتینر) */
+export function confirmRestore(db: DatabaseSync, token: string): RestoreConfirmResult {
+  const p = pendingRestores.get(token);
+  if (!p) return { ok: false, error: 'توکن تأیید نامعتبر است — بازیابی را دوباره آماده کنید.' };
+  pendingRestores.delete(token);
+  if (Date.now() - p.requestedAt > RESTORE_TOKEN_TTL_MS) {
+    return { ok: false, error: 'درخواست بازیابی منقضی شده (بیش از ۱۵ دقیقه) — دوباره آماده کنید.' };
+  }
+  const src = join(backupDir(), p.file);
+  if (!existsSync(src)) return { ok: false, error: 'فایل بکاپ بین مراحل حذف شده است.' };
+  try {
+    // چک‌پوینت WAL و بستن اتصال تا فایل اصلی قابل جایگزینی باشد
+    db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    db.close();
+    const dbPath = dbFilePath();
+    copyFileSync(src, dbPath);
+    writeFileSync(restorePendingMarkerPath(), JSON.stringify({ restoredFrom: p.file, at: new Date().toISOString(), by: p.by }));
+    // خروج برنامه — در docker (restart: unless-stopped) کانتینر خودکار بالا می‌آید و دیتابیس بازیابی‌شده را باز می‌کند
+    setTimeout(() => process.exit(50), 300);
+    return { ok: true, file: p.file, restarting: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
 }

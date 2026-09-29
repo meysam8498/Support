@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/serial-import', icon: '📥', label: t.navSerialImport, adminOnly: true },
   { to: '/lists', icon: '📋', label: t.navLists, adminOnly: true },
   { to: '/users', icon: '👥', label: t.navUsers, adminOnly: true },
+  { to: '/backups', icon: '🗄️', label: t.navBackups, adminOnly: true },
 ];
 
 export default function Layout() {

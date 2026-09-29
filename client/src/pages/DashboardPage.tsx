@@ -11,6 +11,7 @@ import { api, type DashboardStats, type Lists, type ReportSummary } from '../api
 import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
 import { useAuth } from '../context/AuthContext';
+import TrendChart from '../components/TrendChart';
 
 /** ورژن جاری — از /api/version (در داکر از APP_VERSION/تگ گیت) */
 function AboutCard() {
@@ -85,35 +86,6 @@ interface TrendMonth {
   month: number;
   label: string;
   count: number;
-}
-
-/** نمودار ستونی SVG روند ماهانه — بدون وابستگی خارجی، RTL */
-function TrendChart({ months }: { months: TrendMonth[] }) {
-  const max = Math.max(1, ...months.map((m) => m.count));
-  return (
-    <div className="flex items-end justify-between gap-1 h-40" dir="ltr">
-      {months.map((m, i) => {
-        const pct = Math.round((m.count / max) * 100);
-        const isLast = i === months.length - 1;
-        return (
-          <div key={`${m.year}-${m.month}`} className="flex-1 flex flex-col items-center gap-1 h-full justify-end min-w-0" title={`${m.label} ${toFa(m.year)}: ${toFa(m.count)} تعویض`}>
-            {m.count > 0 && (
-              <span className="text-[10px] text-stone-500 dark:text-stone-400 fa-nums">{toFa(m.count)}</span>
-            )}
-            <div
-              className={`w-full max-w-[28px] rounded-t-md transition-all duration-500 ${
-                isLast ? 'bg-brand-500' : m.count > 0 ? 'bg-brand-300 dark:bg-brand-700' : 'bg-stone-200 dark:bg-stone-700/60'
-              }`}
-              style={{ height: `${Math.max(pct, m.count > 0 ? 6 : 3)}%` }}
-            />
-            <span className={`text-[9px] leading-none truncate w-full text-center ${isLast ? 'font-bold text-brand-700 dark:text-brand-300' : 'text-stone-400 dark:text-stone-500'}`}>
-              {m.label}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 export default function DashboardPage() {
@@ -234,7 +206,11 @@ export default function DashboardPage() {
           {trend.every((m) => m.count === 0) ? (
             <p className="text-stone-400 dark:text-stone-500 text-sm">در ۱۲ ماه اخیر تعویضی ثبت نشده است.</p>
           ) : (
-            <TrendChart months={trend} />
+            <TrendChart
+              months={trend}
+              pngTitle={`روند تعویض‌های ماهانه (۱۲ ماه اخیر) — مجموع ${trendTotal} تعویض`}
+              pngFileName={`replacement-trend-${new Date().toISOString().slice(0, 10)}.png`}
+            />
           )}
         </section>
 

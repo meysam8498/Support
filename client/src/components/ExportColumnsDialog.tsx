@@ -11,7 +11,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Modal from './Modal';
 import JalaliDatePicker from './JalaliDatePicker';
 import { t } from '../i18n/fa';
-import { toFa } from '../lib/date';
+import { toFa, jalaliRangePreset } from '../lib/date';
 
 /** ترتیب و برچسب ستون‌ها — کلیدها همان whitelist سرور هستند */
 const COLUMNS: { key: string; label: string; group: string }[] = [
@@ -159,9 +159,40 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
           ))}
         </div>
 
-        {/* بازه‌ی تاریخ شمسی (اختیاری) */}
+        {/* بازه‌ی تاریخ شمسی (اختیاری) + میان‌برهای سریع */}
         <div>
           <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 mb-1">بازه‌ی تاریخ تعویض (شمسی — اختیاری)</p>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {([
+              ['this-month', 'این ماه'],
+              ['last-month', 'ماه قبل'],
+              ['last-3', '۳ ماه اخیر'],
+              ['this-year', 'امسال'],
+            ] as const).map(([preset, label]) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => {
+                  const r = jalaliRangePreset(preset);
+                  if (r) { setDateFrom(r[0]); setDateTo(r[1]); }
+                }}
+                className="chip chip-default cursor-pointer !text-[11px]"
+                title={`تنظیم خودکار بازه: ${label}`}
+              >
+                {label}
+              </button>
+            ))}
+            {(dateFrom || dateTo) && (
+              <button
+                type="button"
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                className="chip chip-default cursor-pointer !text-[11px] !text-coral-dark dark:!text-coral-light"
+                title="پاک کردن بازه"
+              >
+                ✕ پاک کردن
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <JalaliDatePicker
               label="از تاریخ"

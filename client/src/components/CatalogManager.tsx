@@ -16,6 +16,8 @@ import InlineEditCell from './InlineEditCell';
 import { useAuth } from '../context/AuthContext';
 import { downloadAuthenticated } from '../lib/download';
 
+interface ProjectOption { id: number; name: string }
+
 interface ImportResultItem {
   pn: string;
   title: string;
@@ -235,6 +237,11 @@ export default function CatalogManager() {
   const importInputRef = useRef<HTMLInputElement>(null);
   const [templateBusy, setTemplateBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
+  // دیالوگ خروجی فیلترشده — فیلتر پروژه/جست‌وجو به سرور می‌رود تا فقط مراجع منطبق صادر شوند
+  const [showExport, setShowExport] = useState(false);
+  const [exportQ, setExportQ] = useState('');
+  const [exportProjectId, setExportProjectId] = useState('');
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
 
   /** دانلود قالب اکسل آپدیت کاتالوگ — با توکن (لینک ساده ۴۰۱ می‌دهد) */
   const downloadTemplate = async () => {
@@ -248,16 +255,30 @@ export default function CatalogManager() {
     }
   };
 
-  /** خروجی اکسل کاتالوگ فعلی — هم‌قالب با template؛ مستقیم قابل بازبارگذاری در همین دیالوگ */
-  const downloadExport = async () => {
+  /** خروجی اکسل کاتالوگ — بدون فیلتر: همه؛ با فیلتر: فقط مراجع منطبق */
+  const downloadExport = async (opts?: { q?: string; project_id?: string }) => {
     setExportBusy(true);
     try {
       const j = new Date().toLocaleDateString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' }).replace(/\//g, '-');
-      await downloadAuthenticated('/part-catalog/export', `part-catalog-export-${j}.xlsx`);
+      const qs = new URLSearchParams();
+      if (opts?.q?.trim()) qs.set('q', opts.q.trim());
+      if (opts?.project_id) qs.set('project_id', opts.project_id);
+      const suffix = qs.toString() ? '-filtered' : '';
+      await downloadAuthenticated(`/part-catalog/export${qs.toString() ? `?${qs.toString()}` : ''}`, `part-catalog-export${suffix}-${j}.xlsx`);
     } catch (e) {
       setImportError((e as Error).message);
     } finally {
       setExportBusy(false);
+    }
+  };
+
+  /** باز کردن دیالوگ خروجی فیلترشده — فهرست پروژه‌ها یک بار می‌آید */
+  const openExportDialog = () => {
+    setExportQ(q);
+    setExportProjectId('');
+    setShowExport(true);
+    if (projects.length === 0) {
+      api.get<{ projects: ProjectOption[] }>('/lists').then((l) => setProjects(l.projects ?? [])).catch(() => setProjects([]));
     }
   };
 
@@ -513,12 +534,12 @@ export default function CatalogManager() {
               📥 آپدیت از اکسل / Paste
             </button>
             <button
-              onClick={downloadExport}
+              onClick={openExportDialog}
               disabled={exportBusy}
               className="btn-secondary text-xs !min-h-[34px]"
-              title="صادرکردن همه‌ی مراجع با همان قالب import — ویرایش در اکسل و بازبارگذاری مستقیم (چرخه‌ی کامل صادر/ویرایش/بارگذاری)"
+              title="صادرکردن مراجع (همه یا فیلترشده با جست‌وجو/پروژه) با همان قالب import — ویرایش در اکسل و بازبارگذاری مستقیم"
             >
-              {exportBusy ? '...' : '📤 خروجی اکسل کل کاتالوگ'}
+              {exportBusy ? '...' : '📤 خروجی اکسل کاتالوگ'}
             </button>
           </>
         )}
@@ -680,7 +701,7 @@ export default function CatalogManager() {
             {' — فایل نمونه با شیت راهنما؛ پرشده‌اش را در همین دیالوگ بارگذاری کنید. | '}
             <button
               type="button"
-              onClick={downloadExport}
+              onClick={() => downloadExport()}
               disabled={exportBusy}
               className="underline font-bold cursor-pointer"
               title="مراجع فعلی کاتالوگ با همان قالب ردیف‌های قابل ویرایش صادر می‌شوند — ویرایش در اکسل و بازبارگذاری در همین دیالوگ"
@@ -784,6 +805,49 @@ export default function CatalogManager() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* دیالوگ خروجی کاتالوگ با فیلتر اختیاری */}
+      <Modal open={showExport} onClose={() => setShowExport(false)} title="خروجی اکسل کاتالوگ">
+        <div className="space-y-4">
+          <p className="text-xs text-stone-500 dark:text-stone-400 leading-5">
+            خروجی با همان قالب import — بدون فیلتر همه‌ی مراجع صادر می‌شوند؛ با فیلتر فقط مراجع منطبق
+            (جست‌وجو در عنوان/پارت‌نامبر، یا مراجع دارای قطعه‌ی نصب‌شده در پروژه‌ی انتخابی).
+          </p>
+          <div className="space-y-2 rounded-xl border border-stone-200 dark:border-stone-700 p-3">
+            <p className="text-[11px] font-bold text-stone-600 dark:text-stone-300">فیلتر اختیاری:</p>
+            <input
+              className="input !min-h-0 !py-1.5 !text-xs"
+              placeholder="جست‌وجو در عنوان و پارت‌نامبر‌ها…"
+              value={exportQ}
+              onChange={(e) => setExportQ(e.target.value)}
+              dir="auto"
+            />
+            <select
+              className="input !min-h-0 !py-1.5 !text-xs"
+              value={exportProjectId}
+              onChange={(e) => setExportProjectId(e.target.value)}
+            >
+              <option value="">همه‌ی پروژه‌ها</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowExport(false)} className="btn-secondary">{t.cancel}</button>
+            <button
+              onClick={async () => {
+                await downloadExport({ q: exportQ, project_id: exportProjectId });
+                setShowExport(false);
+              }}
+              disabled={exportBusy}
+              className="btn-primary"
+            >
+              {exportBusy ? '...' : '⬇ دانلود اکسل'}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* دیالوگ ویرایش مرجع */}

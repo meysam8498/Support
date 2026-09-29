@@ -9,9 +9,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/api';
 import { t } from '../i18n/fa';
-import { toFa, formatJalaliLong } from '../lib/date';
+import { toFa, formatJalaliLong, jalaliRangePreset } from '../lib/date';
 import ExportColumnsDialog from '../components/ExportColumnsDialog';
 import PeriodicReportDialog from '../components/PeriodicReportDialog';
+import TrendChart, { type TrendMonth } from '../components/TrendChart';
 
 interface FailedPart { part_title: string; part_number_1?: string; replacement_count: number; affected_devices: number; }
 interface FailureByCustomer { project_id: number; project_name: string; claims_count: number; affected_devices: number; distinct_failures: number; }
@@ -24,6 +25,7 @@ interface ReplacementRow {
   new_part_title: string | null; new_part_serial: string | null;
   expert_name: string | null; failure_reason_name: string | null;
 }
+interface TrendResponse { months: TrendMonth[]; total: number; since: string; until: string }
 
 /** قطعه‌بندی متن برای هایلایت عبارت جست‌وجو (case-insensitive) */
 function splitHighlight(text: string, term: string): { part: string; hit: boolean }[] {
@@ -93,6 +95,30 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showDateHelp, setShowDateHelp] = useState(false);
+
+  // روند ماهانه — بازه/پروژه/تعداد ماه
+  const [trendData, setTrendData] = useState<TrendResponse | null>(null);
+  const [trendMonths, setTrendMonths] = useState(12);
+  const [trendFrom, setTrendFrom] = useState('');
+  const [trendTo, setTrendTo] = useState('');
+  const [trendProjectId, setTrendProjectId] = useState('');
+  const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
+
+  useEffect(() => {
+    api.get<{ projects: { id: number; name: string }[] }>('/lists').then((l) => setProjects(l.projects ?? [])).catch(() => setProjects([]));
+  }, []);
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (trendFrom.trim() || trendTo.trim()) {
+      if (trendFrom.trim()) qs.set('date_from', trendFrom.trim());
+      if (trendTo.trim()) qs.set('date_to', trendTo.trim());
+    } else {
+      qs.set('months', String(trendMonths));
+    }
+    if (trendProjectId) qs.set('project_id', trendProjectId);
+    api.get<TrendResponse>(`/reports/replacement-trend?${qs.toString()}`).then(setTrendData).catch(() => setTrendData(null));
+  }, [trendMonths, trendFrom, trendTo, trendProjectId]);
 
   useEffect(() => {
     (async () => {
@@ -265,6 +291,99 @@ export default function ReportsPage() {
             {toFa(filteredReps.length)} تعویض در این فیلتر
             {dateFilterActive && <> · بازه: {dateFrom || '…'} تا {dateTo || '…'}</>}
           </p>
+        )}
+      </div>
+
+      {/* ---------- نمودار روند ماهانه با بازه/پروژه ---------- */}
+      <div className="card">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 className="text-base font-semibold dark:text-stone-50">📈 روند ماهانه‌ی تعویض‌ها</h2>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {([
+              ['this-month', 'این ماه'],
+              ['last-month', 'ماه قبل'],
+              ['last-3', '۳ ماه اخیر'],
+              ['this-year', 'امسال'],
+            ] as const).map(([preset, label]) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => { const r = jalaliRangePreset(preset); if (r) { setTrendFrom(r[0]); setTrendTo(r[1]); } }}
+                className="chip chip-default cursor-pointer !text-[11px]"
+              >
+                {label}
+              </button>
+            ))}
+            {[3, 6, 12, 24].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => { setTrendMonths(n); setTrendFrom(''); setTrendTo(''); }}
+                className={
+                  !trendFrom && !trendTo && trendMonths === n
+                    ? 'chip chip-active cursor-pointer !text-[11px] fa-nums'
+                    : 'chip chip-default cursor-pointer !text-[11px] fa-nums'
+                }
+              >
+                {toFa(n)} ماه
+              </button>
+            ))}
+            <select
+              className="input !min-h-0 !py-1 !text-[11px] max-w-[160px]"
+              value={trendProjectId}
+              onChange={(e) => setTrendProjectId(e.target.value)}
+              title="فیلتر پروژه"
+            >
+              <option value="">همه‌ی پروژه‌ها</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <span className="text-[11px] text-stone-400 dark:text-stone-500">بازه‌ی صریح:</span>
+          <input
+            className="input !min-h-[30px] !w-[110px] fa-nums text-center !text-xs"
+            placeholder="از 1404/01/01"
+            value={trendFrom}
+            onChange={(e) => setTrendFrom(e.target.value)}
+            dir="ltr"
+          />
+          <input
+            className="input !min-h-[30px] !w-[110px] fa-nums text-center !text-xs"
+            placeholder="تا 1404/12/29"
+            value={trendTo}
+            onChange={(e) => setTrendTo(e.target.value)}
+            dir="ltr"
+          />
+          {(trendFrom || trendTo || trendProjectId) && (
+            <button
+              type="button"
+              onClick={() => { setTrendFrom(''); setTrendTo(''); setTrendProjectId(''); }}
+              className="btn-ghost !min-h-[30px] text-[11px]"
+            >
+              ✕ پاک کردن
+            </button>
+          )}
+          {trendData && (
+            <span className="chip chip-default fa-nums text-[11px]">
+              مجموع {toFa(trendData.total)} تعویض · {toFa(trendData.months.length)} ماه
+            </span>
+          )}
+        </div>
+        {trendData && trendData.months.length > 0 ? (
+          trendData.months.every((m) => m.count === 0) ? (
+            <p className="text-stone-400 dark:text-stone-500 text-sm">در این بازه تعویضی ثبت نشده است.</p>
+          ) : (
+            <TrendChart
+              months={trendData.months}
+              pngTitle={`روند ماهانه‌ی تعویض‌ها (${trendData.since} تا ${trendData.until}${trendProjectId && projects.find((p) => String(p.id) === trendProjectId) ? ` — پروژه ${projects.find((p) => String(p.id) === trendProjectId)!.name}` : ''}) — مجموع ${toFa(trendData.total)} تعویض`}
+              pngFileName={`replacement-trend-${trendData.since.replace('/', '-')}.png`}
+            />
+          )
+        ) : (
+          <p className="text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
         )}
       </div>
 
