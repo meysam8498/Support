@@ -11,6 +11,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// لایسنس تجاری: استفاده، کپی و توزیع تابع فایل LICENSE در ریشه‌ی مخزن است.
+// Licensor: Meysam Ijadi — M.Ijadi@Hotmail.com — +98 902 296 4006
+
 export type Role = 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer';
 export const ROLES: Role[] = ['admin', 'warehouse', 'sales', 'tech', 'viewer'];
 

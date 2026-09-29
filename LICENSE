@@ -1,0 +1,93 @@
+لایسنس تجاری سامانه‌ی مدیریت تجهیزات و قطعات یدکی
+Support Equipment Management — Commercial License
+نسخه‌ی لایسنس: 1.0 — تاریخ: 2026-09-29
+
+Copyright (c) 2026 میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com — +98 902 296 4006
+
+══════════════════════════════════════════════════════════════════
+بخش فارسی (متن حاکم)
+══════════════════════════════════════════════════════════════════
+
+۱) تعاریف
+   • «نرم‌افزار»: کل کد منبع، فایل‌های اجرایی، image داکر (meysam8498/support-equipment-management)
+     و مستندات منتشرشده در مخزن https://github.com/meysam8498/Support
+   • «طراح»: میثم ایجادی / Meysam Ijadi — مالک و دارنده‌ی تمام حقوق مالکیت فکری نرم‌افزار.
+   • «کاربر»: شخص حقیقی یا حقوقی که نرم‌افزار را مطابق این لایسنس به کار می‌گیرد.
+
+۲) مالکیت
+   نرم‌افزار به‌همراه تمام نسخه‌ها، به‌روزرسانی‌ها و مستندات آن، متعلق انحصاری به طراح است و
+   «نرم‌افزار اختصاصی (Proprietary)» محسوب می‌شود؛ فروش منبع آن موضوع این لایسنس نیست.
+
+۳) مجوز استفاده
+   در صورت رعایت این لایسنس، به کاربر اجازه‌ی داده می‌شود:
+   • نرم‌افزار را برای **نیازهای داخلی کسب‌وکار خود** نصب، اجرا و استفاده کند (هر تعداد کاربر و
+     پایگاه داده داخل سازمان خریدار؛ ارائه‌ی سرویس به اشخاص ثالث به‌عنوان محصول مستقل مجاز نیست).
+   • نرم‌افزار را روی سرور خودی یا زیرساخت ابری متعلق/اجاره‌شده‌ی خود مستقر کند.
+   • از داده‌های خود پشتیبان‌گیری کند و پیکربندی متغیرهای محیطی را تغییر دهد.
+   • طرح آزمایشی (trial) رایگان است و سقف ۲۵ تجهیز دارد (فعال‌سازی سقف با TRIAL_LIMIT_ENFORCE=1)؛
+     برداشتن سقف و استفاده‌ی تجاری نیازمند تهیه‌ی یکی از طرح‌های پرداختی است (جدول «طرح‌ها و
+     قیمت‌گذاری» در README یا فاکتور صادره‌ی طراح).
+
+۴) ممنوعیت‌ها
+   بدون کسب مجوز کتبی از طراح، هیچ‌کس حق ندارد:
+   • نرم‌افزار یا هر بخش از کد منبع/image آن را **فروش، اجاره، ساب‌لایسنس یا توزیع عمومی** کند؛
+   • کد منبع را منتشر، به اشتراک عمومی بگذارد یا در محصول/سرویس دیگری ادغام و منتشر کند؛
+   • اعلان‌های کپی‌رایت و برچسب‌های مالکیت را حذف یا تغییر دهد؛
+   • از نرم‌افزار برای ارائه‌ی سرویس رقیب (از جمله SaaS چندمستأجری) استفاده کند؛
+   • اقدام به مهندسی معکوس خارج از حد مجاز قانون کند.
+
+۵) طرح‌ها و اعتبار لایسنس
+   طرح‌های پرداختی (یک‌ماهه/سه‌ماهه/شش‌ماهه/یک‌ساله/دائمی) طبق فاکتور یا جدول README تعیین می‌شوند؛
+   در طرح‌های زمان‌دار، اعتبار از تاریخ شروع مندرج در سامانه (مدیریت از مسیر PUT /api/license) تا
+   تاریخ پایان محاسبه می‌شود. فعال‌سازی محدودیت‌های انقضا با متغیر LICENSE_ENFORCE=1 انجام می‌شود.
+   نسخه‌های فعلی تا اطلاع بعدی بدون اعمال محدودیت (رایگان با تمام امکانات) عرضه می‌شوند؛ این
+   امر سلب تعهدی از حقوق مالکیت طراح نیست.
+
+۶) ارتقا و تماس
+   برای خرید طرح، ارتقا، تمدید، نصب و راه‌اندازی، آموزش و پشتیبانی:
+   میثم ایجادی / Meysam Ijadi — ایمیل: M.Ijadi@Hotmail.com — تلفن: +98 902 296 4006
+
+۷) نرم‌افزارهای شخص ثالث
+   وابستگی‌های متن‌باز مورد استفاده (از جمله Express، React، better-sqlite3 و …) تابع لایسنس‌های
+   خودشان هستند؛ متن این لایسنس بر آن‌ها حاکم نیست و حقوق مربوط به آن‌ها محفوظ است.
+
+۸) سلب ضمانت
+   نرم‌افزار «همان‌گونه که هست» عرضه می‌شود؛ طراح هیچ ضمانتی — اعم از صریح یا ضمنی — در
+   خصوص بازرگانی بودن، تناسب با هدف خاص یا بی‌خطایی ارائه نمی‌کند.
+
+۹) محدودیت مسئولیت
+   طراح مسئولیتی در قبال خسارات مستقیم، غیرمستقیم، از دست رفتن داده یا سود نخواهد داشت؛
+   مسئولیت تهیه‌ی نسخه‌ی پشتیبان داده‌ها بر عهده‌ی کاربر است (سامانه امکان بکاپ خودکار دارد).
+
+۱۰) فسخ
+   با هر تخطی از این لایسنس، مجوز استفاده به‌طور خودکار فسخ می‌شود و کاربر مکلف به توقف
+   استفاده و حذف نسخه‌های نصب‌شده است.
+
+۱۱) قانون حاکم
+   این لایسنس تابع قوانین جمهوری اسلامی ایران است و اختلافات در مراجع صالح تهران حل می‌شود.
+
+══════════════════════════════════════════════════════════════════
+English Summary (non-binding; the Persian text above governs)
+══════════════════════════════════════════════════════════════════
+
+Proprietary / Commercial License — Copyright (c) 2026 Meysam Ijadi (M.Ijadi@Hotmail.com).
+
+You may install and run this software for the internal business needs of your own
+organization, on servers you own or rent, and back up your own data. The free
+"trial" plan is limited to 25 devices (cap enforcement via TRIAL_LIMIT_ENFORCE=1);
+removing the cap and commercial use require a paid plan (month / quarter /
+half-year / year / lifetime — see the "Plans & Pricing" table in the README).
+
+You may NOT: sell, rent, sub-license or publicly redistribute the software or its
+source code / Docker image; publish or re-share the source; remove copyright
+notices; offer it as a competing service (including multi-tenant SaaS); or
+reverse-engineer beyond what the law allows. Use without a paid plan beyond the
+trial scope is not permitted. Paid plans are time-limited as stated on the invoice
+(managed in-app via PUT /api/license; expiry enforcement via LICENSE_ENFORCE=1).
+
+Third-party open-source dependencies remain under their own licenses.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. The author is not
+liable for any damages; you are responsible for your own backups. Violation
+terminates the license automatically. Governing law: Islamic Republic of Iran.
+
+Upgrade / purchase / support: Meysam Ijadi — M.Ijadi@Hotmail.com — +98 902 296 4006

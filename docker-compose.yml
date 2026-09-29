@@ -8,7 +8,7 @@
 #
 # امکانات: کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، ورود سریال‌ها از اکسل یا paste،
 #          گرید جدولی قطعات، گارانتی، تأمین قطعات، تقویم شمسی.
-# نسخه: 1.16.1
+# نسخه: 1.16.2
 # ============================================================
 
 services:
@@ -36,6 +36,16 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - USER_USERNAME=${USER_USERNAME:-user}
       - USER_PASSWORD=${USER_PASSWORD:-user123}
+      - WAREHOUSE_USERNAME=${WAREHOUSE_USERNAME:-warehouse}
+      - WAREHOUSE_PASSWORD=${WAREHOUSE_PASSWORD:-warehouse123}
+      - SALES_USERNAME=${SALES_USERNAME:-sales}
+      - SALES_PASSWORD=${SALES_PASSWORD:-sales123}
+      - TECH_USERNAME=${TECH_USERNAME:-tech}
+      - TECH_PASSWORD=${TECH_PASSWORD:-tech123}
+      # لایسنس/سقف آزمایشی — در نسخه‌ی فعلی پیش‌فرض‌ها خاموش‌اند (فقط گزارش/هشدار)
+      - LICENSE_ENFORCE=${LICENSE_ENFORCE:-0}
+      - TRIAL_DEVICE_LIMIT=${TRIAL_DEVICE_LIMIT:-25}
+      - TRIAL_LIMIT_ENFORCE=${TRIAL_LIMIT_ENFORCE:-0}
     volumes:
       - app-data:/app/server/data
       - backup-data:/app/server/backups

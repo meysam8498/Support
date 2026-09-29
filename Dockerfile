@@ -9,7 +9,7 @@
 #
 # امکانات: کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، ورود سریال از اکسل یا paste،
 #          گرید جدولی قطعات، گارانتی، تأمین قطعات، تقویم شمسی.
-# نسخه: 1.16.1 (پیش‌فرض؛ در CI از تگ گیت با ARG APP_VERSION پر می‌شود)
+# نسخه: 1.16.2 (پیش‌فرض؛ در CI از تگ گیت با ARG APP_VERSION پر می‌شود)
 # ============================================================
 
 # ───────────────────────── Stage 1: Build ─────────────────────────
@@ -51,7 +51,7 @@ VOLUME /app/server/data
 EXPOSE 4000
 
 # نسخه‌ی image — در CI با ARG APP_VERSION از تگ گیت (v1.2.1) بازنویسی می‌شود
-ARG APP_VERSION=1.16.1
+ARG APP_VERSION=1.16.2
 
 # برچسب‌های OCI برای شناسایی image (شامل اطلاعات طراح)
 LABEL org.opencontainers.image.title="Support Equipment Management" \
@@ -60,7 +60,7 @@ LABEL org.opencontainers.image.title="Support Equipment Management" \
       org.opencontainers.image.author="Meysam Ijadi <M.Ijadi@Hotmail.com>" \
       org.opencontainers.image.authors="میثم ایجادی / Meysam Ijadi — +98 902 296 4006" \
       org.opencontainers.image.source="https://github.com/meysam8498/Support" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="Proprietary-Commercial"
 
 # بررسی سلامت: پاسخ 200 از /api/health
 HEALTHCHECK --interval=30s --timeout=5s --start-period=8s --retries=3 \
@@ -72,6 +72,10 @@ ENV NODE_ENV=production \
     DB_PATH=/app/server/data/app.db \
     BACKUP_DIR=/app/server/backups \
     BACKUP_KEEP=30 \
-    BACKUP_AT=3
+    BACKUP_AT=3 \
+    # لایسنس/سقف آزمایشی (پیش‌فرض‌ها: خاموش — فقط گزارش)
+    LICENSE_ENFORCE=0 \
+    TRIAL_DEVICE_LIMIT=25 \
+    TRIAL_LIMIT_ENFORCE=0
 
 CMD ["node", "server/dist/index.js"]
