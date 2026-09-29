@@ -12,6 +12,7 @@ const root = join(__dirname, '..');
 /** فایل‌های (src → dist) که باید کپی شوند. */
 const assets = [
   ['src/db/schema.sql', 'dist/db/schema.sql'],
+  ['src/lib/license_public_key.pem', 'dist/lib/license_public_key.pem'],
 ];
 
 let copied = 0;

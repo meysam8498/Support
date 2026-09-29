@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.17.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.17.1`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -145,9 +145,9 @@ curl http://localhost:4000/api/health
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.17.0
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.17.1
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.17.0
+docker push meysam8498/support-equipment-management:1.17.1
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
@@ -333,6 +333,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.17.1** | 2026-09-29 | 🐛 فیکس پابلیش: کلید عمومی امضای کد لایسنس به فهرست assets بیلد اضافه شد — در image 1.17.0 فایل `license_public_key.pem` به dist کپی نمی‌شد و سرور بعد از ورود کد لایسنس با خطا راه‌اندازی نمی‌شد |
 | **1.17.0** | 2026-09-29 | 🔑 صفحه‌ی «ورود کد لایسنس» (منوی ادمین) + فعال‌سازی آفلاین با JWT امضاشده‌ی RS256 — تأیید امضا با کلید عمومی داخل سرور (بدون اینترنت)، هر کد فقط یک‌بار (ضد replay با jti)، سوابق فعال‌سازی، اعمال خودکار طرح/دارنده/پایان و برداشتن سقف تجهیزات · ابزار صدور کد `scripts/make-license-code.mjs` با قالب گروه‌بندی‌شده برای تایپ آسان · جدول `license_activations` + ستون‌های code_jti/code_fingerprint/activated_at · `LICENSE_PUBLIC_KEY` برای چرخش کلید |
 | **1.16.3** | 2026-09-29 | 🐛 فیکس مهم: جدول license_info به schema.sql اضافه شد — روی هر استقرار تازه‌ی داکر، لایسنس/سقف تجهیزات و افزودن تجهیز از همان راه‌اندازی اول کار می‌کنند (قبلاً تا ری‌استارت دوم خطای 500 «no such table: license_info» می‌داد) |
 | **1.16.2** | 2026-09-29 | فایل LICENSE تجاری دوزبانه (فارسی حاکم + خلاصه انگلیسی) به‌جای MIT؛ جدول «طرح‌ها و قیمت‌گذاری» (آزمایشی رایگان/۲۵ تجهیز + پنج طرح پرداختی) در README و DOCKER_HUB_OVERVIEW؛ فیلد license در هر سه package.json + برچسب OCI؛ LICENSE_ENFORCE و TRIAL_DEVICE_LIMIT و TRIAL_LIMIT_ENFORCE در compose و Dockerfile؛ فایل .env.example با همه‌ی متغیرها شامل کاربران warehouse/sales/tech |
