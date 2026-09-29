@@ -59,16 +59,19 @@ export interface VerifiedLicenseCode {
 
 /**
  * تأیید امضای کد لایسنس — خطاها با پیام فارسی مشخص (کد نامعتبر/منقضی/نادرست).
- * کد گروه‌بندی‌شده (خط‌تیره‌های قالب‌بندی در هر بخش) هم پذیرفته می‌شود:
- * اول کد اصلی امتحان می‌شود؛ اگر امضا تأیید نشد، نسخه‌ی بدون خط‌تیره.
+ * کد گروه‌بندی‌شده‌ی خروجی make-license-code --grouped (جداکننده‌ی «+» در هر بخش)
+ * هم پذیرفته می‌شود: اول کد اصلی امتحان می‌شود؛ اگر امضا تأیید نشد، نسخه‌ی
+ * بدون جداکننده. «+» بیرون از الفبای base64url است و حذفش بی‌خطر است.
  */
 export function verifyLicenseCode(codeRaw: string): VerifiedLicenseCode {
   const code = codeRaw.trim().replace(/\s+/g, '');
   const candidates = new Set<string>([code]);
+  if (code.includes('+')) {
+    candidates.add(code.split('.').map((seg) => seg.replace(/\+/g, '')).join('.'));
+  }
   if (code.includes('-')) {
-    // نسخه‌ی بدون خط‌تیره — خنثی‌سازی قالب گروه‌بندی‌شده‌ی خروجی make-license-code
-    const ungrouped = code.split('.').map((seg) => seg.replace(/-/g, '')).join('.');
-    candidates.add(ungrouped);
+    // حالت قدیمی گروه‌بندی با خط‌تیره — وقتی توکن خودش «-» نداشته باشد کار می‌کند
+    candidates.add(code.split('.').map((seg) => seg.replace(/-/g, '')).join('.'));
   }
   let lastErr: unknown = null;
   for (const candidate of candidates) {

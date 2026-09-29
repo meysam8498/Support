@@ -11,7 +11,7 @@
 //   node scripts/make-license-code.mjs --plan year --to "شرکت نمونه" \
 //        --email info@company.ir --note "فاکتور ۱۴۰۳-۱۲۳"
 //
-//   # طرح دائمی + قالب کد گروه‌بندی‌شده برای تایپ آسان
+//   # طرح دائمی + قالب کد گروه‌بندی‌شده برای تایپ آسان (جداکننده: +)
 //   node scripts/make-license-code.mjs --plan lifetime --to "شرکت نمونه" --grouped
 //
 //   # نکات:
@@ -100,8 +100,10 @@ const sig = signer.sign(priv, 'base64url');
 let token = `${header}.${payload}.${sig}`;
 
 if (grouped) {
+  // جداکننده باید بیرون از الفبای base64url (A-Za-z0-9_-) باشد تا حذف آن در سرور
+  // بی‌خطر باشد — «-» جزو الفباست و باعث خرابی امضا می‌شود؛ به همین دلیل «+»
   const parts = token.split('.');
-  token = parts.map((p) => p.match(/.{1,24}/g).join('-')).join('.');
+  token = parts.map((p) => p.match(/.{1,24}/g).join('+')).join('.');
 }
 
 if (out) {
