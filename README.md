@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.16.3`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.17.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -115,34 +115,44 @@ docker compose up -d --build
 | مدیر (Admin) | `admin` | `admin123` |
 | کاربر (User) | `user` | `user123` |
 
-### ۳) بازسازی کامل دیتابیس
+### ۴) فعال‌سازی با کد لایسنس (پس از خرید)
+
+بعد از خرید یکی از طرح‌های بالا، کد فعال‌سازی (JWT امضاشده با RSA) دریافت می‌کنید. مدیر سامانه از منوی **🔑 ورود کد لایسنس** کد را وارد می‌کند:
+
+1. «بررسی کد» → امضا با کلید عمومی داخل سرور تأیید و طرح/دارنده نمایش داده می‌شود (بدون اینترنت)
+2. «🔓 فعال‌سازی» → طرح، دارنده و تاریخ پایان اعمال و سقف تجهیزات برداشته می‌شود
+3. هر کد فقط یک‌بار قابل استفاده است؛ سوابق فعال‌سازی در همان صفحه دیده می‌شود
+
+کدها **آفلاین** اعتبارسنجی می‌شوند؛ هیچ اطلاعاتی به بیرون ارسال نمی‌شود.
+
+### ۵) بازسازی کامل دیتابیس
 
 ```bash
 docker compose down -v        # حذف کانتینر و volume
 docker compose up -d --build  # بازسازی با seed اولیه
 ```
 
-### ۴) بررسی سلامت
+### ۵) بررسی سلامت
 
 ```bash
 curl http://localhost:4000/api/health
 ```
 
-### ۵) به‌روزرسانی image در Docker Hub
+### ۶) به‌روزرسانی image در Docker Hub
 
 نام image در `docker-compose.yml` روی `meysam8498/support-equipment-management:latest` تنظیم است؛
 پس از هر تغییر:
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.16.3
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.17.0
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.16.3
+docker push meysam8498/support-equipment-management:1.17.0
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
 
-### ۶) انتشار خودکار با GitHub Actions
+### ۷) انتشار خودکار با GitHub Actions
 
 با push کردن تگ ورژن، image به‌صورت خودکار بیلد و روی Docker Hub منتشر می‌شود:
 
@@ -159,7 +169,7 @@ git push origin v1.2.2
 - نسخه‌ی OCI LABEL داخل image هم از تگ گیت پر می‌شود (`ARG APP_VERSION`).
 - فایل workflow: [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
 
-### ۷) یادآور همگام‌سازی مستندات و نسخه‌ها
+### ۸) یادآور همگام‌سازی مستندات و نسخه‌ها
 
 ورژن و مستندات نباید از هم جا بمانند؛ سه لایه‌ی چک خودکار وجود دارد:
 
@@ -323,6 +333,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.17.0** | 2026-09-29 | 🔑 صفحه‌ی «ورود کد لایسنس» (منوی ادمین) + فعال‌سازی آفلاین با JWT امضاشده‌ی RS256 — تأیید امضا با کلید عمومی داخل سرور (بدون اینترنت)، هر کد فقط یک‌بار (ضد replay با jti)، سوابق فعال‌سازی، اعمال خودکار طرح/دارنده/پایان و برداشتن سقف تجهیزات · ابزار صدور کد `scripts/make-license-code.mjs` با قالب گروه‌بندی‌شده برای تایپ آسان · جدول `license_activations` + ستون‌های code_jti/code_fingerprint/activated_at · `LICENSE_PUBLIC_KEY` برای چرخش کلید |
 | **1.16.3** | 2026-09-29 | 🐛 فیکس مهم: جدول license_info به schema.sql اضافه شد — روی هر استقرار تازه‌ی داکر، لایسنس/سقف تجهیزات و افزودن تجهیز از همان راه‌اندازی اول کار می‌کنند (قبلاً تا ری‌استارت دوم خطای 500 «no such table: license_info» می‌داد) |
 | **1.16.2** | 2026-09-29 | فایل LICENSE تجاری دوزبانه (فارسی حاکم + خلاصه انگلیسی) به‌جای MIT؛ جدول «طرح‌ها و قیمت‌گذاری» (آزمایشی رایگان/۲۵ تجهیز + پنج طرح پرداختی) در README و DOCKER_HUB_OVERVIEW؛ فیلد license در هر سه package.json + برچسب OCI؛ LICENSE_ENFORCE و TRIAL_DEVICE_LIMIT و TRIAL_LIMIT_ENFORCE در compose و Dockerfile؛ فایل .env.example با همه‌ی متغیرها شامل کاربران warehouse/sales/tech |
 | **1.16.1** | 2026-09-29 | سقف ۲۵ تجهیز در نسخه‌ی آزمایشی (TRIAL_DEVICE_LIMIT، قابل تنظیم) با پیام ارتقا — بج شمارنده در داشبورد، خطای ۴۰۲ در فرم تجهیز و ورود سریال، برداشته‌شدن سقف بعد از ارتقا؛ اعمال واقعی با TRIAL_LIMIT_ENFORCE=1 (فعلاً فقط گزارش) |

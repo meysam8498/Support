@@ -8,7 +8,7 @@
 #
 # امکانات: کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، ورود سریال‌ها از اکسل یا paste،
 #          گرید جدولی قطعات، گارانتی، تأمین قطعات، تقویم شمسی.
-# نسخه: 1.16.3
+# نسخه: 1.17.0
 # ============================================================
 
 services:
@@ -46,6 +46,9 @@ services:
       - LICENSE_ENFORCE=${LICENSE_ENFORCE:-0}
       - TRIAL_DEVICE_LIMIT=${TRIAL_DEVICE_LIMIT:-25}
       - TRIAL_LIMIT_ENFORCE=${TRIAL_LIMIT_ENFORCE:-0}
+      # کلید عمومی امضای کد لایسنس — پیش‌فرض: کلید داخل image کافی است؛
+      # فقط اگر کلید خودتان را چرخاندید، PEM کامل را در .env بگذارید (\n = newline)
+      - LICENSE_PUBLIC_KEY=${LICENSE_PUBLIC_KEY:-}
     volumes:
       - app-data:/app/server/data
       - backup-data:/app/server/backups
