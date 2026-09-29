@@ -104,6 +104,8 @@ export interface SelectItem {
   id: number;
   name: string;
   phone?: string;
+  /** نقش حرفه‌ای کارشناس (فنی/فروش/انبار/بازرگانی) — فقط در لیست کارشناسان */
+  role?: 'sales' | 'tech' | 'warehouse' | 'business';
   active?: number;
 }
 

@@ -30,20 +30,22 @@ CREATE TABLE IF NOT EXISTS users (
 -- لیست‌های پیش‌تعریف‌شده (ورودی از لیست، نه نوشتن آزاد)
 -- --------------------------------------------------------
 
--- کارشناسان فروش
+-- کارشناسان فروش (نقش حرفه‌ای: sales/warehouse/tech/business)
 CREATE TABLE IF NOT EXISTS sales_experts (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   name        TEXT NOT NULL UNIQUE,
   phone       TEXT,
+  role        TEXT NOT NULL DEFAULT 'sales' CHECK (role IN ('sales', 'warehouse', 'tech', 'business')),
   active      INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- کارشناسان فنی
+-- کارشناسان فنی (نقش حرفه‌ای: tech/warehouse/sales/business)
 CREATE TABLE IF NOT EXISTS technical_experts (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   name        TEXT NOT NULL UNIQUE,
   phone       TEXT,
+  role        TEXT NOT NULL DEFAULT 'tech' CHECK (role IN ('sales', 'warehouse', 'tech', 'business')),
   active      INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );

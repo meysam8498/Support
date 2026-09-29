@@ -16,8 +16,10 @@ import TrendChart from '../components/TrendChart';
 /** ورژن جاری — از /api/version (در داکر از APP_VERSION/تگ گیت) */
 function AboutCard() {
   const [version, setVersion] = useState<string>('…');
+  const [license, setLicense] = useState<{ plan_label: string; days_left: number | null; expired: boolean; licensed_to: string | null } | null>(null);
   useEffect(() => {
     api.get<{ version: string }>('/version').then((r) => setVersion(r.version)).catch(() => setVersion('—'));
+    api.get<{ plan_label: string; days_left: number | null; expired: boolean; licensed_to: string | null }>('/license').then(setLicense).catch(() => setLicense(null));
   }, []);
   return (
     <section className="card !py-4">
@@ -30,6 +32,16 @@ function AboutCard() {
               مدیریت تجهیزات و قطعات یدکی · نسخه <b className="fa-nums" dir="ltr">{version}</b> · طراحی: میثم ایجادی
             </p>
           </div>
+          {license && (
+            <span
+              className={`badge text-[10px] shrink-0 ${license.expired ? 'bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/40' : 'bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800'}`}
+              title={license.licensed_to ? `ثبت‌شده برای: ${license.licensed_to}` : 'وضعیت لایسنس سامانه'}
+            >
+              📄 لایسنس: {license.plan_label}
+              {license.days_left !== null && !license.expired && <> · {toFa(license.days_left)} روز باقی‌مانده</>}
+              {license.expired && ' · منقضی‌شده'}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <a

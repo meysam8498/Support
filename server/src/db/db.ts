@@ -148,6 +148,37 @@ export function migrateSchema(db: DatabaseSync): void {
     console.error('⚠ مهاجرت ناموفق (roles):', (err as Error).message);
   }
 
+  // مهاجرت ۱.۱۶: ستون نقش حرفه‌ای برای جدول کارشناسان (فنی/فروش/انبار/بازرگانی)
+  try {
+    for (const t of ['sales_experts', 'technical_experts']) {
+      const cols = (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((c) => c.name);
+      if (!cols.includes('role')) {
+        db.exec(`ALTER TABLE ${t} ADD COLUMN role TEXT NOT NULL DEFAULT '${t === 'sales_experts' ? 'sales' : 'tech'}'`);
+        console.log(`→ مهاجرت: ستون role به جدول ${t} اضافه شد.`);
+      }
+    }
+  } catch (err) {
+    console.error('⚠ مهاجرت ناموفق (expert roles):', (err as Error).message);
+  }
+
+  // مهاجرت ۱.۱۶: جدول لایسنس — وضعیت/بازه/ایمیل ثبت‌شده (فقط یک ردیف)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS license_info (
+        id             INTEGER PRIMARY KEY CHECK (id = 1),
+        plan           TEXT NOT NULL DEFAULT 'trial' CHECK (plan IN ('trial', 'month', 'quarter', 'half-year', 'year', 'lifetime')),
+        starts_at      TEXT,
+        expires_at     TEXT,
+        licensed_to    TEXT,
+        notes          TEXT,
+        updated_at     TEXT
+      );
+    `);
+    db.prepare(`INSERT OR IGNORE INTO license_info (id, plan, starts_at, expires_at, licensed_to, notes) VALUES (1, 'trial', NULL, NULL, 'ارزیابی', 'نسخه‌ی رایگان — بدون محدودیت زمانی فعلاً')`).run();
+  } catch (err) {
+    console.error('⚠ مهاجرت ناموفق (license_info):', (err as Error).message);
+  }
+
   // یکتایی سریال قطعه — هر سریال فقط یک بار در کل سامانه (مقدار خالی/NULL مجاز است)
   // اگر داده‌ی تکراری جامانده باشد، ایندکس نمی‌سازیم و هشدار می‌دهیم تا کاربر اصلاح کند
   try {

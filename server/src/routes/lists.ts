@@ -25,19 +25,24 @@ type ListKey =
   | 'failure_reasons';
 
 const SIMPLE_LISTS: Record<ListKey, string> = {
-  sales_experts: 'name, phone, active',
-  technical_experts: 'name, phone, active',
+  sales_experts: 'name, phone, role, active',
+  technical_experts: 'name, phone, role, active',
   brands: 'name',
   device_types: 'name',
   failure_reasons: 'name',
 };
 
+/** نقش حرفه‌ای کارشناس — فنی/فروش/انبار/بازرگانی */
+const EXPERT_ROLES = ['sales', 'tech', 'warehouse', 'business'] as const;
+const normExpertRole = (v: unknown, fallback: 'sales' | 'tech'): string =>
+  typeof v === 'string' && (EXPERT_ROLES as readonly string[]).includes(v) ? v : fallback;
+
 // --- دریافت همه‌ی لیست‌ها در یک فراخوانی (برای فرم‌ها) ---
 router.get('/', (_req, res) => {
   const db = getDb();
 
-  const salesExperts = db.prepare(`SELECT id, name, phone, active FROM sales_experts ORDER BY name`).all();
-  const technicalExperts = db.prepare(`SELECT id, name, phone, active FROM technical_experts ORDER BY name`).all();
+  const salesExperts = db.prepare(`SELECT id, name, phone, role, active FROM sales_experts ORDER BY name`).all();
+  const technicalExperts = db.prepare(`SELECT id, name, phone, role, active FROM technical_experts ORDER BY name`).all();
   const brands = db.prepare(`SELECT id, name FROM brands ORDER BY name`).all();
   const deviceTypes = db.prepare(`SELECT id, name FROM device_types ORDER BY name`).all();
   const deviceModels = db.prepare(`
@@ -69,24 +74,26 @@ router.get('/', (_req, res) => {
 // کارشناسان فروش
 // ============================================================
 router.get('/sales-experts', (_req, res) => {
-  const rows = getDb().prepare(`SELECT id, name, phone, active FROM sales_experts ORDER BY name`).all();
+  const rows = getDb().prepare(`SELECT id, name, phone, role, active FROM sales_experts ORDER BY name`).all();
   res.json(rows);
 });
 router.post('/sales-experts', (req, res) => {
-  const { name, phone } = req.body as { name: string; phone?: string };
+  const { name, phone, role } = req.body as { name: string; phone?: string; role?: string };
   if (!name?.trim()) return res.status(400).json({ error: 'نام الزامی است.' });
   try {
-    const info = getDb().prepare(`INSERT INTO sales_experts (name, phone) VALUES (?, ?)`).run(name.trim(), phone || null);
+    const info = getDb().prepare(`INSERT INTO sales_experts (name, phone, role) VALUES (?, ?, ?)`)
+      .run(name.trim(), phone || null, normExpertRole(role, 'sales'));
     return res.status(201).json({ id: info.lastInsertRowid });
   } catch {
     return res.status(409).json({ error: 'این نام قبلاً ثبت شده است.' });
   }
 });
 router.put('/sales-experts/:id', (req, res) => {
-  const { name, phone, active } = req.body as { name?: string; phone?: string; active?: number };
+  const { name, phone, active, role } = req.body as { name?: string; phone?: string; active?: number; role?: string };
+  const r = role !== undefined ? normExpertRole(role, 'sales') : null;
   getDb()
-    .prepare(`UPDATE sales_experts SET name = COALESCE(?, name), phone = COALESCE(?, phone), active = COALESCE(?, active) WHERE id = ?`)
-    .run(name?.trim() || null, phone ?? null, active ?? null, Number(req.params.id));
+    .prepare(`UPDATE sales_experts SET name = COALESCE(?, name), phone = COALESCE(?, phone), role = COALESCE(?, role), active = COALESCE(?, active) WHERE id = ?`)
+    .run(name?.trim() || null, phone ?? null, r, active ?? null, Number(req.params.id));
   res.json({ ok: true });
 });
 router.delete('/sales-experts/:id', (req, res) => {
@@ -102,24 +109,26 @@ router.delete('/sales-experts/:id', (req, res) => {
 // کارشناسان فنی
 // ============================================================
 router.get('/technical-experts', (_req, res) => {
-  const rows = getDb().prepare(`SELECT id, name, phone, active FROM technical_experts ORDER BY name`).all();
+  const rows = getDb().prepare(`SELECT id, name, phone, role, active FROM technical_experts ORDER BY name`).all();
   res.json(rows);
 });
 router.post('/technical-experts', (req, res) => {
-  const { name, phone } = req.body as { name: string; phone?: string };
+  const { name, phone, role } = req.body as { name: string; phone?: string; role?: string };
   if (!name?.trim()) return res.status(400).json({ error: 'نام الزامی است.' });
   try {
-    const info = getDb().prepare(`INSERT INTO technical_experts (name, phone) VALUES (?, ?)`).run(name.trim(), phone || null);
+    const info = getDb().prepare(`INSERT INTO technical_experts (name, phone, role) VALUES (?, ?, ?)`)
+      .run(name.trim(), phone || null, normExpertRole(role, 'tech'));
     return res.status(201).json({ id: info.lastInsertRowid });
   } catch {
     return res.status(409).json({ error: 'این نام قبلاً ثبت شده است.' });
   }
 });
 router.put('/technical-experts/:id', (req, res) => {
-  const { name, phone, active } = req.body as { name?: string; phone?: string; active?: number };
+  const { name, phone, active, role } = req.body as { name?: string; phone?: string; active?: number; role?: string };
+  const r = role !== undefined ? normExpertRole(role, 'tech') : null;
   getDb()
-    .prepare(`UPDATE technical_experts SET name = COALESCE(?, name), phone = COALESCE(?, phone), active = COALESCE(?, active) WHERE id = ?`)
-    .run(name?.trim() || null, phone ?? null, active ?? null, Number(req.params.id));
+    .prepare(`UPDATE technical_experts SET name = COALESCE(?, name), phone = COALESCE(?, phone), role = COALESCE(?, role), active = COALESCE(?, active) WHERE id = ?`)
+    .run(name?.trim() || null, phone ?? null, r, active ?? null, Number(req.params.id));
   res.json({ ok: true });
 });
 router.delete('/technical-experts/:id', (req, res) => {

@@ -15,20 +15,37 @@ interface ItemDef {
   label: string;
   path: string;        // مسیر API
   hasPhone?: boolean;
+  /** نقش حرفه‌ای کارشناس (فنی/فروش/انبار/بازرگانی) */
+  hasExpertRole?: boolean;
+  defaultExpertRole?: 'sales' | 'tech';
   hasActive?: boolean; // کارشناسان فروش و فنی ستون active دارند
   extraField?: 'brand_id'; // برای مدل‌ها
   placeholder?: string;
 }
 
 const DEFS: ItemDef[] = [
-  { key: 'salesExperts',    label: t.manageSalesExperts,    path: 'sales-experts',    hasPhone: true, hasActive: true },
-  { key: 'technicalExperts',label: t.manageTechExperts,     path: 'technical-experts',hasPhone: true, hasActive: true },
+  { key: 'salesExperts',    label: t.manageSalesExperts,    path: 'sales-experts',    hasPhone: true, hasActive: true, hasExpertRole: true, defaultExpertRole: 'sales' },
+  { key: 'technicalExperts',label: t.manageTechExperts,     path: 'technical-experts',hasPhone: true, hasActive: true, hasExpertRole: true, defaultExpertRole: 'tech' },
   { key: 'brands',          label: t.manageBrands,          path: 'brands' },
   { key: 'deviceTypes',     label: t.manageDeviceTypes,     path: 'device-types' },
   { key: 'deviceModels',    label: t.manageModels,          path: 'device-models',    extraField: 'brand_id' },
   { key: 'projects',        label: t.manageProjects,        path: 'projects' },
   { key: 'failureReasons',  label: t.manageFailureReasons,  path: 'failure-reasons' },
 ];
+
+/** نقش‌های حرفه‌ای کارشناس — برچسب و رنگ */
+export const EXPERT_ROLE_LABELS: Record<string, string> = {
+  sales: 'فروش',
+  tech: 'فنی',
+  warehouse: 'انبار',
+  business: 'بازرگانی',
+};
+const EXPERT_ROLE_CLS: Record<string, string> = {
+  sales: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+  tech: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+  warehouse: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  business: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+};
 
 export default function ListsPage() {
   const { canWrite } = useAuth();
@@ -38,7 +55,7 @@ export default function ListsPage() {
   const [showCatalog, setShowCatalog] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<{ name: string; phone: string; brand_id: string; contract_number: string; sales_expert_id: string }>({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '' });
+  const [form, setForm] = useState<{ name: string; phone: string; brand_id: string; contract_number: string; sales_expert_id: string; expert_role: string }>({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '', expert_role: 'sales' });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -60,7 +77,7 @@ export default function ListsPage() {
 
   const openAddModal = () => {
     setEditingId(null);
-    setForm({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '' });
+    setForm({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '', expert_role: active.defaultExpertRole ?? 'sales' });
     setModalOpen(true);
   };
 
@@ -72,6 +89,7 @@ export default function ListsPage() {
       brand_id: item.brand_id ? String(item.brand_id) : '',
       contract_number: item.contract_number || '',
       sales_expert_id: item.sales_expert_id ? String(item.sales_expert_id) : '',
+      expert_role: item.role || active.defaultExpertRole || 'sales',
     });
     setModalOpen(true);
   };
@@ -92,6 +110,7 @@ export default function ListsPage() {
       } else if (active.hasPhone) {
         body.name = form.name;
         body.phone = form.phone || undefined;
+        if (active.hasExpertRole) body.role = form.expert_role;
       } else {
         body.name = form.name;
       }
@@ -167,6 +186,7 @@ export default function ListsPage() {
                 <th className="text-right px-3 py-2 font-medium">ردیف</th>
                 <th className="text-right px-3 py-2 font-medium">{t.name}</th>
                 {active.hasPhone && <th className="text-right px-3 py-2 font-medium">{t.phone}</th>}
+                {active.hasExpertRole && <th className="text-right px-3 py-2 font-medium">نقش</th>}
                 {active.extraField && <th className="text-right px-3 py-2 font-medium">{t.brand}</th>}
                 {active.key === 'projects' && <th className="text-right px-3 py-2 font-medium">قرارداد / فروش</th>}
                 {active.hasActive && <th className="text-right px-3 py-2 font-medium">{t.status}</th>}
@@ -178,6 +198,13 @@ export default function ListsPage() {
                     <td className="px-3 py-2 text-stone-400 dark:text-stone-500 fa-nums">{idx + 1}</td>
                     <td className="px-3 py-2 font-medium dark:text-stone-200">{it.name}</td>
                     {active.hasPhone && <td className="px-3 py-2 fa-nums dark:text-stone-300" dir="ltr">{it.phone || '—'}</td>}
+                    {active.hasExpertRole && (
+                      <td className="px-3 py-2">
+                        <span className={`badge text-[10px] ${EXPERT_ROLE_CLS[it.role ?? 'sales'] ?? EXPERT_ROLE_CLS.sales}`}>
+                          {EXPERT_ROLE_LABELS[it.role ?? 'sales'] ?? 'فروش'}
+                        </span>
+                      </td>
+                    )}
                     {active.extraField && <td className="px-3 py-2 dark:text-stone-300">{it.brand_name || '—'}</td>}
                     {active.key === 'projects' && (
                       <td className="px-3 py-2 dark:text-stone-300">
@@ -227,6 +254,16 @@ export default function ListsPage() {
             <div>
               <label className="label">{t.phone}</label>
               <input className="input" dir="ltr" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+          )}
+          {active.hasExpertRole && (
+            <div>
+              <label className="label">نقش (حوزه‌ی کاری)</label>
+              <select className="input" value={form.expert_role} onChange={(e) => setForm({ ...form, expert_role: e.target.value })}>
+                {Object.entries(EXPERT_ROLE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
             </div>
           )}
           {active.extraField && (

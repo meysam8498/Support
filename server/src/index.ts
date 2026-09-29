@@ -29,6 +29,7 @@ import procurementRoutes from './routes/procurement.js';
 import serialImportRoutes from './routes/serialImport.js';
 import searchRoutes from './routes/search.js';
 import partCatalogRoutes from './routes/partCatalog.js';
+import licenseRoutes from './routes/license.js';
 
 config();
 
@@ -64,6 +65,7 @@ app.use('/api/serial-import', authRequired, serialImportRoutes);
 app.use('/api/dashboard', authRequired, dashboardRoutes);
 app.use('/api/search', authRequired, searchRoutes);
 app.use('/api/part-catalog', authRequired, partCatalogRoutes);
+app.use('/api/license', authRequired, licenseRoutes);
 
 // --- پشتیبان‌گیری (فقط ادمین) ---
 // GET /api/backups — فهرست بکاپ‌ها + وضعیت زمان‌بند

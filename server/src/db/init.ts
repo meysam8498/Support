@@ -68,76 +68,57 @@ export function seedDatabase() {
   }
 
   // ------------------------------------------------------------------
-  // کارشناسان واقعی سازمان (از جدول پرسنلی) — فروش و فنی
-  // فرمت: [نام کامل، تلفن، واحد (sales/fny/other)]
+  // داده‌های نمونه‌ی تستی — قابل حذف از رابط کاربری پس از راه‌اندازی
+  // هیچ نام/شماره‌ی واقعی در seed نیست (امنیت). برای راه‌اندازی واقعی،
+  // نمونه‌ها را حذف و کارشناسان/پروژه‌های واقعی را از مدیریت لیست‌ها وارد کنید.
+  // فرمت: [نام، تلفن، نقش حرفه‌ای (sales/tech/warehouse/business)]
   // ------------------------------------------------------------------
-  const PERSONNEL: [string, string, 'sales' | 'tech'][] = [
-    ['پاشا بابايي مجيد آباد', '09354363073', 'tech'],
-    ['سپيده حاجي نوروزي', '09379750607', 'sales'],
-    ['مهيار ذوالفقاري شهريور', '09124579098', 'tech'],
-    ['حسام اصغري تير آبادي', '09362243840', 'tech'],
-    ['روناك كاظمي', '09128577754', 'sales'],
-    ['عليرضا هوشمند مفرد', '09339056349', 'tech'],
-    ['اميرحسين رحيمي صدوده', '09197709980', 'tech'],
-    ['رامتین امیری زاده', '09126702942', 'sales'], // مناقصات — در لیست فروش نگه می‌شود
-    ['محمدرضا شبانی', '09210229248', 'tech'],
-    ['پگاه شهوندی', '09939513308', 'sales'],
-    ['هادی رشادت زاده', '09123378933', 'tech'],
-    ['علی دقیق شعاعی', '09121439785', 'sales'], // انبار — در لیست فروش نگه می‌شود
-    ['مهدی مهرانوری', '09125044083', 'tech'],
-    ['صبا برزگار', '09129532630', 'tech'],
-    ['علی نعمتی آق قلعه', '09330480709', 'tech'],
-    ['مریم سلطاني', '09213234088', 'sales'],
-    ['امیرشایان رزین', '09120472989', 'sales'],
-    ['سهند مددی ورزقانی', '09128932078', 'sales'], // مارکتینگ
-    ['مریم فلاح منش', '09123484200', 'sales'], // بازرگانی
-    ['حکیمه فرجی', '09902328170', 'sales'],
-    ['صغری میرزائی', '09154224691', 'sales'], // منابع انسانی
-    ['خشایار احدی ایرانی', '09361772782', 'sales'],
-    ['ارشیا رستمی', '09384049794', 'sales'],
-    ['متین نجف زاده', '09198799022', 'tech'],
-    ['داریوش علیزاده', '09127198705', 'tech'],
-    ['مریم السادات مظلوم طبائی زواره', '09010332730', 'sales'],
-    ['نازنین کاویانی مرام', '09180160107', 'sales'],
-    ['آرش محمودی نژادتیل', '09120697037', 'sales'],
-    ['کاظم بازیار', '09370238034', 'sales'], // بازرگانی
-    ['فرزاد قانونی', '09940655478', 'sales'],
-    ['نسیم لشنی', '09306241977', 'sales'],
-    ['مریم فیضی زاده', '09149674701', 'sales'],
-    ['میثم ایجادی', '09022964006', 'tech'],
-    ['شنو بی نیاز', '09188707655', 'sales'],
-    ['مریم دمیرچی', '09918020323', 'sales'], // مناقصات
-    ['محمدرضا آسترباف', '09394868212', 'tech'],
-    ['الهه خزاعی', '09111005799', 'sales'],
-    ['مهدی گرامی', '09111111111', 'sales'], // بازرگانی — تلفن ندارد؛ placeholder
-    ['بنفشه احمدی', '09935015641', 'sales'],
-    ['سارا معزی', '09121487607', 'sales'],
+  const SAMPLE_EXPERTS: [string, string, 'sales' | 'tech' | 'warehouse' | 'business'][] = [
+    ['کارشناس نمونه — فروش ۱', '09120000001', 'sales'],
+    ['کارشناس نمونه — فروش ۲', '09120000002', 'sales'],
+    ['کارشناس نمونه — فنی ۱', '09120000003', 'tech'],
+    ['کارشناس نمونه — فنی ۲', '09120000004', 'tech'],
+    ['کارشناس نمونه — انبار ۱', '09120000005', 'warehouse'],
+    ['کارشناس نمونه — بازرگانی ۱', '09120000006', 'business'],
   ];
 
-  const insertSales = db.prepare(`INSERT INTO sales_experts (name, phone) VALUES (?, ?)`);
-  const insertTech = db.prepare(`INSERT INTO technical_experts (name, phone) VALUES (?, ?)`);
+  const insertSales = db.prepare(`INSERT INTO sales_experts (name, phone, role) VALUES (?, ?, ?)`);
+  const insertTech = db.prepare(`INSERT INTO technical_experts (name, phone, role) VALUES (?, ?, ?)`);
   let salesCount = 0;
   let techCount = 0;
-  const expertIds = new Map<string, number>();
 
-  for (const [fullName, phone, kind] of PERSONNEL) {
-    if (kind === 'sales') {
-      const id = insertSales.run(fullName, phone).lastInsertRowid as number;
-      expertIds.set(fullName, id);
+  for (const [fullName, phone, prof] of SAMPLE_EXPERTS) {
+    if (prof === 'sales' || prof === 'business') {
+      insertSales.run(fullName, phone, prof);
       salesCount++;
     } else {
-      const id = insertTech.run(fullName, phone).lastInsertRowid as number;
-      expertIds.set(fullName, id);
+      insertTech.run(fullName, phone, prof);
       techCount++;
     }
   }
+
+  // --- برندها/انواع/مدل‌های نمونه‌ی تستی (قابل حذف از لیست‌ها) ----------------
+  const sampleBrands = ['برند نمونه A', 'برند نمونه B'];
+  const insBrand = db.prepare(`INSERT INTO brands (name) VALUES (?)`);
+  for (const b of sampleBrands) insBrand.run(b);
+  const sampleTypes = ['نوع تجهیز نمونه ۱', 'نوع تجهیز نمونه ۲'];
+  const insType = db.prepare(`INSERT INTO device_types (name) VALUES (?)`);
+  for (const t of sampleTypes) insType.run(t);
+  const insModel = db.prepare(`INSERT INTO device_models (brand_id, name) VALUES (?, ?)`);
+  insModel.run(1, 'مدل نمونه A-100');
+  insModel.run(1, 'مدل نمونه A-200');
+  insModel.run(2, 'مدل نمونه B-100');
+
+  // --- پروژه‌ی (مشتری) نمونه — با کارشناس فروش نمونه -------------------------
+  db.prepare(`INSERT INTO projects (name, contract_number, sales_expert_id) VALUES (?, ?, ?)`)
+    .run('پروژه/مشتری نمونه', 'DEMO-1405-001', 1);
 
   // --- دلایل خرابی پایه ------------------------------------------------------
   const insertFailure = db.prepare(`INSERT INTO failure_reasons (name) VALUES (?)`);
   insertFailure.run('خرابی سخت‌افزاری');
   insertFailure.run('خرابی نرم‌افزاری');
 
-  console.log(`→ ${salesCount} کارشناس فروش و ${techCount} کارشناس فنی از جدول پرسنلی وارد شد.`);
+  console.log(`→ ${salesCount} کارشناس فروش و ${techCount} کارشناس فنی نمونه‌ی تستی وارد شد (قابل حذف از لیست‌ها).`);
   console.log(`  تاریخ امروز (شمسی): ${todayJalali()}  | (میلادی): ${todayGregorian()}`);
 }
 
