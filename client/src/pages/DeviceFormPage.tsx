@@ -152,7 +152,13 @@ export default function DeviceFormPage() {
         navigate(`/devices/${res.id}/parts-grid`);
       }
     } catch (err) {
-      setError((err as Error).message);
+      const e = err as Error & { upgrade?: boolean; status?: number };
+      // ۴۰۲ = سقف نسخه‌ی آزمایشی — پیام ارتقا با لینک تماس
+      if (e.upgrade || e.status === 402) {
+        setError(`🚀 ${e.message} برای ارتقا با ما تماس بگیرید: M.Ijadi@Hotmail.com`);
+      } else {
+        setError(e.message);
+      }
     } finally {
       setSaving(false);
     }

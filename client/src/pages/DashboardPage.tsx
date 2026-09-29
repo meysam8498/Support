@@ -17,9 +17,11 @@ import TrendChart from '../components/TrendChart';
 function AboutCard() {
   const [version, setVersion] = useState<string>('…');
   const [license, setLicense] = useState<{ plan_label: string; days_left: number | null; expired: boolean; licensed_to: string | null } | null>(null);
+  const [deviceLimit, setDeviceLimit] = useState<{ limit: number | null; used: number; remaining: number | null; is_trial: boolean; enforce: boolean } | null>(null);
   useEffect(() => {
     api.get<{ version: string }>('/version').then((r) => setVersion(r.version)).catch(() => setVersion('—'));
     api.get<{ plan_label: string; days_left: number | null; expired: boolean; licensed_to: string | null }>('/license').then(setLicense).catch(() => setLicense(null));
+    api.get<{ limit: number | null; used: number; remaining: number | null; is_trial: boolean; enforce: boolean }>('/license/device-limit').then(setDeviceLimit).catch(() => setDeviceLimit(null));
   }, []);
   return (
     <section className="card !py-4">
@@ -40,6 +42,19 @@ function AboutCard() {
               📄 لایسنس: {license.plan_label}
               {license.days_left !== null && !license.expired && <> · {toFa(license.days_left)} روز باقی‌مانده</>}
               {license.expired && ' · منقضی‌شده'}
+            </span>
+          )}
+          {deviceLimit?.is_trial && deviceLimit.limit !== null && (
+            <span
+              className={`badge text-[10px] shrink-0 fa-nums ${
+                deviceLimit.enforce && deviceLimit.remaining !== null && deviceLimit.remaining <= 3
+                  ? 'bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40'
+                  : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300'
+              }`}
+              title="سقف تجهیزات نسخه‌ی آزمایشی — برای افزودن نامحدود ارتقا دهید"
+            >
+              🖥️ {toFa(deviceLimit.used)} / {toFa(deviceLimit.limit)} تجهیز
+              {deviceLimit.enforce && deviceLimit.remaining !== null && ` · ${toFa(deviceLimit.remaining)} باقی‌مانده`}
             </span>
           )}
         </div>

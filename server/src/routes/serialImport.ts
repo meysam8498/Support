@@ -36,6 +36,7 @@ import jalaali from 'jalaali-js';
 import { z } from 'zod';
 import { getDb, runTransaction } from '../db/db.js';
 import { requireRole } from '../middleware/auth.js';
+import { deviceLimitInfo, upgradeRequiredRes } from './license.js';
 import { syncPartsToCatalog, upsertCatalogEntry } from './partCatalog.js';
 import { findDuplicateSerial } from './parts.js';
 
@@ -365,6 +366,9 @@ router.post('/text', requireRole('admin', 'warehouse', 'tech'), (req: Request, r
 
 // POST /api/serial-import — آپلود اکسل مقید به پروژه/دستگاه (فقط admin)
 router.post('/', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
+  // سقف نسخه‌ی آزمایشی برای import اکسل فهرست انبار (دستگاه جدید می‌سازد)
+  const lim0 = deviceLimitInfo();
+  if (lim0.limit_reached) return upgradeRequiredRes(res, lim0);
   collectBody(req, res, (body, contentType) => {
     try {
       handleUpload(body, contentType, req, res);
@@ -1182,6 +1186,12 @@ function handleUpload(body: Buffer, contentType: string, req: Request, res: Resp
     return `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
   })();
   const todayG = new Date().toISOString().slice(0, 10);
+
+  // سقف نسخه‌ی آزمایشی: اگر create_per_row دستگاه جدید می‌سازد، از الان چک کن
+  if (create_per_row) {
+    const lim = deviceLimitInfo();
+    if (lim.limit_reached) return upgradeRequiredRes(res, lim);
+  }
 
   const ensureDeviceForSerial = create_per_row
     ? db.prepare(

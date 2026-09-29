@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getDb } from '../db/db.js';
 import { datePairFromJalali, warrantyEndPair } from '../lib/date.js';
 import { requireRole } from '../middleware/auth.js';
+import { deviceLimitInfo, upgradeRequiredRes } from './license.js';
 import { buildWarehouseWorkbook, sendWorkbook, type WarehouseExportRow } from '../lib/warehouseExport.js';
 
 const router = Router();
@@ -214,7 +215,7 @@ router.get('/:id', (req, res) => {
   return res.json({ device, parts, replacements, warrantyRequests });
 });
 
-/** POST /api/devices — ثبت تجهیز جدید (فقط admin) */
+/** POST /api/devices — ثبت تجهیز جدید (admin/warehouse/tech) */
 router.post('/', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   const parsed = deviceSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -222,6 +223,10 @@ router.post('/', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   }
   const d = parsed.data;
   const db = getDb();
+
+  // سقف نسخه‌ی آزمایشی — با TRIAL_LIMIT_ENFORCE=1 فعال می‌شود
+  const limit = deviceLimitInfo();
+  if (limit.limit_reached) return upgradeRequiredRes(res, limit);
 
   const wh = datePairFromJalali(d.warehouse_exit_jalali || '');
   const dl = datePairFromJalali(d.customer_delivery_jalali || '');

@@ -40,6 +40,14 @@ async function request<T>(
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    // 402 = سقف نسخه‌ی آزمایشی — پیام ارتقا برجسته‌تر
+    if (res.status === 402 && data.upgrade) {
+      const err = new Error(data.error || 'سقف نسخه‌ی آزمایشی پر شده است — برای ادامه، سامانه را ارتقا دهید.') as Error & { payload?: unknown; status?: number; upgrade?: boolean };
+      err.payload = data;
+      err.status = 402;
+      err.upgrade = true;
+      throw err;
+    }
     // بدنه‌ی خطا (مثل conflict در 409) به Error می‌چسبد تا فراخوان‌ها بتوانند تصمیم بگیرند
     const err = new Error(data.error || `خطای ${res.status}`) as Error & { payload?: unknown; status?: number };
     err.payload = data;

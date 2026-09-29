@@ -82,6 +82,57 @@ router.get('/', (_req: Request, res: Response) => {
   res.json(licenseStatus());
 });
 
+// ============================================================
+// سقف تجهیزات نسخه‌ی رایگان/آزمایشی
+// TRIAL_DEVICE_LIMIT (پیش‌فرض ۲۵) — با طرح‌های پرداختی یا lifetime بلامانع.
+// چک فقط وقتی اعمال می‌شود که TRIAL_LIMIT_ENFORCE=1 باشد؛ در غیر این صورت
+// سقف فقط گزارش می‌شود (usage.limit_reached همیشه false) تا نسخه‌ی فعلی بلاک نشود.
+// ============================================================
+export const TRIAL_DEVICE_LIMIT = Math.max(1, Number(process.env.TRIAL_DEVICE_LIMIT) || 25);
+
+export interface DeviceLimitInfo {
+  limit: number | null;          // null = بدون سقف (طرح پرداختی/lifetime یا enforce خاموش؟ نه — سقف مستقل از enforce گزارش می‌شود)
+  used: number;
+  remaining: number | null;
+  is_trial: boolean;
+  enforce: boolean;
+  limit_reached: boolean;
+  message: string | null;
+}
+
+/** وضعیت سقف تجهیزات بر اساس طرح لایسنس فعلی */
+export function deviceLimitInfo(deviceCount?: number): DeviceLimitInfo {
+  const { plan, enforce: licenseEnforce } = licenseStatus();
+  const is_trial = plan === 'trial';
+  const limit = is_trial ? TRIAL_DEVICE_LIMIT : null;
+  const used = deviceCount ?? (getDb().prepare(`SELECT COUNT(*) AS c FROM devices`).get() as { c: number }).c;
+  const remaining = limit !== null ? Math.max(0, limit - used) : null;
+  const enforceLimit = is_trial && process.env.TRIAL_LIMIT_ENFORCE === '1';
+  const limit_reached = enforceLimit && limit !== null && used >= limit;
+  const message = is_trial && limit !== null
+    ? (limit_reached
+      ? `سقف نسخه‌ی آزمایشی (${TRIAL_DEVICE_LIMIT} تجهیز) پر شده است — برای افزودن بیشتر، سامانه را ارتقا دهید.`
+      : null)
+    : null;
+  void licenseEnforce;
+  return { limit, used, remaining, is_trial, enforce: enforceLimit, limit_reached, message };
+}
+
+/** پاسخ 402 (Payment Required) با پیام ارتقا — در routeهای افزودن تجهیز/سریال */
+export function upgradeRequiredRes(res: Response, info: DeviceLimitInfo): void {
+  res.status(402).json({
+    error: info.message,
+    upgrade: true,
+    limit: info.limit,
+    used: info.used,
+  });
+}
+
+/** GET /api/license/device-limit — وضعیت سقف برای UI */
+router.get('/device-limit', (_req: Request, res: Response) => {
+  res.json(deviceLimitInfo());
+});
+
 const setSchema = z.object({
   plan: z.enum(['trial', 'month', 'quarter', 'half-year', 'year', 'lifetime']),
   starts_at: z.string().optional().nullable(),   // شمسی 1405/07/01 — پیش‌فرض امروز
