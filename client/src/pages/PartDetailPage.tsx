@@ -11,7 +11,7 @@ interface TracePart { id: number; title: string; part_serial_number?: string; st
 
 export default function PartDetailPage() {
   const { id } = useParams();
-  const { isAdmin } = useAuth();
+  const { canWrite, canReplace } = useAuth();
   const [data, setData] = useState<{ part: Part & { device_serial?: string; device_id?: number; device_type_name?: string; brand_name?: string; project_name?: string }; chain: TracePart[]; replacements: Replacement[] } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,7 +43,7 @@ export default function PartDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold dark:text-stone-50">جزئیات قطعه</h1>
-        {isAdmin && (
+        {canWrite && (
           <div className="flex gap-2">
             <Link to={`/parts/${p.id}/edit`} className="btn-secondary">{t.edit}</Link>
             {p.status === 'active' && p.device_id && (

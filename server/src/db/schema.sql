@@ -8,7 +8,7 @@
 --     و هم میلادی (ISO YYYY-MM-DD در ستون *_gregorian) ذخیره می‌شوند.
 --   • تاریخ شمسی فقط در UI نمایش داده می‌شود؛ مرتب‌سازی و محاسبات
 --     همیشه با ستون میلادی انجام می‌شود.
---   • نقش‌ها: فقط 'admin' (دسترسی کامل) و 'user' (فقط مشاهده/جستجو).
+--   • نقش‌ها: admin / warehouse / sales / tech / viewer (دسترسی‌ها در lib/auth.ts).
 --   • موجودیت داخلی «devices» در رابط کاربری «تجهیزات» نامیده می‌شود.
 -- ============================================================
 
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   full_name     TEXT NOT NULL,
   email         TEXT,
-  role          TEXT NOT NULL CHECK (role IN ('admin', 'user')) DEFAULT 'user',
+  role          TEXT NOT NULL CHECK (role IN ('admin', 'warehouse', 'sales', 'tech', 'viewer')) DEFAULT 'viewer',
   active        INTEGER NOT NULL DEFAULT 1,           -- 1 = فعال، 0 = غیرفعال
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -13,7 +13,7 @@ import StatusBadge from '../components/StatusBadge';
 import { downloadAuthenticated } from '../lib/download';
 
 export default function DevicesPage() {
-  const { isAdmin } = useAuth();
+  const { canWrite } = useAuth();
   const [devices, setDevices] = useState<Device[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -101,7 +101,7 @@ export default function DevicesPage() {
           >
             {exporting ? '...' : '⬇ خروجی اکسل'}
           </button>
-          {isAdmin && (
+          {canWrite && (
             <Link to="/devices/new" className="btn-primary">
               {t.addDevice}
             </Link>
@@ -209,7 +209,7 @@ export default function DevicesPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      {isAdmin ? (
+                      {canWrite ? (
                         <div className="flex gap-2 items-center">
                           <Link
                             to={`/devices/${d.id}/edit`}

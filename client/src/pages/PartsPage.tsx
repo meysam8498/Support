@@ -19,7 +19,7 @@ import InlineEditCell from '../components/InlineEditCell';
 type InlineField = 'part_serial_number' | 'part_number_1' | 'tech_specs';
 
 export default function PartsPage() {
-  const { isAdmin } = useAuth();
+  const { canWrite } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   // فیلتر مرجع کاتالوگ از URL (لینک «نصب‌شده‌ها» در تب کاتالوگ)
   const catalogFilter = searchParams.get('catalog') ?? '';
@@ -183,7 +183,7 @@ export default function PartsPage() {
           >
             {exporting ? '...' : '⬇ خروجی اکسل'}
           </button>
-          {isAdmin && (
+          {canWrite && (
             <Link to="/parts/new" className="btn-primary text-sm">
               {t.addPart}
             </Link>
@@ -306,7 +306,7 @@ export default function PartsPage() {
                 <th className="text-right px-3 py-3 font-bold">دستگاه</th>
                 <th className="text-right px-3 py-3 font-bold">{t.status}</th>
                 <th className="text-right px-3 py-3 font-bold">تاریخ فروش</th>
-                {isAdmin && dupPns.size > 0 && <th className="text-right px-3 py-3 font-bold"> </th>}
+                {canWrite && dupPns.size > 0 && <th className="text-right px-3 py-3 font-bold"> </th>}
               </tr>
             </thead>
             <tbody>
@@ -338,7 +338,7 @@ export default function PartsPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 fa-nums" dir="ltr">
-                      {isAdmin ? (
+                      {canWrite ? (
                         <InlineEditCell
                           value={p.part_number_1}
                           onSave={(v) => saveField(p.id, 'part_number_1', v)}
@@ -350,7 +350,7 @@ export default function PartsPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 fa-nums" dir="ltr">
-                      {isAdmin ? (
+                      {canWrite ? (
                         <div className="flex items-center gap-1.5">
                           <InlineEditCell
                             value={p.part_serial_number}
@@ -383,7 +383,7 @@ export default function PartsPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-xs max-w-[220px]">
-                      {isAdmin ? (
+                      {canWrite ? (
                         <div className="flex items-center gap-1">
                           <InlineEditCell
                             value={p.tech_specs}
@@ -410,7 +410,7 @@ export default function PartsPage() {
                     <td className="px-3 py-2 text-xs text-stone-400 dark:text-stone-500">
                       {formatJalaliLong(p.sold_at_jalali)}
                     </td>
-                    {isAdmin && dupPns.size > 0 && (
+                    {canWrite && dupPns.size > 0 && (
                       <td className="px-3 py-2">
                         {isDup && (
                           <button

@@ -67,7 +67,7 @@ router.get('/:id', (req, res) => {
 });
 
 /** POST /api/warranty-requests — ثبت درخواست گارانتی جدید (فقط admin) */
-router.post('/', requireRole('admin'), (req, res) => {
+router.post('/', requireRole('admin', 'warehouse', 'sales', 'tech'), (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -94,7 +94,7 @@ router.post('/', requireRole('admin'), (req, res) => {
 });
 
 /** PUT /api/warranty-requests/:id — ویرایش درخواست (فقط admin) */
-router.put('/:id', requireRole('admin'), (req, res) => {
+router.put('/:id', requireRole('admin', 'tech'), (req, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });

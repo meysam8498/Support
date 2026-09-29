@@ -238,7 +238,7 @@ function looksLikePartNumberRow(row: Record<string, string>): boolean {
 }
 
 // POST /api/serial-import/preview — پیش‌نمایش خشک آپلود (فقط admin؛ بدون هیچ تغییری در DB)
-router.post('/preview', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/preview', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   collectBody(req, res, (body, contentType) => {
     try {
       handlePreview(body, contentType, res);
@@ -342,7 +342,7 @@ function analyzeTextPayload(req: Request, res: Response): Analysis | null {
 }
 
 // POST /api/serial-import/preview-text — پیش‌نمایش خشک متن چسبانده‌شده (فقط admin)
-router.post('/preview-text', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/preview-text', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   try {
     const analysis = analyzeTextPayload(req, res);
     if (!analysis) return;
@@ -353,7 +353,7 @@ router.post('/preview-text', requireRole('admin'), (req: Request, res: Response)
 });
 
 // POST /api/serial-import/text — ثبت واقعی متن چسبانده‌شده (فقط admin)
-router.post('/text', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/text', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   try {
     const analysis = analyzeTextPayload(req, res);
     if (!analysis) return;
@@ -364,7 +364,7 @@ router.post('/text', requireRole('admin'), (req: Request, res: Response) => {
 });
 
 // POST /api/serial-import — آپلود اکسل مقید به پروژه/دستگاه (فقط admin)
-router.post('/', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   collectBody(req, res, (body, contentType) => {
     try {
       handleUpload(body, contentType, req, res);

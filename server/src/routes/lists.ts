@@ -14,7 +14,7 @@ const router = Router();
 // مسیرهای GET برای همه‌ی کاربران احرازشده باز هستند.
 router.use((req, res, next) => {
   if (req.method === 'GET') return next();
-  return requireRole('admin')(req, res, next);
+  return requireRole('admin', 'warehouse', 'tech')(req, res, next);
 });
 
 type ListKey =

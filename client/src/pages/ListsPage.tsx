@@ -31,7 +31,7 @@ const DEFS: ItemDef[] = [
 ];
 
 export default function ListsPage() {
-  const { isAdmin } = useAuth();
+  const { canWrite } = useAuth();
   const [lists, setLists] = useState<Lists | null>(null);
   const [active, setActive] = useState<ItemDef>(DEFS[0]);
   // تب ویژه‌ی کاتالوگ قطعات (خارج از DEFS چپ ساختار لیست معمولی را ندارد)
@@ -47,10 +47,10 @@ export default function ListsPage() {
   useEffect(() => { load(); }, []);
 
   // کل این صفحه فقط برای ادمین قابل دسترس است
-  if (!isAdmin) {
+  if (!canWrite) {
     return (
       <div className="card text-center py-12">
-        <p className="text-stone-500 dark:text-stone-400">دسترسی به مدیریت لیست‌ها فقط برای کارشناس مجاز (ادمین) امکان‌پذیر است.</p>
+        <p className="text-stone-500 dark:text-stone-400">دسترسی به مدیریت لیست‌ها فقط برای مدیر/انباردار/کارشناس فنی ممکن است.</p>
       </div>
     );
   }

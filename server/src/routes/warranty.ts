@@ -39,7 +39,7 @@ const replacementSchema = z.object({
  *   2) قطعه‌ی قدیمی به وضعیت 'replaced' تغییر می‌کند.
  *   3) رکورد warranty_replacements ثبت می‌شود (قدیمی، جدید، تاریخ، کارشناس، دلیل، توضیحات).
  */
-router.post('/replace', requireRole('admin'), (req, res) => {
+router.post('/replace', requireRole('admin', 'tech'), (req, res) => {
   const parsed = replacementSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -293,7 +293,7 @@ void todayGregorian;
 
 // ---------- GET /api/warranty/replacements/periodic-report — گزارش دوره‌ای اکسل (ادمین) ----------
 // ماهانه/فصلی با پارامتر بازه‌ی شمسی — سه شیت: خلاصه + تعویض‌ها + راهنما
-router.get('/replacements/periodic-report', requireRole('admin'), (req, res) => {
+router.get('/replacements/periodic-report', requireRole('admin', 'warehouse', 'sales', 'tech', 'viewer'), (req, res) => {
   const db = getDb();
 
   // --- نوع دوره و بازه ---

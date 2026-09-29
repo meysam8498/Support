@@ -7,10 +7,12 @@
 //  • تابع seedIfEmpty توسط index.ts هم هنگام اولین استارت سرور فراخوانی
 //    می‌شود تا محیط‌هایی مثل Docker (با دیتابیس خالی) خودکار مقداردهی شوند.
 // ----------------------------------------------------------------
-// حساب مدیر به‌صورت پیش‌فرض از متغیرهای محیطی خوانده می‌شود:
-//   ADMIN_USERNAME (پیش‌فرض: admin)   و   ADMIN_PASSWORD (پیش‌فرض: admin123)
-// همچنین یک کاربر نمونه‌ی فقط‌مشاهده با USER_USERNAME/USER_PASSWORD ساخته می‌شود
-// (پیش‌فرض: user / user123) برای تست نقش 'user'.
+// حساب‌های پیش‌فرض از متغیرهای محیطی خوانده می‌شوند:
+//   ADMIN_USERNAME/ADMIN_PASSWORD (پیش‌فرض admin/admin123) — مدیر
+//   USER_USERNAME/USER_PASSWORD (پیش‌فرض user/user123) — فقط‌مشاهده (viewer)
+//   WAREHOUSE_USERNAME/WAREHOUSE_PASSWORD (پیش‌فرض warehouse/warehouse123) — انباردار
+//   SALES_USERNAME/SALES_PASSWORD (پیش‌فرض sales/sales123) — کارشناس فروش
+//   TECH_USERNAME/TECH_PASSWORD (پیش‌فرض tech/tech123) — کارشناس فنی
 // ============================================================
 import { getDb, applySchema, migrateSchema } from './db.js';
 import { hashPassword } from '../lib/auth.js';
@@ -51,19 +53,19 @@ export function seedDatabase() {
 
   console.log('→ وارد کردن داده‌های اولیه (seed)...');
 
-  // --- کاربران ----------------------------------------------------------------
-  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-  const userUsername = process.env.USER_USERNAME || 'user';
-  const userPassword = process.env.USER_PASSWORD || 'user123';
-
-  db.prepare(
-    `INSERT INTO users (username, password_hash, full_name, email, role) VALUES (?, ?, ?, ?, 'admin')`
-  ).run(adminUsername, hashPassword(adminPassword), 'مدیر سیستم', 'admin@example.com');
-
-  db.prepare(
-    `INSERT INTO users (username, password_hash, full_name, email, role) VALUES (?, ?, ?, ?, 'user')`
-  ).run(userUsername, hashPassword(userPassword), 'کاربر نمونه (فقط مشاهده)', 'user@example.com');
+  // --- کاربران پیش‌فرض (پنج نقش) ----------------------------------------------
+  const defaults: { u: string; p: string; name: string; role: 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer' }[] = [
+    { u: process.env.ADMIN_USERNAME || 'admin',           p: process.env.ADMIN_PASSWORD || 'admin123',      name: 'مدیر سیستم',                    role: 'admin' },
+    { u: process.env.WAREHOUSE_USERNAME || 'warehouse',   p: process.env.WAREHOUSE_PASSWORD || 'warehouse123', name: 'انباردار (پیش‌فرض)',           role: 'warehouse' },
+    { u: process.env.SALES_USERNAME || 'sales',           p: process.env.SALES_PASSWORD || 'sales123',      name: 'کارشناس فروش (پیش‌فرض)',          role: 'sales' },
+    { u: process.env.TECH_USERNAME || 'tech',             p: process.env.TECH_PASSWORD || 'tech123',        name: 'کارشناس فنی (پیش‌فرض)',           role: 'tech' },
+    { u: process.env.USER_USERNAME || 'user',             p: process.env.USER_PASSWORD || 'user123',        name: 'کاربر فقط‌مشاهده',                role: 'viewer' },
+  ];
+  for (const d of defaults) {
+    db.prepare(
+      `INSERT INTO users (username, password_hash, full_name, email, role) VALUES (?, ?, ?, ?, ?)`
+    ).run(d.u, hashPassword(d.p), d.name, `${d.u}@example.com`, d.role);
+  }
 
   // ------------------------------------------------------------------
   // کارشناسان واقعی سازمان (از جدول پرسنلی) — فروش و فنی

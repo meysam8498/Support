@@ -89,7 +89,7 @@ interface TrendMonth {
 }
 
 export default function DashboardPage() {
-  const { isAdmin, user } = useAuth();
+  const { canWrite, canReplace, user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [lists, setLists] = useState<Lists | null>(null);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
@@ -378,7 +378,7 @@ export default function DashboardPage() {
             <h2 className="heading-serif text-lg font-bold text-stone-900 dark:text-stone-50">
               پروژه‌ها (مشتریان)
             </h2>
-            {isAdmin && (
+            {canWrite && (
               <Link to="/lists" className="btn-ghost !min-h-[32px] text-xs">
                 مدیریت
               </Link>
@@ -421,14 +421,12 @@ export default function DashboardPage() {
       </div>
 
       {/* ---------- اکشن‌ها: فقط یک CTA اصلی تراکوتا در کل صفحه ---------- */}
-      {isAdmin && (
-        <section className="flex flex-wrap gap-3 pb-2">
-          <Link to="/devices/new" className="btn-primary">{t.addDevice}</Link>
-          <Link to="/warranty" className="btn-secondary">{t.replacePart}</Link>
-          <Link to="/reports" className="btn-ghost">{t.navReports}</Link>
-          <Link to="/serial-import" className="btn-ghost">ورود سریال از اکسل</Link>
-        </section>
-      )}
+      <section className="flex flex-wrap gap-3 pb-2">
+        {canWrite && <Link to="/devices/new" className="btn-primary">{t.addDevice}</Link>}
+        {canReplace && <Link to="/warranty" className="btn-secondary">{t.replacePart}</Link>}
+        <Link to="/reports" className="btn-ghost">{t.navReports}</Link>
+        {canWrite && <Link to="/serial-import" className="btn-ghost">ورود سریال از اکسل</Link>}
+      </section>
     </div>
   );
 }

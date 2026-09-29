@@ -215,7 +215,7 @@ router.get('/:id', (req, res) => {
 });
 
 /** POST /api/devices — ثبت تجهیز جدید (فقط admin) */
-router.post('/', requireRole('admin'), (req, res) => {
+router.post('/', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   const parsed = deviceSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -268,7 +268,7 @@ router.post('/', requireRole('admin'), (req, res) => {
 });
 
 /** PUT /api/devices/:id — ویرایش تجهیز (فقط admin) */
-router.put('/:id', requireRole('admin'), (req, res) => {
+router.put('/:id', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   const parsed = deviceSchema.partial().safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -354,7 +354,7 @@ router.put('/:id', requireRole('admin'), (req, res) => {
 });
 
 /** DELETE /api/devices/:id (فقط admin) */
-router.delete('/:id', requireRole('admin'), (req, res) => {
+router.delete('/:id', requireRole('admin', 'warehouse'), (req, res) => {
   try {
     getDb().prepare(`DELETE FROM devices WHERE id = ?`).run(Number(req.params.id));
     res.json({ ok: true });

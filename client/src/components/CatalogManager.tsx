@@ -201,7 +201,7 @@ interface CatalogRow {
 }
 
 export default function CatalogManager() {
-  const { isAdmin } = useAuth();
+  const { canWrite } = useAuth();
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
@@ -372,6 +372,24 @@ export default function CatalogManager() {
     await load();
   };
 
+  /** حذف مرجع کاتالوگ — اگر قطعه‌ی وصل داشته باشد دو مرحله‌ای تأیید می‌شود */
+  const removeCatalog = async (row: CatalogRow): Promise<void> => {
+    const baseMsg = row.installed_count > 0
+      ? `مرجع «${row.title}» به ${toFa(row.installed_count)} قطعه‌ی نصب‌شده وصل است.\n\nبا حذف مرجع، قطعات حذف نمی‌شوند ولی از مرجع جدا می‌شوند (عنوان فعلی‌شان می‌ماند). ادامه؟`
+      : `مرجع «${row.title}» (${row.part_number_1}) حذف شود؟`;
+    if (!confirm(baseMsg)) return;
+    setBusy(true);
+    try {
+      const r = await api.delete<{ ok: boolean; detached: number }>(`/part-catalog/${row.id}${row.installed_count > 0 ? '?confirm=true' : ''}`);
+      setMsg(`مرجع حذف شد${r.detached > 0 ? ` — ${toFa(r.detached)} قطعه از مرجع جدا شد (بدون حذف)` : ''}.`);
+      setSelected((s) => { const n = new Set(s); n.delete(row.id); return n; });
+      await load();
+      setTimeout(() => setMsg(''), 5000);
+    } catch (e) {
+      alert((e as Error).message);
+    } finally { setBusy(false); }
+  };
+
   const merge = async () => {
     if (selected.size < 2) return;
     // مرجع با بیشترین نصب‌شده پیشنهاد می‌شود به‌عنوان «حرف آخر»
@@ -518,7 +536,7 @@ export default function CatalogManager() {
           />
         </div>
         <span className="chip chip-default fa-nums">{toFa(rows.length)} مرجع · {toFa(totalInstalled)} نصب‌شده</span>
-        {isAdmin && (
+        {canWrite && (
           <>
             <button
               onClick={() => setShowAdd(true)}
@@ -600,7 +618,7 @@ export default function CatalogManager() {
                     </td>
                     <td className="px-3 py-2 fa-nums text-stone-700 dark:text-stone-200" dir="ltr">{r.part_number_1}</td>
                     <td className="px-3 py-2 fa-nums text-stone-600 dark:text-stone-300" dir="ltr">
-                      {isAdmin ? (
+                      {canWrite ? (
                         <InlineEditCell
                           value={r.part_number_2}
                           onSave={(v) => savePn2(r, v)}
@@ -631,7 +649,19 @@ export default function CatalogManager() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <button onClick={() => openEdit(r)} className="text-brand-600 hover:underline text-xs dark:text-brand-400">{t.edit}</button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => openEdit(r)} className="text-brand-600 hover:underline text-xs dark:text-brand-400">{t.edit}</button>
+                        {canWrite && (
+                          <button
+                            onClick={() => removeCatalog(r)}
+                            disabled={busy}
+                            className="text-coral hover:text-coral-dark dark:text-coral-light text-xs"
+                            title="حذف مرجع کاتالوگ (قطعات وصل حذف نمی‌شوند)"
+                          >
+                            {t.delete}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

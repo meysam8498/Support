@@ -145,7 +145,7 @@ router.get('/', (req: Request, res: Response) => {
 // ---------- GET /api/part-catalog/template — دانلود قالب اکسل آپدیت کاتالوگ (admin) ----------
 // شیت ۱ «کاتالوگ»: سرستون‌ها + ردیف‌های نمونه — پارسر import-text/import همین سرستون‌ها را می‌خواند
 // شیت ۲ «راهنما»: توضیح فارسی ستون‌ها و قواعد upsert
-router.get('/template', requireRole('admin'), (_req: Request, res: Response) => {
+router.get('/template', requireRole('admin', 'warehouse', 'tech'), (_req: Request, res: Response) => {
   const j = jalaali.toJalaali(new Date());
   const today = `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
 
@@ -195,7 +195,7 @@ router.get('/template', requireRole('admin'), (_req: Request, res: Response) => 
 // عمداً با همان ساختار template (شیت «کاتالوگ» + شیت «راهنما») تولید می‌شود تا
 // فایل خروجی بدون دست‌کاری مستقیم به import-text/import بازبارگذاری شود — چرخه‌ی کامل دوطرفه.
 // ?q= جست‌وجو (عنوان/PN1/PN2) و ?project_id= فیلتر اختیاری — فقط مراجع منطبق صادر می‌شوند.
-router.get('/export', requireRole('admin'), (req: Request, res: Response) => {
+router.get('/export', requireRole('admin', 'warehouse', 'sales', 'tech', 'viewer'), (req: Request, res: Response) => {
   const db = getDb();
   const j = jalaali.toJalaali(new Date());
   const today = `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
@@ -297,7 +297,7 @@ const catalogSchema = z.object({
 });
 
 // ---------- POST /api/part-catalog — ساخت مرجع جدید (admin) ----------
-router.post('/', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   const parsed = catalogSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -318,7 +318,7 @@ router.post('/', requireRole('admin'), (req: Request, res: Response) => {
 // ---------- PUT /api/part-catalog/:id — ویرایش کامل مرجع + sync همه (admin) ----------
 // همه‌ی فیلدها قابل ویرایش‌اند: پارت‌نامبر ۱ و ۲، عنوان، مشخصات، یادداشت.
 // تغییر پارت‌نامبر مرجع = تغییر پارت‌نامبر همه‌ی قطعات وصل (فقط سریال نمونه‌ها مستقل می‌ماند).
-router.put('/:id', requireRole('admin'), (req: Request, res: Response) => {
+router.put('/:id', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   const parsed = catalogSchema.partial().safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -356,21 +356,24 @@ router.put('/:id', requireRole('admin'), (req: Request, res: Response) => {
   // پارت‌نامبر ۲: مقدار صریح (حتی رشته‌ی خالی = پاک کردن)
   const pn2 = c.part_number_2 !== undefined ? (c.part_number_2?.trim() || null) : undefined;
 
+  // آپدیت پویا — فقط فیلدهای صریحاً ارسال‌شده. با COALESCE مقدار null کلاینت
+  // (پاک‌کردن یادداشت/مشخصات) نادیده گرفته می‌شد و فیلد آپدیت نمی‌شد؛ اینجا
+  // هر فیلدِ موجود در بدنه واقعاً جایگزین می‌شود (null = پاک کردن).
+  const sets: string[] = [];
+  const vals: (string | null)[] = [];
+  if (newKey !== null) { sets.push('part_number_1 = ?'); vals.push(newKey); }
+  if (pn2 !== undefined) { sets.push('part_number_2 = ?'); vals.push(pn2); }
+  if (c.title !== undefined) { sets.push('title = ?'); vals.push(c.title.trim()); }
+  if (c.tech_specs !== undefined) { sets.push('tech_specs = ?'); vals.push(c.tech_specs?.trim() || null); }
+  if (c.notes !== undefined) { sets.push('notes = ?'); vals.push(c.notes?.trim() || null); }
+  if (sets.length === 0) return res.status(400).json({ error: 'هیچ فیلدی برای ویرایش ارسال نشده است.' });
+  sets.push("updated_at = datetime('now')");
+
   const run = () => {
-    db.prepare(`
-      UPDATE part_catalog SET
-        part_number_1 = COALESCE(?, part_number_1),
-        part_number_2 = COALESCE(?, part_number_2),
-        title = COALESCE(?, title),
-        tech_specs = COALESCE(?, tech_specs),
-        notes = COALESCE(?, notes),
-        updated_at = datetime('now')
-      WHERE id = ?
-    `).run(newKey, pn2 ?? null, c.title?.trim() ?? null, c.tech_specs?.trim() ?? null, c.notes?.trim() ?? null, id);
-    // پاک کردن صریح pn2 وقتی رشته‌ی خالی فرستاده شده
-    if (pn2 === null) db.prepare(`UPDATE part_catalog SET part_number_2 = NULL WHERE id = ?`).run(id);
+    db.prepare(`UPDATE part_catalog SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id);
 
     // sync کامل: پارت‌نامبر ۱ و ۲ + عنوان + توضیح همه‌ی قطعات وصل از مرجع — سریال نمونه دست نمی‌خورد
+    // (یادداشت مرجع داخلی است و به قطعات کپی نمی‌شود)
     db.prepare(`
       UPDATE parts SET
         part_number_1 = (SELECT part_number_1 FROM part_catalog WHERE id = ?),
@@ -393,8 +396,43 @@ router.put('/:id', requireRole('admin'), (req: Request, res: Response) => {
   res.json({ ok: true, synced: (db.prepare(`SELECT COUNT(*) AS c FROM parts WHERE catalog_id = ?`).get(id) as { c: number }).c });
 });
 
+// ---------- DELETE /api/part-catalog/:id — حذف مرجع کاتالوگ (admin) ----------
+// مرجع بدون قطعه‌ی وصل مستقیم حذف می‌شود؛ با قطعه‌ی وصل فقط با confirm=true
+// که قطعات وصل می‌مانند ولی مرجع‌شان خالی می‌شود (catalog_id = NULL و
+// عنوان/مشخصات فعلی‌شان حفظ می‌شود) — هیچ قطعه‌ای حذف نمی‌شود.
+router.delete('/:id', requireRole('admin', 'warehouse'), (req: Request, res: Response) => {
+  const db = getDb();
+  const id = Number(req.params.id);
+  const entry = db.prepare(`SELECT id, part_number_1, title FROM part_catalog WHERE id = ?`).get(id) as
+    | { id: number; part_number_1: string; title: string } | undefined;
+  if (!entry) return res.status(404).json({ error: 'مرجع یافت نشد.' });
+
+  const attached = (db.prepare(`SELECT COUNT(*) AS c FROM parts WHERE catalog_id = ?`).get(id) as { c: number }).c;
+  const confirm = String(req.query.confirm ?? '') === 'true';
+  if (attached > 0 && !confirm) {
+    return res.status(409).json({
+      error: `این مرجع به ${attached} قطعه‌ی نصب‌شده وصل است. برای حذف مرجع (بدون حذف قطعات) پارامتر confirm=true بفرستید.`,
+      attached,
+    });
+  }
+
+  try {
+    db.exec('BEGIN');
+    if (attached > 0) {
+      // قطعات جدا می‌شوند ولی دست نمی‌خورند
+      db.prepare(`UPDATE parts SET catalog_id = NULL WHERE catalog_id = ?`).run(id);
+    }
+    db.prepare(`DELETE FROM part_catalog WHERE id = ?`).run(id);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch { /* noop */ }
+    return res.status(400).json({ error: (e as Error).message || 'حذف ناموفق بود.' });
+  }
+  res.json({ ok: true, detached: attached });
+});
+
 // ---------- POST /api/part-catalog/merge — ادغام مراجع (admin) ----------
-router.post('/merge', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/merge', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   const schema = z.object({
     keep_id: z.number().int().positive(),   // مرجعی که می‌ماند (حرف آخر)
     merge_ids: z.array(z.number().int().positive()).min(1),
@@ -429,7 +467,7 @@ router.post('/merge', requireRole('admin'), (req: Request, res: Response) => {
 });
 
 // ---------- POST /api/part-catalog/sync — اتصال قطعات بدون مرجع + یکسان‌سازی (admin) ----------
-router.post('/sync', requireRole('admin'), (_req: Request, res: Response) => {
+router.post('/sync', requireRole('admin', 'warehouse', 'tech'), (_req: Request, res: Response) => {
   const db = getDb();
   const linked = syncPartsToCatalog(db);
   const aligned = db.prepare(`
@@ -795,7 +833,7 @@ function applyCatalogUpserts(items: CatalogImportRow[], dryRun: boolean, overrid
 }
 
 // ---------- POST /api/part-catalog/import-text — آپدیت از متن چسبانده‌شده (admin) ----------
-router.post('/import-text', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/import-text', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   try {
     const schema = z.object({
       text: z.string().min(1).max(200_000),
@@ -880,7 +918,7 @@ function catalogParseMultipart(buffer: Buffer, contentType: string): { file: { f
 }
 
 // ---------- POST /api/part-catalog/import — آپدیت از فایل اکسل (admin) ----------
-router.post('/import', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/import', requireRole('admin', 'warehouse', 'tech'), (req: Request, res: Response) => {
   catalogCollectBody(req, res, (body, contentType) => {
     try {
       const { file } = catalogParseMultipart(body, contentType);

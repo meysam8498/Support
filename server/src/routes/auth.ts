@@ -22,7 +22,7 @@ router.post('/login', (req, res) => {
   const user = db.prepare(
     `SELECT id, username, password_hash, full_name, role, active FROM users WHERE username = ?`
   ).get(username) as
-    | { id: number; username: string; password_hash: string; full_name: string; role: 'admin' | 'user'; active: number }
+    | { id: number; username: string; password_hash: string; full_name: string; role: 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer'; active: number }
     | undefined;
 
   // پیام یکسان برای «کاربر وجود ندارد»، «رمز نادرست» و «حساب غیرفعال»

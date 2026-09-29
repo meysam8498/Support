@@ -1,14 +1,24 @@
 // ============================================================
 // Context احراز هویت — طراح: میثم ایجادی / Meysam Ijadi
-// نقش‌ها: 'admin' (دسترسی کامل) و 'user' (فقط مشاهده/جستجو).
-// متمرکزسازی کاربر فعلی + پرچم isAdmin برای گیتینگ رابط کاربری.
+// نقش‌های پنج‌گانه: admin / warehouse / sales / tech / viewer.
+// متمرکزسازی کاربر فعلی + پرچم‌های گیتینگ رابط کاربری.
 // ============================================================
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { User } from '../api/api';
 
+export type Role = 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer';
+
 interface AuthContextValue {
   user: User | null;
   isAdmin: boolean;
+  /** نقش کاربر فعلی (fallback: viewer) */
+  role: Role;
+  /** اجازه‌ی نوشتن عمومی (تجهیز/قطعه/کاتالوگ/لیست‌ها/تأمین/ورود سریال) */
+  canWrite: boolean;
+  /** ثبت درخواست گارانتی (فروش هم اجازه دارد) */
+  canRequestWarranty: boolean;
+  /** ثبت تعویض گارانتی (فقط فنی/ادمین) */
+  canReplace: boolean;
   setUser: (u: User | null) => void;
   logout: () => void;
 }
@@ -49,9 +59,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserState(null);
   };
 
+  const role: Role = (user?.role as Role) ?? 'viewer';
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAdmin: user?.role === 'admin', setUser, logout }),
-    [user]
+    () => ({
+      user,
+      role,
+      isAdmin: role === 'admin',
+      canWrite: role === 'admin' || role === 'warehouse' || role === 'tech',
+      canRequestWarranty: role === 'admin' || role === 'warehouse' || role === 'sales' || role === 'tech',
+      canReplace: role === 'admin' || role === 'tech',
+      setUser,
+      logout,
+    }),
+    [user, role]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

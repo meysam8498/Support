@@ -17,7 +17,8 @@ interface NavItem {
   to: string;
   icon: string;
   label: string;
-  adminOnly?: boolean;
+  /** نقش‌های مجاز — خالی = همه */
+  roles?: string[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -26,19 +27,19 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/parts', icon: '🔩', label: t.navParts },
   { to: '/warranty', icon: '🛡️', label: t.navWarranty },
   { to: '/reports', icon: '📊', label: t.navReports },
-  { to: '/serial-import', icon: '📥', label: t.navSerialImport, adminOnly: true },
-  { to: '/lists', icon: '📋', label: t.navLists, adminOnly: true },
-  { to: '/users', icon: '👥', label: t.navUsers, adminOnly: true },
-  { to: '/backups', icon: '🗄️', label: t.navBackups, adminOnly: true },
+  { to: '/serial-import', icon: '📥', label: t.navSerialImport, roles: ['admin', 'warehouse', 'tech'] },
+  { to: '/lists', icon: '📋', label: t.navLists, roles: ['admin', 'warehouse', 'tech'] },
+  { to: '/users', icon: '👥', label: t.navUsers, roles: ['admin'] },
+  { to: '/backups', icon: '🗄️', label: t.navBackups, roles: ['admin'] },
 ];
 
 export default function Layout() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const visibleItems = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
 
   const doLogout = () => {
     logout();
@@ -122,12 +123,12 @@ export default function Layout() {
                 </div>
                 <div
                   className={`text-[10px] ${
-                    user?.role === 'admin'
+                    role === 'admin'
                       ? 'text-brand-600 dark:text-brand-400 font-semibold'
                       : 'text-stone-400'
                   }`}
                 >
-                  {user?.role === 'admin' ? t.roleAdmin : t.roleUser}
+                  {role === 'admin' ? t.roleAdmin : role === 'viewer' ? t.roleUser : role === 'warehouse' ? 'انباردار' : role === 'sales' ? 'کارشناس فروش' : 'کارشناس فنی'}
                 </div>
               </div>
             </div>

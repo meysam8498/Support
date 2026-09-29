@@ -13,6 +13,7 @@ import { api } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
 import PeriodicReportDialog from '../components/PeriodicReportDialog';
+import { useAuth } from '../context/AuthContext';
 
 interface ReplacementRow {
   id: number;
@@ -32,6 +33,7 @@ interface ReplacementRow {
 }
 
 export default function ReplacementsListPage() {
+  const { canReplace, canRequestWarranty } = useAuth();
   const [params, setParams] = useSearchParams();
   const partTitle = params.get('part') ?? '';
   const partNumber = params.get('pn') ?? '';
@@ -109,9 +111,11 @@ export default function ReplacementsListPage() {
           >
             🗓️ گزارش دوره‌ای
           </button>
-          <Link to="/warranty/replace" className="btn-primary !min-h-[34px] text-xs">
-            + ثبت تعویض جدید
-          </Link>
+          {canReplace && (
+            <Link to="/warranty/replace" className="btn-primary !min-h-[34px] text-xs">
+              + ثبت تعویض جدید
+            </Link>
+          )}
         </div>
       </div>
 

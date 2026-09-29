@@ -62,7 +62,7 @@ router.get('/:partId', (req, res) => {
  * PUT /api/procurement/:partId — upsert رکورد تأمین بر اساس part_id (فقط admin).
  * اگر وجود نداشت ساخته می‌شود؛ اگر داشت به‌روزرسانی می‌شود.
  */
-router.put('/:partId', requireRole('admin'), (req, res) => {
+router.put('/:partId', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   const parsed = upsertSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -120,7 +120,7 @@ router.put('/:partId', requireRole('admin'), (req, res) => {
 });
 
 /** DELETE /api/procurement/:partId — حذف رکورد تأمین یک قطعه (فقط admin) */
-router.delete('/:partId', requireRole('admin'), (req, res) => {
+router.delete('/:partId', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   getDb().prepare(`DELETE FROM procurement WHERE part_id = ?`).run(Number(req.params.partId));
   res.json({ ok: true });
 });

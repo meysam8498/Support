@@ -216,7 +216,7 @@ const batchSchema = z.object({
   })).min(1).max(500),
 });
 
-router.post('/batch', requireRole('admin'), (req, res) => {
+router.post('/batch', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   const parsed = batchSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -291,7 +291,7 @@ router.post('/batch', requireRole('admin'), (req, res) => {
 });
 
 /** POST /api/parts — ثبت قطعه جدید برای یک دستگاه (فقط admin) */
-router.post('/', requireRole('admin'), (req, res) => {
+router.post('/', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   const parsed = partSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -339,7 +339,7 @@ router.post('/', requireRole('admin'), (req, res) => {
 });
 
 /** PUT /api/parts/:id — ویرایش قطعه (فقط admin) */
-router.put('/:id', requireRole('admin'), (req, res) => {
+router.put('/:id', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   const parsed = partSchema.partial().omit({ device_id: true }).safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
@@ -448,7 +448,7 @@ const INLINE_FIELDS = {
 } as const;
 type InlineField = keyof typeof INLINE_FIELDS;
 
-router.patch('/:id/field', requireRole('admin'), (req, res) => {
+router.patch('/:id/field', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   const fieldSchema = z.object({
     field: z.enum(['part_serial_number', 'part_number_1', 'tech_specs']),
     value: z.string().max(2000).optional().nullable(),
@@ -485,7 +485,7 @@ router.patch('/:id/field', requireRole('admin'), (req, res) => {
   res.json({ ok: true, field, value });
 });
 
-router.delete('/:id', requireRole('admin'), (req, res) => {
+router.delete('/:id', requireRole('admin', 'warehouse', 'tech'), (req, res) => {
   try {
     getDb().prepare(`DELETE FROM parts WHERE id = ?`).run(Number(req.params.id));
     res.json({ ok: true });

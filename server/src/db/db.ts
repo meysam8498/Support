@@ -137,6 +137,17 @@ export function migrateSchema(db: DatabaseSync): void {
     }
   }
 
+  // مهاجرت نقش‌ها: 'user' قدیمی → 'viewer' (فقط‌مشاهده) — یک‌بار و idempotent
+  try {
+    const legacy = db.prepare(`SELECT COUNT(*) AS c FROM users WHERE role NOT IN ('admin','warehouse','sales','tech','viewer')`).get() as { c: number };
+    if (legacy.c > 0) {
+      db.exec(`UPDATE users SET role = 'viewer' WHERE role NOT IN ('admin','warehouse','sales','tech','viewer')`);
+      console.log(`→ مهاجرت: ${legacy.c} کاربر با نقش قدیمی به 'viewer' تبدیل شد.`);
+    }
+  } catch (err) {
+    console.error('⚠ مهاجرت ناموفق (roles):', (err as Error).message);
+  }
+
   // یکتایی سریال قطعه — هر سریال فقط یک بار در کل سامانه (مقدار خالی/NULL مجاز است)
   // اگر داده‌ی تکراری جامانده باشد، ایندکس نمی‌سازیم و هشدار می‌دهیم تا کاربر اصلاح کند
   try {

@@ -1,9 +1,18 @@
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
 import React, { useEffect, useState } from 'react';
-import { api, type User } from '../api/api';
+import { api, type User, type Role, ROLE_LABELS } from '../api/api';
 import { t } from '../i18n/fa';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
+
+/** رنگ بج هر نقش */
+const ROLE_CLS: Record<Role, string> = {
+  admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  warehouse: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  sales: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+  tech: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+  viewer: 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300',
+};
 
 export default function UsersPage() {
   const { isAdmin, user: currentUser } = useAuth();
@@ -19,13 +28,13 @@ export default function UsersPage() {
     fullName: '',
     email: '',
     password: '',
-    role: 'user' as 'admin' | 'user',
+    role: 'viewer' as Role,
   });
 
   const [editForm, setEditForm] = useState({
     fullName: '',
     email: '',
-    role: 'user' as 'admin' | 'user',
+    role: 'viewer' as Role,
     active: 1,
   });
 
@@ -49,7 +58,7 @@ export default function UsersPage() {
   if (loading) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
 
   const openCreate = () => {
-    setCreateForm({ username: '', fullName: '', email: '', password: '', role: 'user' });
+    setCreateForm({ username: '', fullName: '', email: '', password: '', role: 'viewer' });
     setError('');
     setModalOpen(true);
   };
@@ -139,8 +148,8 @@ export default function UsersPage() {
                   <td className="px-3 py-2 fa-nums dark:text-stone-300" dir="ltr">{u.username}</td>
                   <td className="px-3 py-2 fa-nums dark:text-stone-300" dir="ltr">{u.email || '—'}</td>
                   <td className="px-3 py-2">
-                    <span className={`badge ${u.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'}`}>
-                      {u.role === 'admin' ? t.roleAdmin : t.roleUser}
+                    <span className={`badge ${ROLE_CLS[u.role] ?? ROLE_CLS.viewer}`}>
+                      {ROLE_LABELS[u.role] ?? u.role}
                     </span>
                   </td>
                   <td className="px-3 py-2">
@@ -186,9 +195,10 @@ export default function UsersPage() {
           </div>
           <div>
             <label className="label">نقش</label>
-            <select className="input" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as 'admin' | 'user' })}>
-              <option value="user">{t.roleUser}</option>
-              <option value="admin">{t.roleAdmin}</option>
+            <select className="input" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as Role })}>
+              {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              ))}
             </select>
           </div>
           <div className="flex gap-2 justify-end">
@@ -212,9 +222,10 @@ export default function UsersPage() {
           </div>
           <div>
             <label className="label">نقش</label>
-            <select className="input" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value as 'admin' | 'user' })}>
-              <option value="user">{t.roleUser}</option>
-              <option value="admin">{t.roleAdmin}</option>
+            <select className="input" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value as Role })}>
+              {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              ))}
             </select>
           </div>
           <div>

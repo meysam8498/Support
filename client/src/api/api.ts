@@ -80,12 +80,22 @@ export const api = {
 
 // -------- نوع‌ها --------
 
+export type Role = 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer';
+
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: 'مدیر سیستم',
+  warehouse: 'انباردار',
+  sales: 'کارشناس فروش',
+  tech: 'کارشناس فنی',
+  viewer: 'فقط‌مشاهده',
+};
+
 export interface User {
   id: number;
   username: string;
   fullName: string;
   email?: string;
-  role: 'admin' | 'user';
+  role: Role;
   active?: number;
   created_at?: string;
 }

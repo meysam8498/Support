@@ -32,7 +32,7 @@ const REASON_TYPE: Record<string, string> = {
 
 export default function DeviceDetailPage() {
   const { id } = useParams();
-  const { isAdmin } = useAuth();
+  const { canWrite, canReplace } = useAuth();
   const [data, setData] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +57,7 @@ export default function DeviceDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold dark:text-stone-50">جزئیات تجهیز</h1>
-        {isAdmin && (
+        {canWrite && (
           <div className="flex gap-2">
             <Link to={`/devices/${d.id}/edit`} className="btn-secondary">{t.edit}</Link>
             <Link to={`/devices/${d.id}/parts-grid`} className="btn-secondary" title="افزودن چند قطعه به‌صورت جدولی">🔩 قطعات (جدولی)</Link>
@@ -177,7 +177,7 @@ export default function DeviceDetailPage() {
                       {p.supplier_warranty_months ? ` · ${toFa(p.supplier_warranty_months)} ماه` : ''}
                     </td>
                     <td className="px-3 py-2">
-                      {isAdmin && p.status === 'active' && (
+                      {canReplace && p.status === 'active' && (
                         <Link to={`/warranty/replace?part=${p.id}&device=${d.id}`} className="text-amber-600 hover:underline text-xs dark:text-amber-400">{t.replacePart}</Link>
                       )}
                     </td>

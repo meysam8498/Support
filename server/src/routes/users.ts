@@ -7,27 +7,29 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { getDb } from '../db/db.js';
-import { hashPassword } from '../lib/auth.js';
+import { hashPassword, ROLES } from '../lib/auth.js';
 import { requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-// کل این روتر فقط برای مدیر است.
+// کل این روتر فقط برای مدیر است — ادمین یوزر کم و زیاد می‌کند و نقش می‌دهد.
 router.use(requireRole('admin'));
+
+const roleEnum = z.enum(ROLES as [string, ...string[]]);
 
 const createSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
   full_name: z.string().min(1),
   email: z.string().optional().nullable(),
-  role: z.enum(['admin', 'user']).default('user'),
+  role: roleEnum.default('viewer'),
   active: z.number().int().min(0).max(1).optional(),
 });
 
 const updateSchema = z.object({
   full_name: z.string().min(1).optional(),
   email: z.string().optional().nullable(),
-  role: z.enum(['admin', 'user']).optional(),
+  role: roleEnum.optional(),
   active: z.number().int().min(0).max(1).optional(),
 });
 

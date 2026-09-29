@@ -23,7 +23,7 @@ import { useAuth } from '../context/AuthContext';
  * پیش‌انتخاب می‌شود ولی امکان تغییر همچنان وجود دارد.
  */
 export default function WarrantyReplacePage() {
-  const { isAdmin } = useAuth();
+  const { canReplace } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const prePartId = params.get('part');      // قطعه‌ی پیش‌انتخاب‌شده (اختیاری)
@@ -178,11 +178,11 @@ export default function WarrantyReplacePage() {
 
   if (loadingLists) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
 
-  // فقط ادمین اجازه ثبت تعویض دارد
-  if (!isAdmin) {
+  // فقط ادمین/کارشناس فنی اجازه ثبت تعویض دارد
+  if (!canReplace) {
     return (
       <div className="max-w-2xl mx-auto card text-center py-12">
-        <p className="text-stone-500 dark:text-stone-400">ثبت تعویض قطعه تحت گارنتی فقط برای کارشناس مجاز (ادمین) ممکن است.</p>
+        <p className="text-stone-500 dark:text-stone-400">ثبت تعویض قطعه تحت گارنتی فقط برای کارشناس فنی/مدیر ممکن است.</p>
       </div>
     );
   }
