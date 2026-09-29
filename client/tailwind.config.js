@@ -1,13 +1,16 @@
 /**
- * پیکربندی Tailwind CSS — سیستم طراحی Ember Studio (تراکوتا/کهربا/استون گرم)
+ * پیکربندی Tailwind CSS — سیستم طراحی PipelinePro (ایندیگو/فیروزه‌ای/نارنجی)
  * طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
- * حالت تم: مبتنی بر کلاس (darkMode: 'class') تا بتوان بین دارک/لات سوییچ کرد.
+ * مرجع زبان طراحی: DESIGN.md (استاندارد google-labs-code/design.md)
+ * حالت تم: مبتنی بر کلاس (darkMode: 'class')
  *
- * پالت Ember Studio: گرم، مینیمال، متمرکز بر کَرافت
- *   • terracotta (#C2410C) → فقط عناصر تعاملی و وضعیت فعال
- *   • amber (#F59E0B) → اعلان‌ها، نشان‌ها، هایلایت
- *   • stone گرم → متن‌های بی‌طرف، سطوح، حاشیه‌ها
- * هرگز سفید/مشکی خالص — همیشه مقادیر پالت گرم.
+ * پالت PipelinePro: ساختارمند، داده‌محور، مطمئن
+ *   • indigo (#4F46E5) → عناصر تعاملی، منوی فعال، CTA اصلی
+ *   • cyan (#06B6D4) → لینک‌ها و هایلایت ثانویه
+ *   • orange (#F97316) → فوریت: نزدیک سقف، هشدار پیش از انقضا (هرگز قرمز نه)
+ *   • zinc خنثی → متن، سطوح، حاشیه‌ها؛ بستر #FAFAFA با کارت سفید
+ * کلاس‌های برند قدیمی (brand/gold/coral/sky) حفظ شده‌اند تا همه‌ی صفحات
+ * بدون تغییر نام کلاس، با پالت جدید رندر شوند.
  */
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -16,98 +19,94 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // سِری/سَنس کنتراست — امضای طراحی Ember Studio
-        // برای فارسی، Vazirmatn جایگزین Source Sans 3 می‌ماند؛
-        // Playfair Display برای اعداد/لاتین نمایشی بارگذاری می‌شود.
-        sans: ['"Source Sans 3"', 'Vazirmatn', 'Tahoma', 'sans-serif'],
-        display: ['"Playfair Display"', 'Vazirmatn', 'serif'],
-        mono: ['"Fira Code"', 'monospace'],
+        // PipelinePro: Outfit نمایشی + Inter بدنه؛ فارسی: Vazirmatn
+        sans: ['Inter', 'Vazirmatn', 'Tahoma', 'sans-serif'],
+        display: ['Outfit', 'Vazirmatn', 'sans-serif'],
+        mono: ['"Source Code Pro"', 'monospace'],
       },
       colors: {
-        // رنگ اصلی برند — تراکوتا (جایگزین تیل قبلی؛ کلاس‌های brand-* حفظ شدند)
+        // ایندیگو — رنگ اصلی برند (نام کلاس brand-* حفظ شد)
         brand: {
-          50: '#FEF3EC',
-          100: '#FCE4D4',
-          200: '#F9C6A8',
-          300: '#F0A178',
-          400: '#E2754A',
-          500: '#C2410C', // Primary Terracotta
-          600: '#A93A0C',
-          700: '#9A3412', // Primary Hover — Burnt Sienna
-          800: '#7C2D0E',
-          900: '#5C230B',
-          950: '#3D1707',
+          50: '#EEF2FF',
+          100: '#E0E7FF',
+          200: '#C7D2FE',
+          300: '#A5B4FC',
+          400: '#818CF8',
+          500: '#4F46E5', // Primary — Indigo
+          600: '#4338CA', // Primary Hover
+          700: '#3730A3', // Primary Active
+          800: '#312E81',
+          900: '#1E1B4B',
+          950: '#16123F',
         },
-        // کهربایی — اعلان‌ها و نشان‌ها (بجای gold قبلی)
+        // نارنجی فوریت — نزدیک سقف/انقضا (نام کلاس gold-* حفظ شد)
         gold: {
-          light: '#FCD34D',
-          DEFAULT: '#F59E0B',
-          dark: '#D97706',
+          light: '#FDBA74',
+          DEFAULT: '#F97316',
+          dark: '#EA580C',
         },
-        // مرجانی گرم — خطا/مخرب (بجای coral قبلی)
+        // قرمز خطا/مخرب (نام کلاس coral-* حفظ شد)
         coral: {
-          light: '#F87171',
-          DEFAULT: '#DC2626',
-          dark: '#B91C1C',
+          light: '#FCA5A5',
+          DEFAULT: '#EF4444',
+          dark: '#DC2626',
         },
-        // کرم گرم — سطوح ورودی (بجای cream قبلی)
-        cream: '#FAFAF9',
-        // آبی خنثیِ گرم — حالت اطلاع‌رسانی (بجای sky قبلی)
+        // فیروزه‌ای — لینک/هایلایت ثانویه (نام کلاس sky-* حفظ شد)
         sky: {
-          light: '#93B4C8',
-          DEFAULT: '#5B7E93',
-          dark: '#426376',
+          light: '#67E8F9',
+          DEFAULT: '#06B6D4',
+          dark: '#0891B2',
         },
-        // سطوح گرم Ember Studio
+        cream: '#FAFAFA',
+        // سطوح PipelinePro — بستر خاکستری سردِ روشن با کارت سفید
         surface: {
-          base: '#FAFAF9',   // پس‌زمینه‌ی صفحه
-          card: '#F5F5F4',   // کارت‌ها و پنل‌ها
-          raised: '#E7E5E4', // hover/انتخاب
+          base: '#FAFAFA',
+          card: '#FFFFFF',
+          raised: '#F4F4F5',
         },
         stone: {
-          50: '#FAFAF9',
-          100: '#F5F5F4',
-          200: '#E7E5E4',
-          300: '#D6D3D1',
-          400: '#A8A29E',
-          500: '#78716C',
-          600: '#57534E',
-          700: '#44403C',
-          800: '#292524',
-          900: '#1C1917',
+          50: '#FAFAFA',
+          100: '#F4F4F5',
+          200: '#E4E4E7',
+          300: '#D4D4D8',
+          400: '#A1A1AA',
+          500: '#71717A',
+          600: '#52525B',
+          700: '#3F3F46',
+          800: '#27272A',
+          900: '#18181B',
         },
-        success: '#16A34A',
-        error: '#DC2626',
+        success: '#22C55E',
+        error: '#EF4444',
       },
-      // ارتقاع Ember Studio — سایه‌های نرم و گرم
+      // ارتقاع Material-style لایه‌ای — PipelinePro
       boxShadow: {
-        sm: '0 1px 2px rgba(28,25,23,0.04)',
-        DEFAULT: '0 1px 3px rgba(28,25,23,0.06)',
-        md: '0 4px 16px rgba(28,25,23,0.06)',
-        lg: '0 24px 48px rgba(28,25,23,0.12)',
-        'card': '0 1px 3px rgba(28,25,23,0.05)',
-        'glow': '0 4px 12px rgba(194,65,12,0.25)',
-        'focus': '0 0 0 3px rgba(194,65,12,0.12)',
+        sm: '0 1px 2px rgba(24,24,27,0.05)',
+        DEFAULT: '0 1px 3px rgba(24,24,27,0.07), 0 1px 2px rgba(24,24,27,0.05)',
+        md: '0 4px 6px -1px rgba(24,24,27,0.07), 0 2px 4px -2px rgba(24,24,27,0.05)',
+        lg: '0 10px 15px -3px rgba(24,24,27,0.08), 0 4px 6px -4px rgba(24,24,27,0.04)',
+        card: '0 1px 2px rgba(24,24,27,0.05)',
+        glow: '0 4px 12px rgba(79,70,229,0.25)',
+        focus: '0 0 0 3px rgba(79,70,229,0.12)',
       },
       borderRadius: {
         sm: '4px',
         DEFAULT: '8px',
         md: '8px',
         lg: '12px',
-        xl: '12px',
-        '2xl': '16px',
+        xl: '20px',
+        '2xl': '20px',
         '3xl': '24px',
         full: '9999px',
       },
       keyframes: {
-        // انیمیشن پرشدن نوار پیشرفت
         'progress-fill': {
           from: { width: '0%' },
           to: { width: 'var(--progress-w, 100%)' },
         },
       },
       animation: {
-        'progress-fill': 'progress-fill 300ms ease-out forwards',
+        'progress-fill': 'progress-fill 200ms ease-out forwards',
       },
     },
   },

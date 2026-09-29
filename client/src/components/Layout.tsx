@@ -1,12 +1,12 @@
 // ============================================================
-// چیدمان اصلی — سیستم طراحی Ember Studio (تراکوتا/استون گرم)
+// چیدمان اصلی — سیستم طراحی PipelinePro (ایندیگو/فیروزه‌ای/نارنجی)
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
-// • سایدبار ۲۵۶px، پس‌زمینه‌ی سفید گرم، حاشیه‌ی راست ۱px (RTL)
-// • آیتم فعال: نوار تراکوتا ۳px سمت راست + پس‌زمینه‌ی ملایم گرم
-// • هدر شفاف با backdrop-blur و حاشیه‌ی پایین هنگام اسکرول
-// • منو بر اساس نقش کاربر گیت می‌شود (مدیریت کاربران فقط برای admin).
+// • منوی افقی بالای صفحه (h-14): لوگو + لینک‌ها + جست‌وجو + تم + منوی کاربر
+// • آیتم فعال: پس‌زمینه‌ی ایندیگو ملایم + متن ایندیگو (چیپ فعال)
+// • منوی کاربر (dropdown): پروفایل، «درباره‌ی سامانه»، «ورود کد لایسنس» (ادمین)، خروج
+// • منو بر اساس نقش کاربر گیت می‌شود.
 // ============================================================
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -27,8 +27,13 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/parts', icon: '🔩', label: t.navParts },
   { to: '/warranty', icon: '🛡️', label: t.navWarranty },
   { to: '/reports', icon: '📊', label: t.navReports },
-  { to: '/serial-import', icon: '📥', label: t.navSerialImport, roles: ['admin', 'warehouse', 'tech'] },
   { to: '/lists', icon: '📋', label: t.navLists, roles: ['admin', 'warehouse', 'tech'] },
+  { to: '/serial-import', icon: '📥', label: t.navSerialImport, roles: ['admin', 'warehouse', 'tech'] },
+];
+
+/** آیتم‌های منوی کاربر — ابزارهای مدیریتی و اطلاعاتی */
+const USER_MENU_ITEMS: NavItem[] = [
+  { to: '/about', icon: 'ℹ️', label: 'درباره‌ی سامانه' },
   { to: '/users', icon: '👥', label: t.navUsers, roles: ['admin'] },
   { to: '/backups', icon: '🗄️', label: t.navBackups, roles: ['admin'] },
   { to: '/license', icon: '🔑', label: t.navLicense, roles: ['admin'] },
@@ -38,126 +43,181 @@ export default function Layout() {
   const { user, role, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+  const mainItems = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+  const userItems = USER_MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+
+  // بستن منوی کاربر با کلیک بیرون
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
 
   const doLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const linkCls = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
+      isActive
+        ? 'bg-brand-500 text-white font-semibold shadow-glow'
+        : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-stone-800'
+    }`;
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* سایدبار ۲۵۶px — سفید گرم با حاشیه‌ی ۱px استون (RTL: حاشیه سمت چپ) */}
-      <aside
-        className={`${
-          collapsed ? 'w-16' : 'w-60'
-        } bg-white dark:bg-stone-900 border-l border-stone-300 dark:border-stone-700 flex flex-col transition-all duration-200 shrink-0`}
-      >
-        {/* لوگو + نام ورک‌اسپیس */}
-        <div className="relative h-16 flex items-center justify-center border-b border-stone-200 dark:border-stone-800 overflow-hidden">
-          {!collapsed && (
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center text-white text-sm font-bold">
-                م
-              </span>
-              <span className="text-stone-800 dark:text-stone-100 font-semibold text-sm">
-                {t.appName}
-              </span>
-            </div>
-          )}
-          {collapsed && (
-            <span className="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center text-white text-sm font-bold">
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* ═══════════ منوی بالای صفحه ═══════════ */}
+      <header className="shrink-0 z-20 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800">
+        <div className="flex items-center gap-3 px-4 h-14">
+          {/* لوگو */}
+          <NavLink to="/" className="flex items-center gap-2 shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center text-white text-sm font-bold shadow-glow">
               م
             </span>
-          )}
+            <span className="hidden md:block text-stone-900 dark:text-stone-100 font-display font-bold text-sm tracking-wide">
+              {t.appName}
+            </span>
+          </NavLink>
+
+          {/* لینک‌های اصلی — دسکتاپ */}
+          <nav className="hidden lg:flex items-center gap-1 flex-1">
+            {mainItems.map((item) => (
+              <NavLink key={item.to} to={item.to} end={item.to === '/'} className={linkCls} title={item.label}>
+                <span className="text-base leading-none">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          {/* همبرگر — موبایل/تبلت */}
           <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="absolute top-4 text-stone-400 hover:text-stone-600 text-lg dark:hover:text-stone-200"
-            style={{ left: collapsed ? '0.75rem' : '13.5rem' }}
-            aria-label="جمع/باز کردن منو"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="lg:hidden btn-ghost !min-h-[36px] !px-2.5 shrink-0"
+            aria-label="منو"
           >
-            {collapsed ? '←' : '→'}
+            {mobileOpen ? '✕' : '☰'}
           </button>
-        </div>
 
-        {/* لینک‌ها — آیتم فعال: نوار تراکوتا ۳px راست + پس‌زمینه‌ی ملایم */}
-        <nav className="flex-1 py-4 space-y-1 px-3 overflow-y-auto">
-          {visibleItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150 ${
-                  isActive
-                    ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 font-semibold'
-                    : 'text-stone-600 hover:bg-surface-raised dark:text-stone-300 dark:hover:bg-stone-800'
-                } ${collapsed ? 'justify-center' : ''}`
-              }
-              title={collapsed ? item.label : undefined}
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <span className="absolute inset-y-1 right-0 w-[3px] rounded-full bg-brand-500" />
-                  )}
-                  <span className="text-lg">{item.icon}</span>
-                  {!collapsed && <span>{item.label}</span>}
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* کاربر */}
-        <div className="border-t border-stone-200 dark:border-stone-800 p-3">
-          {!collapsed && (
-            <div className="flex items-center gap-2 mb-2 px-1">
-              <span className="w-6 h-6 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-[10px] font-bold text-stone-600 dark:text-stone-300">
-                {user?.fullName?.charAt(0) ?? '؟'}
-              </span>
-              <div className="min-w-0">
-                <div className="text-xs font-semibold text-stone-700 dark:text-stone-200 truncate">
-                  {user?.fullName}
-                </div>
-                <div
-                  className={`text-[10px] ${
-                    role === 'admin'
-                      ? 'text-brand-600 dark:text-brand-400 font-semibold'
-                      : 'text-stone-400'
-                  }`}
-                >
-                  {role === 'admin' ? t.roleAdmin : role === 'viewer' ? t.roleUser : role === 'warehouse' ? 'انباردار' : role === 'sales' ? 'کارشناس فروش' : 'کارشناس فنی'}
-                </div>
-              </div>
-            </div>
-          )}
-          <button onClick={doLogout} className="btn-secondary w-full text-xs">
-            {!collapsed && t.logout}
-            {collapsed && '↩'}
-          </button>
-        </div>
-      </aside>
-
-      {/* محتوای اصلی — پس‌زمینه‌ی سفید گرم صفحه */}
-      <main className="flex-1 overflow-y-auto bg-surface-base dark:bg-stone-900">
-        {/* نوار بالا: جست‌وجوی سراسری + تم — شفاف + blur، حاشیه‌ی پایین ۱px */}
-        <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/80 px-6 py-3 backdrop-blur">
-          <div className="flex-1 max-w-xl">
+          {/* جست‌وجوی سراسری */}
+          <div className="flex-1 lg:flex-none lg:max-w-md min-w-0">
             <GlobalSearchBox compact />
           </div>
+
+          {/* تم */}
           <button
             onClick={toggleTheme}
-            className="btn-secondary !min-h-[36px] !px-3 text-sm shrink-0"
+            className="btn-ghost !min-h-[36px] !px-2.5 text-base shrink-0"
             title={t.toggleTheme}
             aria-label={t.toggleTheme}
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
+
+          {/* منوی کاربر */}
+          <div className="relative shrink-0" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className={`flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 ${
+                menuOpen
+                  ? 'bg-brand-50 border-brand-200 dark:bg-brand-900/30 dark:border-brand-700'
+                  : 'border-transparent hover:bg-surface-raised dark:hover:bg-stone-800'
+              }`}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              <span className="w-6.5 h-6.5 w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-[11px] font-bold text-white">
+                {user?.fullName?.charAt(0) ?? '؟'}
+              </span>
+              <span className="hidden sm:block max-w-[110px] truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
+                {user?.fullName}
+              </span>
+              <span className="text-[10px] text-stone-400">{menuOpen ? '▴' : '▾'}</span>
+            </button>
+
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute left-0 mt-2 w-60 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-lg py-1.5 z-30"
+              >
+                {/* هدر پروفایل */}
+                <div className="px-3 pb-2 pt-1 border-b border-stone-100 dark:border-stone-700">
+                  <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate">{user?.fullName}</p>
+                  <p className="text-[11px] text-stone-400 mt-0.5">
+                    {role === 'admin' ? t.roleAdmin : role === 'viewer' ? t.roleUser : role === 'warehouse' ? 'انباردار' : role === 'sales' ? 'کارشناس فروش' : 'کارشناس فنی'}
+                  </p>
+                </div>
+                {/* آیتم‌ها */}
+                {userItems.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMenuOpen(false)}
+                    className="list-item !border-b-0 !h-10 text-stone-700 dark:text-stone-200"
+                  >
+                    <span className="text-base leading-none">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </NavLink>
+                ))}
+                <div className="border-t border-stone-100 dark:border-stone-700 mt-1 pt-1">
+                  <button
+                    onClick={doLogout}
+                    className="list-item !border-b-0 !h-10 w-full text-coral dark:text-coral-light"
+                  >
+                    <span className="text-base leading-none">↩</span>
+                    <span>{t.logout}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="p-6">
+
+        {/* منوی موبایل — کشویی زیر هدر */}
+        {mobileOpen && (
+          <nav className="lg:hidden border-t border-stone-200 dark:border-stone-800 px-3 py-2 grid grid-cols-2 gap-1">
+            {mainItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                    isActive
+                      ? 'bg-brand-500 text-white font-semibold'
+                      : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-stone-800'
+                  }`
+                }
+              >
+                <span className="text-base leading-none">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+            {userItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-stone-800"
+              >
+                <span className="text-base leading-none">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        )}
+      </header>
+
+      {/* محتوای اصلی */}
+      <main className="flex-1 overflow-y-auto bg-surface-base dark:bg-stone-900">
+        <div className="p-4 md:p-6">
           <Outlet />
         </div>
       </main>

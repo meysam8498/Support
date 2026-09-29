@@ -1,10 +1,13 @@
 // ============================================================
-// صفحه‌ی ورود کد لایسنس — فعال‌سازی طرح با JWT امضاشده (RS256)
+// صفحه‌ی لایسنس — وضعیت + پنل مدیریت ادمین + ورود کد + سوابق
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
 // ============================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/api';
 import { t } from '../i18n/fa';
+import { useAuth } from '../context/AuthContext';
+import JalaliDatePicker from '../components/JalaliDatePicker';
+import { gregorianToJalali } from '../lib/date';
 
 interface LicenseStatus {
   plan: string;
@@ -39,6 +42,15 @@ interface ActivationRow {
   activated_at: string | null;
 }
 
+const PLANS = [
+  { value: 'trial', label: '🧪 آزمایشی/رایگان', months: null as number | null },
+  { value: 'month', label: '📅 یک‌ماهه', months: 1 },
+  { value: 'quarter', label: '📅 سه‌ماهه', months: 3 },
+  { value: 'half-year', label: '📅 شش‌ماهه', months: 6 },
+  { value: 'year', label: '📅 یک‌ساله', months: 12 },
+  { value: 'lifetime', label: '♾️ دائمی', months: null as number | null },
+] as const;
+
 const PLAN_LABELS: Record<string, string> = {
   trial: 'آزمایشی/رایگان',
   month: 'یک‌ماهه',
@@ -49,12 +61,21 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 export default function LicensePage() {
+  const { isAdmin } = useAuth();
   const [status, setStatus] = useState<LicenseStatus | null>(null);
   const [activations, setActivations] = useState<ActivationRow[]>([]);
+  // ---------- ورود کد ----------
   const [code, setCode] = useState('');
   const [preview, setPreview] = useState<CodePreview | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  // ---------- پنل مدیریت ادمین ----------
+  const [plan, setPlan] = useState('trial');
+  const [startsAt, setStartsAt] = useState('');
+  const [licensedTo, setLicensedTo] = useState('');
+  const [notes, setNotes] = useState('');
+  // ---------- عمومی ----------
   const [error, setError] = useState('');
+  const [adminMsg, setAdminMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -63,9 +84,12 @@ export default function LicensePage() {
     try {
       const s = await api.get<LicenseStatus>('/license');
       setStatus(s);
+      setPlan(s.plan);
+      setStartsAt(s.starts_at ? gregorianToJalali(s.starts_at) ?? '' : '');
+      setLicensedTo(s.licensed_to ?? '');
+      setNotes(s.notes ?? '');
       try {
-        const h = await api.get<ActivationRow[]>('/license/activations');
-        setActivations(h ?? []);
+        setActivations((await api.get<ActivationRow[]>('/license/activations')) ?? []);
       } catch {
         setActivations([]);
       }
@@ -79,6 +103,41 @@ export default function LicensePage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const monthsOf = (p: string): number | null => PLANS.find((x) => x.value === p)?.months ?? null;
+
+  // ---------- پنل مدیریت: ذخیره‌ی لایسنس (PUT) ----------
+  const saveAdmin = async () => {
+    setBusy(true); setError(''); setAdminMsg(null);
+    try {
+      const body: Record<string, unknown> = { plan, licensed_to: licensedTo || null, notes: notes || null };
+      if (startsAt) body.starts_at = startsAt; // شمسی؛ پایان خودکار از طول طرح محاسبه می‌شود
+      const r = await api.put<LicenseStatus>('/license', body);
+      setAdminMsg(`✅ ذخیره شد — طرح «${r.plan_label}»${r.expires_at ? ` تا ${r.expires_at.slice(0, 10)}` : ' (بدون انقضا)'}`);
+      await load();
+    } catch (e) {
+      const err = e as Error & { payload?: { error?: string } };
+      setError(err.payload?.error || err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---------- پنل مدیریت: تمدید از پایان فعلی ----------
+  const extend = async (months: number) => {
+    setBusy(true); setError(''); setAdminMsg(null);
+    try {
+      const r = await api.post<LicenseStatus>('/license/extend', { months, from_expiry: true });
+      setAdminMsg(`✅ ${months} ماه تمدید شد — پایان جدید: ${r.expires_at?.slice(0, 10) ?? '—'}`);
+      await load();
+    } catch (e) {
+      const err = e as Error & { payload?: { error?: string } };
+      setError(err.payload?.error || err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---------- ورود کد ----------
   const checkCode = async () => {
     const c = code.trim();
     if (!c) { setError('کد لایسنس را وارد کنید.'); return; }
@@ -121,53 +180,89 @@ export default function LicensePage() {
   };
 
   const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : '—');
+  const daysLeftBadge = status && (
+    <span className={`badge ${status.expired ? 'bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/40' : 'bg-success/10 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'}`}>
+      {status.plan_label}{status.expired ? ' (منقضی)' : ''}
+      {status.days_left !== null && !status.expired && <> · {status.days_left.toLocaleString('fa-IR')} روز باقی‌مانده</>}
+    </span>
+  );
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
-      {/* وضعیت فعلی */}
-      <section className="card p-5">
-        <h1 className="text-lg font-bold text-stone-800 dark:text-stone-100 mb-3">🔑 وضعیت لایسنس</h1>
+      {/* ─────────── وضعیت فعلی ─────────── */}
+      <section className="card card-elevated card-accent p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h1 className="font-display text-lg font-bold text-stone-900 dark:text-stone-50">🔑 وضعیت لایسنس</h1>
+          {status && daysLeftBadge}
+        </div>
         {loading ? (
           <p className="text-stone-400 text-sm">{t.loading}</p>
         ) : status ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-            <div>
-              <p className="text-stone-400 text-xs mb-1">طرح فعلی</p>
-              <span className={`badge ${status.expired ? 'bg-coral/10 text-coral' : 'bg-green-50 text-green-700 dark:bg-green-900/40 dark:text-green-300'}`}>
-                {status.plan_label}{status.expired ? ' (منقضی)' : ''}
-              </span>
-            </div>
-            <div>
-              <p className="text-stone-400 text-xs mb-1">ثبت‌شده برای</p>
-              <p className="text-stone-700 dark:text-stone-200 font-medium">{status.licensed_to || '—'}</p>
-            </div>
-            <div>
-              <p className="text-stone-400 text-xs mb-1">روز باقی‌مانده</p>
-              <p className="text-stone-700 dark:text-stone-200 font-medium">
-                {status.days_left !== null ? status.days_left.toLocaleString('fa-IR') : 'بدون محدودیت'}
-              </p>
-            </div>
-            <div>
-              <p className="text-stone-400 text-xs mb-1">شروع</p>
-              <p className="text-stone-700 dark:text-stone-200">{fmtDate(status.starts_at)}</p>
-            </div>
-            <div>
-              <p className="text-stone-400 text-xs mb-1">پایان</p>
-              <p className="text-stone-700 dark:text-stone-200">{fmtDate(status.expires_at)}</p>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div><p className="text-stone-400 text-xs mb-1">ثبت‌شده برای</p><p className="text-stone-700 dark:text-stone-200 font-medium truncate">{status.licensed_to || '—'}</p></div>
+            <div><p className="text-stone-400 text-xs mb-1">شروع</p><p className="text-stone-700 dark:text-stone-200 fa-nums">{fmtDate(status.starts_at)}</p></div>
+            <div><p className="text-stone-400 text-xs mb-1">پایان</p><p className="text-stone-700 dark:text-stone-200 fa-nums">{fmtDate(status.expires_at)}</p></div>
+            <div><p className="text-stone-400 text-xs mb-1">یادداشت</p><p className="text-stone-700 dark:text-stone-200 truncate">{status.notes || '—'}</p></div>
           </div>
         ) : (
           <p className="text-coral text-sm">{error || t.noData}</p>
         )}
       </section>
 
-      {/* ورود کد */}
+      {/* ─────────── پنل مدیریت (فقط ادمین) ─────────── */}
+      {isAdmin && status && (
+        <section className="card p-5">
+          <h2 className="font-display text-base font-bold text-stone-900 dark:text-stone-50 mb-1">⚙️ مدیریت لایسنس</h2>
+          <p className="text-xs text-stone-400 mb-4">
+            طرح و بازه را مستقیم تنظیم کنید (مثلاً پس از پرداخت یا برای محیط تست). تاریخ پایان برای
+            طرح‌های زمان‌دار خودکار از طول طرح محاسبه می‌شود؛ دائمی/آزمایشی بدون انقضا.
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="label">طرح</label>
+              <select value={plan} onChange={(e) => setPlan(e.target.value)} className="input">
+                {PLANS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}{p.months ? ` — ${p.months} ماه` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">تاریخ شروع (شمسی)</label>
+              <JalaliDatePicker label="" value={startsAt} onChange={setStartsAt} placeholder="۱۴۰۵/۰۷/۰۱" />
+              {monthsOf(plan) && startsAt && (
+                <p className="text-[11px] text-stone-400 mt-1">پایان خودکار: شروع + {monthsOf(plan)} ماه</p>
+              )}
+            </div>
+            <div>
+              <label className="label">ثبت‌شده برای (سازمان/شخص)</label>
+              <input value={licensedTo} onChange={(e) => setLicensedTo(e.target.value)} className="input" placeholder="مثلاً: شرکت نمونه" />
+            </div>
+            <div>
+              <label className="label">یادداشت / شماره فاکتور</label>
+              <input value={notes} onChange={(e) => setNotes(e.target.value)} className="input" placeholder="اختیاری" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-4">
+            <button type="button" onClick={saveAdmin} disabled={busy} className="btn-primary text-sm">💾 ذخیره</button>
+            <button type="button" onClick={() => extend(1)} disabled={busy} className="btn-secondary text-sm">+۱ ماه تمدید</button>
+            <button type="button" onClick={() => extend(3)} disabled={busy} className="btn-secondary text-sm">+۳ ماه</button>
+            <button type="button" onClick={() => extend(12)} disabled={busy} className="btn-secondary text-sm">+۱۲ ماه</button>
+          </div>
+          {adminMsg && <p className="text-green-600 dark:text-green-400 text-sm mt-3">{adminMsg}</p>}
+          <p className="text-[11px] text-stone-400 mt-2">
+            توجه: در نسخه‌ی فعلی محدودسازی انقضا فقط با متغیر محیطی <code className="font-mono" dir="ltr">LICENSE_ENFORCE=1</code> اعمال می‌شود؛ بدون آن، انقضا فقط هشدار است.
+          </p>
+        </section>
+      )}
+
+      {/* ─────────── ورود کد لایسنس ─────────── */}
       <section className="card p-5">
-        <h2 className="text-base font-bold text-stone-800 dark:text-stone-100 mb-2">🔐 ورود کد لایسنس</h2>
+        <h2 className="font-display text-base font-bold text-stone-900 dark:text-stone-50 mb-1">🔐 ورود کد لایسنس</h2>
         <p className="text-xs text-stone-400 mb-3 leading-6">
-          کد فعال‌سازی را که از فروشنده دریافت کرده‌اید در کادر زیر وارد کنید. کد به‌صورت محلی و با
-          کلید عمومی داخل سامانه اعتبارسنجی می‌شود (بدون نیاز به اینترنت) و پس از فعال‌سازی، سقف تجهیزات
-          برداشته می‌شود. برای تهیه‌ی کد: M.Ijadi@Hotmail.com
+          کد فعال‌سازی دریافتی از فروشنده را وارد کنید. اعتبارسنجی کاملاً محلی و آفلاین است (تأیید امضا با
+          کلید عمومی داخل سامانه). سفارش کد: M.Ijadi@Hotmail.com
         </p>
         <textarea
           value={code}
@@ -181,18 +276,14 @@ export default function LicensePage() {
           <button type="button" onClick={activate} disabled={busy} className="btn-primary text-sm">
             {busy ? '…' : '🔓 فعال‌سازی'}
           </button>
-          <button type="button" onClick={checkCode} disabled={busy} className="btn-secondary text-sm">
-            بررسی کد
-          </button>
-          <button type="button" onClick={() => { setCode(''); setPreview(null); setResult(null); setError(''); }} className="btn-ghost text-sm">
-            پاک کردن
-          </button>
+          <button type="button" onClick={checkCode} disabled={busy} className="btn-secondary text-sm">بررسی کد</button>
+          <button type="button" onClick={() => { setCode(''); setPreview(null); setResult(null); setError(''); }} className="btn-ghost text-sm">پاک کردن</button>
         </div>
         {error && <p className="text-coral text-sm mt-3">⚠ {error}</p>}
         {result && <p className="text-green-600 dark:text-green-400 text-sm mt-3">{result}</p>}
 
         {preview && (
-          <div className="mt-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/60 dark:bg-green-900/20 p-4 text-sm space-y-1.5">
+          <div className="mt-4 rounded-lg border border-green-200 dark:border-green-800 bg-success/5 dark:bg-green-900/20 p-4 text-sm space-y-1.5">
             <p className="font-bold text-green-700 dark:text-green-300 mb-2">✔ امضا تأیید شد — اطلاعات کد:</p>
             <div className="grid grid-cols-2 gap-2 text-stone-700 dark:text-stone-200">
               <p>طرح: <b>{PLAN_LABELS[preview.plan] ?? preview.plan}</b></p>
@@ -206,10 +297,10 @@ export default function LicensePage() {
         )}
       </section>
 
-      {/* سوابق فعال‌سازی */}
+      {/* ─────────── سوابق فعال‌سازی ─────────── */}
       {activations.length > 0 && (
         <section className="card p-5">
-          <h2 className="text-base font-bold text-stone-800 dark:text-stone-100 mb-3">📜 سوابق فعال‌سازی</h2>
+          <h2 className="font-display text-base font-bold text-stone-900 dark:text-stone-50 mb-3">📜 سوابق فعال‌سازی</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -223,7 +314,7 @@ export default function LicensePage() {
               <tbody>
                 {activations.map((a) => (
                   <tr key={a.id} className="border-b border-stone-100 dark:border-stone-800">
-                    <td className="py-2 px-2 text-xs">{a.activated_at?.replace('T', ' ').slice(0, 16) || '—'}</td>
+                    <td className="py-2 px-2 text-xs fa-nums">{a.activated_at?.replace('T', ' ').slice(0, 16) || '—'}</td>
                     <td className="py-2 px-2">{PLAN_LABELS[a.plan] ?? a.plan}</td>
                     <td className="py-2 px-2">{a.licensed_to || '—'}</td>
                     <td className="py-2 px-2 font-mono text-xs" dir="ltr">{a.jti}</td>

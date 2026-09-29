@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 /* ============================================================
-   سیستم طراحی Ember Studio — تراکوتا/کهربا/استون گرم (RTL فارسی)
+   سیستم طراحی PipelinePro — ایندیگو/فیروزه‌ای/نارنجی (RTL فارسی)
    طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
+   مرجع: DESIGN.md (استاندارد google-labs-code/design.md)
    اصول:
-   • تراکوتا فقط برای عناصر تعاملی و وضعیت فعال — هرگز تزئینی
-   • کهربا فقط برای جلب‌توجه (اعلان/بج)
-   • کنتراست سِری/سَنس (Playfair برای اعداد نمایشی)
-   • همیشه پالت گرم — نه مشکی/سفید خالص، نه خاکستری سردها
-   • گرید فاصله‌ی ۴px؛ شعاع: دکمه ۸px، کارت ۱۲px
+   • ایندیگو فقط برای عناصر تعاملی و وضعیت فعال — هرگز تزئینی
+   • نارنجی فقط فوریت (نزدیک سقف/انقضا) — قرمز فقط خطای واقعی
+   • بستر #FAFAFA با کارت سفید؛ حاشیه‌ی zinc ۱px؛ شعاع ۸px
+   • گرید فاصله‌ی ۴px؛ انیمیشن ≤ 200ms
    ============================================================ */
 
 html,
@@ -19,88 +19,93 @@ body,
   height: 100%;
 }
 
-/* تم لایت (پیش‌فرض) — پس‌زمینه‌ی سفید گرم */
+/* تم لایت (پیش‌فرض) — بستر روشن خنثی */
 body {
-  font-family: 'Source Sans 3', 'Vazirmatn', Tahoma, sans-serif;
-  background-color: #fafaf9;
-  color: #1c1917;
+  font-family: 'Inter', 'Vazirmatn', Tahoma, sans-serif;
+  background-color: #fafafa;
+  color: #18181b;
+  font-feature-settings: 'cv11', 'ss01';
 }
 
-/* تم دارک — گرم و قهوه‌ای‌تیره، نه آبی‌خاکستری */
+/* تم دارک — zinc تیره‌ی خالص PipelinePro */
 .dark body {
-  background-color: #1c1917;
-  color: #e7e5e4;
+  background-color: #18181b;
+  color: #e4e4e7;
 }
 
-/* اعداد فارسی برای نمایش */
+/* اعداد فارسی/جدولی برای نمایش */
 .fa-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* اعداد نمایشی با فونت سِری Playfair (برای اعداد بزرگ لاتین/فارسی) */
+/* اعداد/تیترهای نمایشی با فونت Outfit */
 .display-num {
-  font-family: 'Playfair Display', 'Vazirmatn', serif;
-  letter-spacing: -0.02em;
+  font-family: 'Outfit', 'Vazirmatn', sans-serif;
+  letter-spacing: 0.02em;
 }
 
-/* اسکرول‌بار گرم */
+/* اسکرول‌بار خنثی */
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d6d3d1;
+  background: #d4d4d8;
   border-radius: 999px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #44403c;
+  background: #3f3f46;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a29e;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #57534e;
+  background: #a1a1aa;
 }
 
-/* فوکوس یکدست با هاله‌ی گرم تراکوتا */
+/* فوکوس یکدست با هاله‌ی ایندیگو */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.12);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
   border-radius: 8px;
 }
 
 @layer components {
-  /* ---------- دکمه‌ها: ۱۵۰ms، شعاع ۸px، سمی‌بولد ---------- */
+  /* ---------- دکمه‌ها: ≤200ms، شعاع ۸px، Inter 14px 600 ---------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[40px] text-sm font-semibold transition-all duration-150 focus:outline-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[38px] text-sm font-semibold transition-all duration-150 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  /* Primary — تراکوتا با glow گرم در hover؛ در هر نما فقط یک CTA اصلی */
+  /* Primary — ایندیگو؛ hover تیره‌تر، active با scale 0.98 */
   .btn-primary {
-    @apply btn bg-brand-500 text-white hover:bg-brand-700 hover:shadow-glow;
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 active:scale-[0.98] hover:shadow-glow;
   }
   .btn-secondary {
-    @apply btn bg-transparent text-stone-700 border border-stone-300 hover:bg-surface-raised dark:text-stone-200 dark:border-stone-700 dark:hover:bg-stone-800;
+    @apply btn bg-transparent text-brand-600 border border-brand-500 hover:bg-brand-50 dark:text-brand-300 dark:border-brand-500/70 dark:hover:bg-brand-900/30;
   }
   .btn-ghost {
-    @apply btn bg-transparent text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-900/30;
+    @apply btn bg-transparent text-stone-500 hover:bg-surface-raised hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100;
   }
   .btn-danger {
-    @apply btn bg-error text-white hover:bg-coral-dark;
+    @apply btn bg-error text-white hover:bg-coral-dark active:scale-[0.98];
   }
 
-  /* ---------- ورودی‌ها: سطح گرم، فوکوس تراکوتا ---------- */
+  /* ---------- ورودی‌ها: ۳۸px، فوکوس ایندیگو + رینگ ---------- */
   .input {
-    @apply w-full rounded-lg border border-stone-300 bg-surface-card px-3 py-2 text-base text-stone-900 placeholder-stone-400 shadow-sm transition focus:border-brand-500 focus:outline-none dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100 dark:placeholder-stone-500;
+    @apply w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition focus:border-brand-500 focus:outline-none dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100 dark:placeholder-stone-500;
+  }
+  .input:focus {
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
   }
   .label {
-    @apply mb-1.5 block text-sm font-semibold text-stone-800 dark:text-stone-200;
+    @apply mb-1.5 block text-[13px] font-medium text-stone-700 dark:text-stone-300;
   }
 
-  /* ---------- کارت‌ها: سطح گرم، حاشیه ۱px، شعاع ۱۲px ---------- */
+  /* ---------- کارت‌ها: سفید، حاشیه zinc، شعاع ۸px ---------- */
   .card {
-    @apply rounded-xl border border-stone-300 bg-surface-card p-4 shadow-card transition-shadow duration-150 hover:shadow-md dark:bg-stone-800 dark:border-stone-700;
+    @apply rounded-lg border border-stone-200 bg-surface-card p-4 shadow-card transition-all duration-150 hover:shadow-md hover:border-stone-300 dark:bg-stone-800 dark:border-stone-700 dark:hover:border-stone-600;
   }
-  /* نوار رنگی سمت راست (RTL) — معادل left stripe در طراحی اصلی */
+  /* کارت برجسته — hover: سایه‌ی بزرگ + بالا آمدن ۲px */
+  .card-elevated {
+    @apply shadow-md hover:shadow-lg hover:-translate-y-0.5;
+  }
+  /* نوار رنگی سمت راست (RTL) — کدگذاری وضعیت */
   .card-accent {
     @apply relative overflow-hidden;
   }
@@ -108,20 +113,20 @@ body {
     content: '';
     @apply absolute inset-y-0 right-0 w-1 bg-brand-500;
   }
-  /* کارت انتخاب‌شده — حاشیه‌ی راست تراکوتا ۲px */
+  /* کارت انتخاب‌شده — حاشیه‌ی راست ایندیگو ۲px */
   .card-selected {
     @apply border-r-2 border-r-brand-500;
   }
 
   /* ---------- Chip قرصی ---------- */
   .chip {
-    @apply inline-flex items-center rounded-full px-3.5 py-1 text-xs font-semibold;
+    @apply inline-flex items-center rounded-full px-3.5 py-1 text-xs font-medium;
   }
   .chip-default {
-    @apply chip bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-300;
+    @apply chip bg-stone-100 text-stone-600 border border-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:border-stone-600;
   }
   .chip-active {
-    @apply chip bg-brand-500 text-white;
+    @apply chip bg-brand-500 text-white border border-transparent;
   }
 
   /* ---------- نوار پیشرفت ۴px ---------- */
@@ -129,17 +134,25 @@ body {
     @apply h-1 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden;
   }
   .progress-fill {
-    @apply h-full rounded-full bg-brand-500 transition-all duration-300 ease-out;
+    @apply h-full rounded-full bg-brand-500 transition-all duration-200 ease-out;
   }
 
-  /* ---------- نشان (badge) ---------- */
+  /* ---------- نشان (badge) — قرصی کامل ---------- */
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
-  /* ---------- سِری نمایشی برای تیترها ---------- */
-  .heading-serif {
-    font-family: 'Playfair Display', 'Vazirmatn', serif;
-    letter-spacing: -0.02em;
+  /* ---------- تیترهای نمایشی Outfit ---------- */
+  .heading-display {
+    font-family: 'Outfit', 'Vazirmatn', sans-serif;
+    letter-spacing: 0.015em;
+  }
+
+  /* ---------- آیتم لیست — ۴۴px، دیوایدر، انتخاب ایندیگو ---------- */
+  .list-item {
+    @apply flex items-center gap-2.5 h-11 px-3 py-2.5 border-b border-stone-100 text-sm transition-colors duration-150 hover:bg-surface-base dark:border-stone-800 dark:hover:bg-stone-800;
+  }
+  .list-item-selected {
+    @apply bg-brand-50 text-brand-700 border-r-2 border-r-brand-500 dark:bg-brand-900/30 dark:text-brand-300;
   }
 }
