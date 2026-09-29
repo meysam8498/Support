@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.16.2`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.16.3`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -135,9 +135,9 @@ curl http://localhost:4000/api/health
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.16.2
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.16.3
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.16.2
+docker push meysam8498/support-equipment-management:1.16.3
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
@@ -323,6 +323,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.16.3** | 2026-09-29 | 🐛 فیکس مهم: جدول license_info به schema.sql اضافه شد — روی هر استقرار تازه‌ی داکر، لایسنس/سقف تجهیزات و افزودن تجهیز از همان راه‌اندازی اول کار می‌کنند (قبلاً تا ری‌استارت دوم خطای 500 «no such table: license_info» می‌داد) |
 | **1.16.2** | 2026-09-29 | فایل LICENSE تجاری دوزبانه (فارسی حاکم + خلاصه انگلیسی) به‌جای MIT؛ جدول «طرح‌ها و قیمت‌گذاری» (آزمایشی رایگان/۲۵ تجهیز + پنج طرح پرداختی) در README و DOCKER_HUB_OVERVIEW؛ فیلد license در هر سه package.json + برچسب OCI؛ LICENSE_ENFORCE و TRIAL_DEVICE_LIMIT و TRIAL_LIMIT_ENFORCE در compose و Dockerfile؛ فایل .env.example با همه‌ی متغیرها شامل کاربران warehouse/sales/tech |
 | **1.16.1** | 2026-09-29 | سقف ۲۵ تجهیز در نسخه‌ی آزمایشی (TRIAL_DEVICE_LIMIT، قابل تنظیم) با پیام ارتقا — بج شمارنده در داشبورد، خطای ۴۰۲ در فرم تجهیز و ورود سریال، برداشته‌شدن سقف بعد از ارتقا؛ اعمال واقعی با TRIAL_LIMIT_ENFORCE=1 (فعلاً فقط گزارش) |
 | **1.16.0** | 2026-09-29 | آماده‌سازی انتشار: seed فقط با داده‌ی نمونه‌ی تستی (حذف کامل اسامی/تلفن‌های واقعی — همه از UI قابل حذف)؛ نقش حرفه‌ای کارشناسان (فنی/فروش/انبار/بازرگانی) با ستون و بج رنگی در لیست‌ها؛ زیرساخت لایسنس (طرح آزمایشی/۱/۳/۶/۱۲ ماه/دائمی + انقضا و تمدید + بج وضعیت در داشبورد) — فعلاً رایگان بدون محدودیت |

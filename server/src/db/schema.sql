@@ -248,6 +248,21 @@ CREATE TABLE IF NOT EXISTS procurement (
 );
 
 -- --------------------------------------------------------
+-- لایسنس سامانه (فقط یک ردیف id=1) — طرح/بازه/دارنده
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS license_info (
+  id             INTEGER PRIMARY KEY CHECK (id = 1),
+  plan           TEXT NOT NULL DEFAULT 'trial' CHECK (plan IN ('trial', 'month', 'quarter', 'half-year', 'year', 'lifetime')),
+  starts_at      TEXT,
+  expires_at     TEXT,
+  licensed_to    TEXT,
+  notes          TEXT,
+  updated_at     TEXT
+);
+INSERT OR IGNORE INTO license_info (id, plan, licensed_to, notes)
+  VALUES (1, 'trial', 'ارزیابی', 'نسخه‌ی رایگان — بدون محدودیت زمانی فعلاً');
+
+-- --------------------------------------------------------
 -- نمایه‌ها برای کارایی گزارش‌ها و جستجو
 -- --------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_devices_project        ON devices(project_id);
