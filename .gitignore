@@ -21,6 +21,9 @@ npm-debug.log*
 .env.local
 .env.*.local
 
+# Private signing keys (لایسنس — هرگز کامیت نشود)
+keys/
+
 # OS
 .DS_Store
 Thumbs.db

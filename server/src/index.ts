@@ -30,6 +30,7 @@ import serialImportRoutes from './routes/serialImport.js';
 import searchRoutes from './routes/search.js';
 import partCatalogRoutes from './routes/partCatalog.js';
 import licenseRoutes from './routes/license.js';
+import licenseActivateRoutes from './routes/licenseActivate.js';
 
 config();
 
@@ -66,6 +67,7 @@ app.use('/api/dashboard', authRequired, dashboardRoutes);
 app.use('/api/search', authRequired, searchRoutes);
 app.use('/api/part-catalog', authRequired, partCatalogRoutes);
 app.use('/api/license', authRequired, licenseRoutes);
+app.use('/api/license', authRequired, licenseActivateRoutes);
 
 // --- پشتیبان‌گیری (فقط ادمین) ---
 // GET /api/backups — فهرست بکاپ‌ها + وضعیت زمان‌بند

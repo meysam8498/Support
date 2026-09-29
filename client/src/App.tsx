@@ -19,6 +19,7 @@ import UsersPage from './pages/UsersPage';
 import CustomerViewPage from './pages/CustomerViewPage';
 import SerialImportPage from './pages/SerialImportPage';
 import BackupsPage from './pages/BackupsPage';
+import LicensePage from './pages/LicensePage';
 
 /** روتر کمکی گرید قطعات: داده‌ی تجهیز را می‌گیرد و PartsGridEditor را رندر می‌کند */
 function PartsGridRouter() {
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="serial-import" element={<SerialImportPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="backups" element={<BackupsPage />} />
+          <Route path="license" element={<LicensePage />} />
           <Route path="dashboard/customer/:id" element={<CustomerViewPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

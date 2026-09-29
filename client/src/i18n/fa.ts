@@ -30,6 +30,7 @@ export const t = {
   navSerialImport: 'ورود سریال از اکسل',
   navUsers: 'مدیریت کاربران',
   navBackups: 'مدیریت پشتیبان‌ها',
+  navLicense: 'ورود کد لایسنس',
   navSettings: 'تنظیمات',
 
   // تم

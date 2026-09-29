@@ -257,10 +257,29 @@ CREATE TABLE IF NOT EXISTS license_info (
   expires_at     TEXT,
   licensed_to    TEXT,
   notes          TEXT,
-  updated_at     TEXT
+  updated_at     TEXT,
+  code_jti       TEXT,
+  code_fingerprint TEXT,
+  activated_at   TEXT
 );
 INSERT OR IGNORE INTO license_info (id, plan, licensed_to, notes)
   VALUES (1, 'trial', 'ارزیابی', 'نسخه‌ی رایگان — بدون محدودیت زمانی فعلاً');
+
+-- --------------------------------------------------------
+-- سوابق فعال‌سازی کد لایسنس (هر jti فقط یک‌بار)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS license_activations (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  jti            TEXT NOT NULL UNIQUE,
+  plan           TEXT NOT NULL,
+  licensed_to    TEXT,
+  email          TEXT,
+  note           TEXT,
+  code_iat       INTEGER,
+  activated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  activated_by   INTEGER,
+  FOREIGN KEY (activated_by) REFERENCES users(id)
+);
 
 -- --------------------------------------------------------
 -- نمایه‌ها برای کارایی گزارش‌ها و جستجو

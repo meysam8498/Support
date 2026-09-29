@@ -88,6 +88,10 @@ const COLUMN_MIGRATIONS: ColumnMigration[] = [
   { table: 'users', column: 'email', ddl: "TEXT" },
   // parts — اتصال به کاتالوگ قطعات
   { table: 'parts', column: 'catalog_id', ddl: "INTEGER REFERENCES part_catalog(id)" },
+  // license_info — فعال‌سازی با کد لایسنس (1.17)
+  { table: 'license_info', column: 'code_jti', ddl: "TEXT" },
+  { table: 'license_info', column: 'code_fingerprint', ddl: "TEXT" },
+  { table: 'license_info', column: 'activated_at', ddl: "TEXT" },
 ];
 
 /**

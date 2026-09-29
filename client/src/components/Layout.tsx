@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/lists', icon: '📋', label: t.navLists, roles: ['admin', 'warehouse', 'tech'] },
   { to: '/users', icon: '👥', label: t.navUsers, roles: ['admin'] },
   { to: '/backups', icon: '🗄️', label: t.navBackups, roles: ['admin'] },
+  { to: '/license', icon: '🔑', label: t.navLicense, roles: ['admin'] },
 ];
 
 export default function Layout() {
