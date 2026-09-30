@@ -94,6 +94,9 @@ const COLUMN_MIGRATIONS: ColumnMigration[] = [
   { table: 'license_info', column: 'activated_at', ddl: "TEXT" },
   // ابطال کد لایسنس (۱.۱۹) — لیست jtiهای باطل‌شده به‌صورت JSON در ردیف لایسنس
   { table: 'license_info', column: 'revoked_jtis', ddl: "TEXT NOT NULL DEFAULT '[]'" },
+  // تاریخچه‌ی ابطال (۱.۲۳) — چه کسی و کِی باطل کرده
+  { table: 'license_info', column: 'revoked_at', ddl: "TEXT" },
+  { table: 'license_info', column: 'revoked_by', ddl: "INTEGER REFERENCES users(id)" },
 ];
 
 /**
@@ -127,6 +130,27 @@ export function migrateSchema(db: DatabaseSync): void {
       console.log('→ مهاجرت: جدول part_catalog ساخته شد.');
     } catch (err) {
       console.error('⚠ مهاجرت ناموفق (part_catalog):', (err as Error).message);
+    }
+  }
+
+  // جدول لایسنس — اگر نیست، قبل از ستون‌مهاجرت‌های آن بساز (تعریف مرجع: schema.sql؛
+  // این CREATE برای DBهای خیلی قدیمی است که اصلاً جدول را ندارند)
+  if (!tables.has('license_info')) {
+    try {
+      db.exec(`
+        CREATE TABLE license_info (
+          id             INTEGER PRIMARY KEY CHECK (id = 1),
+          plan           TEXT NOT NULL DEFAULT 'trial' CHECK (plan IN ('trial', 'month', 'quarter', 'half-year', 'year', 'lifetime')),
+          starts_at      TEXT,
+          expires_at     TEXT,
+          licensed_to    TEXT,
+          notes          TEXT,
+          updated_at     TEXT
+        );
+      `);
+      console.log('→ مهاجرت: جدول license_info ساخته شد.');
+    } catch (err) {
+      console.error('⚠ مهاجرت ناموفق (license_info):', (err as Error).message);
     }
   }
 
@@ -167,22 +191,11 @@ export function migrateSchema(db: DatabaseSync): void {
     console.error('⚠ مهاجرت ناموفق (expert roles):', (err as Error).message);
   }
 
-  // مهاجرت ۱.۱۶: جدول لایسنس — وضعیت/بازه/ایمیل ثبت‌شده (فقط یک ردیف)
+  // ردیف پیش‌فرض لایسنس (جدول بالا یا از schema.sql ساخته شده)
   try {
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS license_info (
-        id             INTEGER PRIMARY KEY CHECK (id = 1),
-        plan           TEXT NOT NULL DEFAULT 'trial' CHECK (plan IN ('trial', 'month', 'quarter', 'half-year', 'year', 'lifetime')),
-        starts_at      TEXT,
-        expires_at     TEXT,
-        licensed_to    TEXT,
-        notes          TEXT,
-        updated_at     TEXT
-      );
-    `);
     db.prepare(`INSERT OR IGNORE INTO license_info (id, plan, starts_at, expires_at, licensed_to, notes) VALUES (1, 'trial', NULL, NULL, 'ارزیابی', 'نسخه‌ی رایگان — بدون محدودیت زمانی فعلاً')`).run();
   } catch (err) {
-    console.error('⚠ مهاجرت ناموفق (license_info):', (err as Error).message);
+    console.error('⚠ مهاجرت ناموفق (license_info seed):', (err as Error).message);
   }
 
   // یکتایی سریال قطعه — هر سریال فقط یک بار در کل سامانه (مقدار خالی/NULL مجاز است)

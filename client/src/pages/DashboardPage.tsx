@@ -140,6 +140,14 @@ export default function DashboardPage() {
   const [trend, setTrend] = useState<TrendMonth[]>([]);
   const [trendTotal, setTrendTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  // سقف تجهیزات آزمایشی — برای بنر هشدار ارتقا
+  const [deviceLimit, setDeviceLimit] = useState<{ limit: number | null; used: number; remaining: number | null; is_trial: boolean; enforce: boolean } | null>(null);
+
+  useEffect(() => {
+    api.get<{ limit: number | null; used: number; remaining: number | null; is_trial: boolean; enforce: boolean }>('/license/device-limit')
+      .then(setDeviceLimit)
+      .catch(() => setDeviceLimit(null));
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -180,17 +188,36 @@ export default function DashboardPage() {
     { label: t.totalProjects, value: stats?.projects ?? 0, icon: '📁', soft: ACCENT_SOFT[4], accent: ACCENTS[4] },
   ];
 
+  // هشدار ارتقا — وقتی سقف آزمایشی فعال است و ≤۳ تجهیز باقی مانده
+  const upgradeWarn = deviceLimit?.is_trial && deviceLimit.enforce
+    && deviceLimit.limit !== null && deviceLimit.remaining !== null && deviceLimit.remaining <= 3;
+
   return (
     <div className="max-w-[1200px] mx-auto px-6 space-y-8">
       {/* ---------- درباره‌ی سامانه: ورژن + لینک هاب ---------- */}
       <AboutCard />
+
+      {/* ---------- بنر هشدار ارتقا — سقف آزمایشی در حال پر شدن ---------- */}
+      {upgradeWarn && (
+        <div role="alert" className="form-banner-error !bg-gold/10 !border-gold/40 !text-gold-dark dark:!text-gold-light">
+          ⏳ <span>
+            فقط <b className="fa-nums">{toFa(deviceLimit?.remaining ?? 0)}</b> تجهیز تا سقف نسخه‌ی آزمایشی
+            (<span className="fa-nums">{toFa(deviceLimit?.used ?? 0)}/{toFa(deviceLimit?.limit ?? 0)}</span>) باقی مانده —
+            برای افزودن نامحدود، <b>کد لایسنس</b> بگیرید{user?.role === 'admin' ? (
+              <> — <Link to="/license" className="underline font-semibold">ورود کد لایسنس</Link></>
+            ) : (
+              <> — با مدیر سامانه تماس بگیرید</>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* ---------- هدر خوش‌آمد: سِری نمایشی + Overline ---------- */}
       <header className="pt-2">
         <p className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
           {t.appName}
         </p>
-        <h1 className="heading-serif text-3xl font-bold text-stone-900 dark:text-stone-50">
+        <h1 className="heading-display text-3xl font-bold text-stone-900 dark:text-stone-50">
           {user?.fullName ? `${user.fullName} عزیز، خوش آمدید` : t.navDashboard}
         </h1>
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
@@ -198,18 +225,20 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      {/* ---------- کارت‌های آمار: نوار رنگی راست (RTL) + عدد سِری ---------- */}
+      {/* ---------- کارت‌های آمار PipelinePro: نوار رنگی + اعداد بزرگ Outfit ---------- */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {cards.map((c) => (
-          <div key={c.label} className="card card-accent hover:-translate-y-0.5" style={{ ['--tw-shadow' as string]: undefined }}>
-            <span className={`absolute inset-y-0 right-0 w-1 ${c.accent}`} />
-            <div className={`text-xl w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${c.soft}`}>
-              {c.icon}
+          <div key={c.label} className="relative card !p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md">
+            <span className={`absolute inset-y-0 right-0 w-1.5 ${c.accent}`} />
+            <div className="flex items-start justify-between mb-3">
+              <span className={`text-lg w-9 h-9 rounded-lg flex items-center justify-center ${c.soft}`}>
+                {c.icon}
+              </span>
             </div>
-            <div className="display-num text-3xl font-bold text-stone-900 dark:text-stone-50 leading-none">
+            <div className="heading-display text-4xl font-bold text-stone-900 dark:text-stone-50 leading-none fa-nums">
               {toFa(c.value)}
             </div>
-            <div className="text-xs text-stone-500 dark:text-stone-400 mt-1.5">{c.label}</div>
+            <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 mt-2">{c.label}</div>
           </div>
         ))}
       </section>

@@ -171,20 +171,19 @@ if (!pid || !tid || !mid || !bid) {
   }
 }
 
-// ارتقا → سقف برداشته می‌شود (اگر trial هستیم)
+// ارتقا → سقف برداشته می‌شود (اگر trial هستیم) — فقط با کد لایسنس (گیت ۱.۲۳)
+// بدون کد: PUT باید 403 بدهد؛ با کد صادرشده: فعال‌سازی و برداشتن سقف
 if (prevPlan === 'trial') {
-  const up = await api('PUT', '/api/license', { token: TOKEN, body: { plan: 'month', licensed_to: 'smoke-test' } });
-  ok('PUT plan=month → 200', up.status === 200, `status=${up.status}`);
-  const dl2 = await api('GET', '/api/license/device-limit', { token: TOKEN });
-  ok('بعد از ارتقا limit=null', dl2.data?.limit === null && dl2.data?.is_trial === false, JSON.stringify(dl2.data));
-  const r2 = await api('POST', '/api/devices', {
-    token: TOKEN,
-    body: (pid)
-      ? { project_id: pid, device_type_id: tid, device_model_id: mid, brand_id: bid }
-      : undefined,
-  });
-  ok('افزودن بعد از ارتقا → 201', r2.status === 201, `status=${r2.status}`);
-  if (r2.data?.id) created.push(r2.data.id);
+  const blocked = await api('PUT', '/api/license', { token: TOKEN, body: { plan: 'month', licensed_to: 'smoke-test' } });
+  ok('ارتقای بدون کد → 403 (گیت لایسنس)', blocked.status === 403 && blocked.data?.license_required === true, `status=${blocked.status} ${JSON.stringify(blocked.data).slice(0, 100)}`);
+  const extBlocked = await api('POST', '/api/license/extend', { token: TOKEN, body: { months: 3 } });
+  ok('تمدید روی trial → 403', extBlocked.status === 403, `status=${extBlocked.status}`);
+
+  if (LICENSE_CODE) {
+    // ارتقای واقعی با فعال‌سازی کد (کد در گام بعدی فعال می‌شود؛ ترتیب: ابتدا کد را فعال می‌کنیم)
+    // — اما گام ۴ ترتیب را حفظ می‌کند؛ اینجا اگر کد داریم، همان‌جا ارتقا چک می‌شود.
+    console.log('  ℹ ارتقای واقعی با کد در گام «فعال‌سازی کد لایسنس» چک می‌شود.');
+  }
 } else {
   console.log('  ℹ طرح فعلی trial نیست — تست ارتقا skip شد.');
 }
@@ -205,6 +204,17 @@ if (LICENSE_CODE) {
   ok('کد جعلی → 400', fake.status === 400, `status=${fake.status}`);
   const acts = await api('GET', '/api/license/activations', { token: TOKEN });
   ok('GET /activations → 200 آرایه', acts.status === 200 && Array.isArray(acts.data));
+
+  // اگر trial هستیم: بعد از فعال‌سازی کد، سقف باید برداشته شده باشد (گیت ۱.۲۳: ارتقا فقط با کد)
+  if (prevPlan === 'trial') {
+    const dl2 = await api('GET', '/api/license/device-limit', { token: TOKEN });
+    ok('بعد از فعال‌سازی کد limit=null', dl2.data?.limit === null && dl2.data?.is_trial === false, JSON.stringify(dl2.data).slice(0, 120));
+    if (pid) {
+      const r2 = await api('POST', '/api/devices', { token: TOKEN, body: { project_id: pid, device_type_id: tid, device_model_id: mid, brand_id: bid } });
+      ok('افزودن بعد از فعال‌سازی → 201', r2.status === 201, `status=${r2.status}`);
+      if (r2.data?.id) created.push(r2.data.id);
+    }
+  }
 
   // ابطال (۱.۱۹): jti ناشناخته هم پذیرفته می‌شود (سناریوی سرقت کدِ فعال‌نشده)
   const bogus = await api('POST', '/api/license/revoke', { token: TOKEN, body: { jti: 'NOPE-1234' } });

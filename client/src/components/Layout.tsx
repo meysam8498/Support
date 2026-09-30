@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { t } from '../i18n/fa';
 import GlobalSearchBox from './GlobalSearchBox';
+import LicenseBadge from './LicenseBadge';
 
 interface NavItem {
   to: string;
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
 /** آیتم‌های منوی کاربر — ابزارهای مدیریتی و اطلاعاتی */
 const USER_MENU_ITEMS: NavItem[] = [
   { to: '/about', icon: 'ℹ️', label: 'درباره‌ی سامانه' },
+  { to: '/issue', icon: '🧾', label: 'پنل ساخت لایسنس', roles: ['admin'] },
   { to: '/users', icon: '👥', label: t.navUsers, roles: ['admin'] },
   { to: '/backups', icon: '🗄️', label: t.navBackups, roles: ['admin'] },
   { to: '/license', icon: '🔑', label: t.navLicense, roles: ['admin'] },
@@ -108,6 +110,11 @@ export default function Layout() {
           {/* جست‌وجوی سراسری */}
           <div className="flex-1 lg:flex-none lg:max-w-md min-w-0">
             <GlobalSearchBox compact />
+          </div>
+
+          {/* بج وضعیت لایسنس — در همه‌ی صفحات */}
+          <div className="hidden sm:block shrink-0">
+            <LicenseBadge />
           </div>
 
           {/* تم */}

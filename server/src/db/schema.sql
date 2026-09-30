@@ -261,7 +261,9 @@ CREATE TABLE IF NOT EXISTS license_info (
   code_jti       TEXT,
   code_fingerprint TEXT,
   activated_at   TEXT,
-  revoked_jtis   TEXT                                -- شناسه‌های باطل‌شده (JSON) — جعلی/فروخته‌شده نیستند
+  revoked_jtis   TEXT,                               -- شناسه‌های باطل‌شده (JSON) — جعلی/فروخته‌شده نیستند
+  revoked_at     TEXT,                               -- زمان آخرین ابطال
+  revoked_by     INTEGER REFERENCES users(id)        -- چه کسی باطل کرده
 );
 INSERT OR IGNORE INTO license_info (id, plan, licensed_to, notes)
   VALUES (1, 'trial', 'ارزیابی', 'نسخه‌ی رایگان — بدون محدودیت زمانی فعلاً');
@@ -280,6 +282,23 @@ CREATE TABLE IF NOT EXISTS license_activations (
   activated_at   TEXT NOT NULL DEFAULT (datetime('now')),
   activated_by   INTEGER,
   FOREIGN KEY (activated_by) REFERENCES users(id)
+);
+
+-- --------------------------------------------------------
+-- رجیستری صدور کد (۱.۲۳) — کدهایی که از پنل این سامانه صادر شده‌اند
+-- (مخصوص استقرار فروشنده)؛ برای known:true در ابطال و گزارش فروش
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS license_issued (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  jti            TEXT NOT NULL UNIQUE,
+  plan           TEXT NOT NULL,
+  licensed_to    TEXT,
+  email          TEXT,
+  note           TEXT,
+  code_days      INTEGER,
+  issued_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  issued_by      INTEGER,
+  FOREIGN KEY (issued_by) REFERENCES users(id)
 );
 
 -- --------------------------------------------------------

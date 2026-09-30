@@ -21,7 +21,7 @@
 //   • کلید خصوصی: keys/license_private.pem (در .gitignore — هرگز کامیت/توزیع نشود)
 // ============================================================
 import { generateKeyPairSync, createSign, createVerify, createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const argv = process.argv.slice(2);
@@ -54,9 +54,13 @@ if (has('--gen-keys')) {
   process.exit(0);
 }
 
-// ---------- verify (برای چک سریع یک کد بدون سرور) ----------
+// ---------- verify (برای چک سریع یک کد بدون سرور — کد گروه‌بندی‌شده هم می‌فهمد) ----------
 if (has('--verify')) {
-  const code = opt('--verify');
+  const codeRaw = opt('--verify') || '';
+  // پذیرش کد گروه‌بندی‌شده: جداکننده‌ی + بیرون از الفبای base64url است و حذفش بی‌خطر
+  const code = codeRaw.includes('+')
+    ? codeRaw.trim().split('.').map((seg) => seg.replace(/\+/g, '')).join('.')
+    : codeRaw.trim();
   const pub = existsSync(PUB) ? readFileSync(PUB, 'utf8') : '';
   const [h, p, s] = code.split('.');
   const data = `${h}.${p}`;
@@ -64,6 +68,81 @@ if (has('--verify')) {
   const payload = JSON.parse(Buffer.from(p, 'base64url').toString('utf8'));
   console.log(JSON.stringify({ signature_ok: ok, payload }, null, 2));
   process.exit(ok ? 0 : 1);
+}
+
+// ---------- ledger: رجیستری محلی کدهای صادرشده (کنار کلید) ----------
+const LEDGER = join(process.cwd(), 'keys', 'license_ledger.jsonl');
+function ledgerLoad() {
+  if (!existsSync(LEDGER)) return [];
+  return readFileSync(LEDGER, 'utf8').split('\n').filter(Boolean).map((l) => {
+    try { return JSON.parse(l); } catch { return null; }
+  }).filter(Boolean);
+}
+function ledgerSave(entry) {
+  appendFileSync(LEDGER, JSON.stringify(entry) + '\n', 'utf8');
+}
+if (has('--ledger')) {
+  const rows = ledgerLoad();
+  const q = (opt('--ledger') || '').trim();
+  const filtered = q
+    ? rows.filter((r) =>
+        r.jti?.toLowerCase().includes(q.toLowerCase())
+        || r.note?.includes(q)
+        || r.to?.includes(q)
+        || r.email?.toLowerCase().includes(q.toLowerCase()))
+    : rows;
+  if (filtered.length === 0) {
+    console.log(q ? `چیزی برای «${q}» در رجیستری نیست (${rows.length} رکورد کل).` : `رجیستری خالی است.`);
+  } else {
+    console.log(`رجیستری کدهای صادرشده (${filtered.length} از ${rows.length}):
+${'─'.repeat(72)}`);
+    for (const r of filtered.slice().reverse()) {
+      console.log(`  ${r.issued_at}  ${r.plan.padEnd(10)} ${r.jti.padEnd(20)} ${r.to ?? '—'}${r.note ? ` · ${r.note}` : ''}`);
+    }
+  }
+  process.exit(0);
+}
+
+// ---------- revoke: ثبت ابطال در رجیستری محلی (فروشنده) ----------
+if (has('--revoke')) {
+  const jti = (opt('--revoke') || '').trim();
+  if (!jti) { console.error('شناسه‌ی کد را بدهید: --revoke XXXX-XXXX-… یا --revoke-code <کد کامل>'); process.exit(1); }
+  const rows = ledgerLoad();
+  const rec = rows.find((r) => r.jti === jti);
+  if (!rec) {
+    console.error(`«${jti}» در رجیستری محلی نیست — اول با --ledger جست‌وجو کنید.`);
+    process.exit(1);
+  }
+  rec.revoked = true;
+  rec.revoked_at = new Date().toISOString();
+  writeFileSync(LEDGER, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', 'utf8');
+  console.log(`✓ «${jti}» در رجیستری محلی باطل علامت خورد.
+یادآوری: برای بستن فعال‌سازی روی سرورِ مشتری، آن‌جا هم ابطال کنید:
+  ادمین مشتری ← صفحه‌ی «🔑 ورود کد لایسنس» ← بخش ابطال ← jti`);
+  process.exit(0);
+}
+if (has('--revoke-code')) {
+  const codeRaw = opt('--revoke-code') || '';
+  const code = codeRaw.includes('+')
+    ? codeRaw.trim().split('.').map((seg) => seg.replace(/\+/g, '')).join('.')
+    : codeRaw.trim();
+  try {
+    const payload = JSON.parse(Buffer.from(code.split('.')[1], 'base64url').toString('utf8'));
+    const argvSave = process.argv;
+    process.argv = [argvSave[0], argvSave[1], '--revoke', payload.jti];
+    // فراخوانی همان مسیر بالا
+    const rows = ledgerLoad();
+    const rec = rows.find((r) => r.jti === payload.jti);
+    if (!rec) { console.error(`jti «${payload.jti}» این کد در رجیستری محلی نیست.`); process.exit(1); }
+    rec.revoked = true;
+    rec.revoked_at = new Date().toISOString();
+    writeFileSync(LEDGER, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', 'utf8');
+    console.log(`✓ «${payload.jti}» در رجیستری محلی باطل علامت خورد.`);
+  } catch (e) {
+    console.error('کد قابل خواندن نبود:', e.message);
+    process.exit(1);
+  }
+  process.exit(0);
 }
 
 // ---------- issue ----------
@@ -109,6 +188,12 @@ if (grouped) {
 if (out) {
   writeFileSync(out, token + '\n', 'utf8');
   console.log('✓ کد در فایل ذخیره شد: ' + out);
+}
+// ثبت خودکار در رجیستری محلی فروشنده (keys/license_ledger.jsonl)
+try {
+  ledgerSave({ jti, plan, to, email, note, code_days: codeDays, issued_at: new Date().toISOString() });
+} catch (e) {
+  console.error('⚠ ثبت رجیستری ناموفق:', e.message);
 }
 console.log('\nکد لایسنس (' + plan + '):');
 console.log('─'.repeat(60));

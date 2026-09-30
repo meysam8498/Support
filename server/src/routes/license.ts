@@ -42,6 +42,12 @@ export interface LicenseRow {
   licensed_to: string | null;
   notes: string | null;
   updated_at: string | null;
+  code_jti?: string | null;
+  code_fingerprint?: string | null;
+  activated_at?: string | null;
+  revoked_jtis?: string | null;
+  revoked_at?: string | null;
+  revoked_by?: number | null;
 }
 
 /** خواندن ردیف لایسنس (با ساخت خودکار در صورت نبود) */
@@ -66,12 +72,21 @@ export function licenseStatus() {
   const expired = row.expires_at ? row.expires_at < today : false;
   // تا وقتی enforce فعال نشده، انقضا فقط هشدار است — سامانه بلاک نمی‌شود
   const valid = !expired || !enforce;
+  // چه‌کسی/کِی آخرین ابطال را زده (برای گزارش صفحه‌ی لایسنس)
+  let revoked_by_name: string | null = null;
+  if (row.revoked_by) {
+    try {
+      const u = getDb().prepare(`SELECT full_name FROM users WHERE id = ?`).get(row.revoked_by) as { full_name?: string } | undefined;
+      revoked_by_name = u?.full_name ?? null;
+    } catch { /* */ }
+  }
   return {
     ...row,
     enforce,
     days_left: daysLeft,
     expired,
     valid,
+    revoked_by_name,
     plan_label: ({
       trial: 'آزمایشی/رایگان',
       month: 'یک‌ماهه',
@@ -111,13 +126,17 @@ export function getRevokedJtis(db: ReturnType<typeof getDb>): string[] {
   }
 }
 
-/** افزودن jti به لیست ابطال (idempotent — بدون تکرار) */
-function addRevokedJti(db: ReturnType<typeof getDb>, jti: string): string[] {
+/** افزودن jti به لیست ابطال (idempotent — بدون تکرار) + ثبت چه‌کسی/کِی */
+function addRevokedJti(db: ReturnType<typeof getDb>, jti: string, byUserId: number | null): string[] {
   const cur = getRevokedJtis(db);
-  if (cur.includes(jti)) return cur;
-  const next = [...cur, jti];
-  db.prepare(`UPDATE license_info SET revoked_jtis = ?, updated_at = datetime('now') WHERE id = 1`).run(JSON.stringify(next));
-  return next;
+  if (!cur.includes(jti)) {
+    const next = [...cur, jti];
+    db.prepare(`UPDATE license_info SET revoked_jtis = ?, revoked_at = datetime('now'), revoked_by = ?, updated_at = datetime('now') WHERE id = 1`)
+      .run(JSON.stringify(next), byUserId);
+    return next;
+  }
+  db.prepare(`UPDATE license_info SET revoked_at = datetime('now'), revoked_by = ? WHERE id = 1`).run(byUserId);
+  return cur;
 }
 
 /** حذف jti از لیست ابطال (idempotent) */
@@ -129,9 +148,9 @@ function removeRevokedJti(db: ReturnType<typeof getDb>, jti: string): string[] {
   return next;
 }
 
-/** آیا این jti در سوابق فعال‌سازی‌های این سامانه دیده شده؟ (برای جلوگیری از ابطال تایپی) */
+/** آیا این jti در سوابق فعال‌سازی یا رجیستری صدور این سامانه دیده شده؟ */
 function isKnownJti(db: DatabaseSync, jti: string): boolean {
-  // جدول سوابق — idempotent (برای DBهای قدیمی که schema.sql را ندیده‌اند)
+  // جدول‌های سوابق/رجیستری — idempotent (برای DBهای قدیمی که schema.sql را ندیده‌اند)
   try {
     db.exec(`
       CREATE TABLE IF NOT EXISTS license_activations (
@@ -146,10 +165,24 @@ function isKnownJti(db: DatabaseSync, jti: string): boolean {
         activated_by   INTEGER,
         FOREIGN KEY (activated_by) REFERENCES users(id)
       );
+      CREATE TABLE IF NOT EXISTS license_issued (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        jti            TEXT NOT NULL UNIQUE,
+        plan           TEXT NOT NULL,
+        licensed_to    TEXT,
+        email          TEXT,
+        note           TEXT,
+        code_days      INTEGER,
+        issued_at      TEXT NOT NULL DEFAULT (datetime('now')),
+        issued_by      INTEGER,
+        FOREIGN KEY (issued_by) REFERENCES users(id)
+      );
     `);
   } catch { /* */ }
-  const row = db.prepare(`SELECT 1 AS x FROM license_activations WHERE jti = ? LIMIT 1`).get(jti) as { x?: number } | undefined;
-  return !!row;
+  const a = db.prepare(`SELECT 1 AS x FROM license_activations WHERE jti = ? LIMIT 1`).get(jti) as { x?: number } | undefined;
+  if (a) return true;
+  const i = db.prepare(`SELECT 1 AS x FROM license_issued WHERE jti = ? LIMIT 1`).get(jti) as { x?: number } | undefined;
+  return !!i;
 }
 
 // ============================================================
@@ -209,6 +242,8 @@ const setSchema = z.object({
   expires_at: z.string().optional().nullable(),  // شمسی — برای طرح‌های زمان‌دار
   licensed_to: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  /** فقط برای برگرداندن سامانه به trial (مثلاً تست) — هر تغییر به طرح دیگر کد لایسنس می‌خواهد */
+  force_downgrade: z.boolean().optional(),
 });
 
 router.put('/', requireRole('admin'), (req: Request, res: Response) => {
@@ -216,6 +251,17 @@ router.put('/', requireRole('admin'), (req: Request, res: Response) => {
   if (!parsed.success) return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
   const b = parsed.data;
   const db = getDb();
+  // ── گیت ضد دور زدن لایسنس (۱.۲۳): تغییر طرح فقط با کد لایسنس میسر است —
+  // اگر ادمین مستقیم طرح پرداختی بگذارد، عملاً «ساخت لایسنس رایگان در پنل مشتری» است.
+  const current = getLicenseRow();
+  const planChanged = b.plan !== current.plan;
+  const upgrading = b.plan !== 'trial'; // هر طرح پرداختی = ارتقا
+  if (planChanged && upgrading && !b.force_downgrade) {
+    return res.status(403).json({
+      error: 'تغییر به طرح پرداختی فقط با ورود کد لایسنس معتبر انجام می‌شود — کد را از فروشنده دریافت و در بخش «ورود کد لایسنس» فعال کنید.',
+      license_required: true,
+    });
+  }
   const startsJ = b.starts_at || todayJalali();
   const startsG = jalaliToGregorianISO(startsJ);
   if (!startsG) return res.status(400).json({ error: `تاریخ شروع نامعتبر است: ${startsJ}` });
@@ -231,11 +277,15 @@ router.put('/', requireRole('admin'), (req: Request, res: Response) => {
       expiresG = autoJ ? jalaliToGregorianISO(autoJ) : null;
     }
   }
+  // تمدید (plan بدون تغییر) مجاز است؛ فقط تغییر به طرح پرداختی قفل است
+  const samePlan = b.plan === current.plan;
+  const keepStart = samePlan ? current.starts_at : startsG;
+  const baseExp = samePlan && b.expires_at === undefined ? current.expires_at : expiresG;
   db.prepare(`
     UPDATE license_info SET
       plan = ?, starts_at = ?, expires_at = ?, licensed_to = ?, notes = ?, updated_at = datetime('now')
     WHERE id = 1
-  `).run(b.plan, startsG, expiresG, b.licensed_to ?? null, b.notes ?? null);
+  `).run(b.plan, keepStart, baseExp, b.licensed_to ?? null, b.notes ?? null);
   res.json(licenseStatus());
 });
 
@@ -299,6 +349,26 @@ router.post('/issue', requireRole('admin'), (req: Request, res: Response) => {
     token = token.split('.').map((seg) => (seg.match(/.{1,24}/g) || [seg]).join('+')).join('.');
   }
   const p = ISSUE_PLANS[b.plan];
+  // ثبت در رجیستری صدور — برای known:true در ابطال و گزارش فروش
+  const db = getDb();
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS license_issued (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      jti            TEXT NOT NULL UNIQUE,
+      plan           TEXT NOT NULL,
+      licensed_to    TEXT,
+      email          TEXT,
+      note           TEXT,
+      code_days      INTEGER,
+      issued_at      TEXT NOT NULL DEFAULT (datetime('now')),
+      issued_by      INTEGER,
+      FOREIGN KEY (issued_by) REFERENCES users(id)
+    )`);
+    db.prepare(`INSERT OR IGNORE INTO license_issued (jti, plan, licensed_to, email, note, code_days, issued_by) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .run(jti, b.plan, b.to.trim(), b.email?.trim() || null, b.note?.trim() || null, codeDays, (req as unknown as { user?: { id?: number } }).user?.id ?? null);
+  } catch (err) {
+    console.error('⚠ ثبت ledger صدور ناموفق:', (err as Error).message);
+  }
   res.status(201).json({
     ok: true,
     jti,
@@ -338,7 +408,7 @@ router.post('/revoke', requireRole('admin'), (req: Request, res: Response) => {
   // jti ناشناخته هم پذیرفته می‌شود (سناریوی سرقت کدِ فعال‌نشده — هنوز در سوابق نیست)
   // اما known:false در پاسخ برمی‌گردد تا UI هشدار تایپ بدهد؛ خطای تایپ بی‌ضرر است.
   const known = isKnownJti(db, jti);
-  const revoked = addRevokedJti(db, jti);
+  const revoked = addRevokedJti(db, jti, (req as unknown as { user?: { id?: number } }).user?.id ?? null);
   res.json({ ok: true, jti, known, revoked_count: revoked.length, revoked: true });
 });
 
@@ -363,11 +433,94 @@ router.get('/revoked', requireRole('admin'), (_req: Request, res: Response) => {
   res.json({ jtis: getRevokedJtis(getDb()) });
 });
 
+/** GET /api/license/sales-export.csv — خروجی CSV صدور/فعال‌سازی/ابطال برای حسابداری (فقط ادمین) */
+router.get('/sales-export.csv', requireRole('admin'), (_req: Request, res: Response) => {
+  const db = getDb();
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS license_issued (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      jti            TEXT NOT NULL UNIQUE,
+      plan           TEXT NOT NULL,
+      licensed_to    TEXT,
+      email          TEXT,
+      note           TEXT,
+      code_days      INTEGER,
+      issued_at      TEXT NOT NULL DEFAULT (datetime('now')),
+      issued_by      INTEGER,
+      FOREIGN KEY (issued_by) REFERENCES users(id)
+    )`);
+  } catch { /* */ }
+  const csvEscape = (v: unknown) => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines: string[] = [
+    ['نوع رکورد', 'شناسه (jti)', 'طرح', 'دارنده', 'ایمیل', 'فاکتور/یادداشت', 'تاریخ', 'توسط', 'وضعیت'].map(csvEscape).join(','),
+  ];
+  const issued = db.prepare(`
+    SELECT i.*, u.full_name AS by_name,
+      (SELECT COUNT(*) FROM license_activations a WHERE a.jti = i.jti) AS activated
+    FROM license_issued i LEFT JOIN users u ON u.id = i.issued_by ORDER BY i.id DESC
+  `).all() as Array<Record<string, unknown>>;
+  for (const r of issued) {
+    lines.push(['صدور', r.jti, r.plan, r.licensed_to, r.email, r.note, r.issued_at, r.by_name, r.activated ? 'فعال‌شده' : 'صادرشده'].map(csvEscape).join(','));
+  }
+  const acts = db.prepare(`
+    SELECT a.*, u.full_name AS by_name FROM license_activations a
+    LEFT JOIN users u ON u.id = a.activated_by ORDER BY a.id DESC
+  `).all() as Array<Record<string, unknown>>;
+  for (const r of acts) {
+    lines.push(['فعال‌سازی', r.jti, r.plan, r.licensed_to, r.email, r.note, r.activated_at, r.by_name, '—'].map(csvEscape).join(','));
+  }
+  const revoked = getRevokedJtis(db);
+  if (revoked.length > 0) {
+    const st = licenseStatus();
+    for (const jti of revoked) {
+      lines.push(['ابطال', jti, '', '', '', '', st.revoked_at ?? '', st.revoked_by_name ?? '', 'باطل'].map(csvEscape).join(','));
+    }
+  }
+  // BOM برای اکسل فارسی
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="license-sales.csv"');
+  res.send('\uFEFF' + lines.join('\n'));
+});
+
+/** GET /api/license/issued — رجیستری کدهای صادرشده از پنل (فقط ادمین) */
+router.get('/issued', requireRole('admin'), (_req: Request, res: Response) => {
+  const db = getDb();
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS license_issued (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      jti            TEXT NOT NULL UNIQUE,
+      plan           TEXT NOT NULL,
+      licensed_to    TEXT,
+      email          TEXT,
+      note           TEXT,
+      code_days      INTEGER,
+      issued_at      TEXT NOT NULL DEFAULT (datetime('now')),
+      issued_by      INTEGER,
+      FOREIGN KEY (issued_by) REFERENCES users(id)
+    )`);
+  } catch { /* */ }
+  const rows = db.prepare(`
+    SELECT i.id, i.jti, i.plan, i.licensed_to, i.email, i.note, i.code_days, i.issued_at,
+           u.full_name AS issued_by_name,
+           (SELECT COUNT(*) FROM license_activations a WHERE a.jti = i.jti) AS activated
+    FROM license_issued i LEFT JOIN users u ON u.id = i.issued_by
+    ORDER BY i.id DESC LIMIT 200
+  `).all();
+  res.json(rows);
+});
+
 router.post('/extend', requireRole('admin'), (req: Request, res: Response) => {
   const parsed = extendSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'ورودی نامعتبر است.' });
   const { months, from_expiry } = parsed.data;
   const row = getLicenseRow();
+  // تمدید فقط برای طرح پرداختی معنا دارد — روی trial راه دور زدن لایسنس است
+  if (row.plan === 'trial') {
+    return res.status(403).json({ error: 'طرح آزمایشی قابل تمدید نیست — برای ارتقا، کد لایسنس را فعال کنید.', license_required: true });
+  }
   const baseJ = (from_expiry && row.expires_at)
     ? (gregorianToJalali(row.expires_at) ?? todayJalali())
     : todayJalali();
