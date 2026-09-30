@@ -95,7 +95,7 @@ export default function PartFormPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <h1 className="text-xl font-bold dark:text-stone-50">{isEdit ? 'ویرایش قطعه' : t.addPart}</h1>
-      {error && <p className="p-3 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-sm">{error}</p>}
+      {error && <div role="alert" className="form-banner-error mb-3">⚠ <span>{error}</span></div>}
       <form onSubmit={submit} className="card space-y-4">
         <div>
           <label className="label">دستگاه<span className="text-coral mr-1">*</span></label>

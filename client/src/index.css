@@ -147,6 +147,34 @@ body {
     font-family: 'Outfit', 'Vazirmatn', sans-serif;
     letter-spacing: 0.015em;
   }
+  /* سازگاری: نام قدیمی تم Ember → همان Outfit (PipelinePro) */
+  .heading-serif {
+    font-family: 'Outfit', 'Vazirmatn', sans-serif;
+    letter-spacing: 0.015em;
+  }
+
+  /* ---------- حالت‌های فرم: خطا/موفقیت/هشدار رنگی ---------- */
+  .input-error {
+    @apply border-error focus:border-error;
+  }
+  .input-error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+  }
+  .input-success {
+    @apply border-success focus:border-success;
+  }
+  .input-success:focus {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+  }
+  .field-error {
+    @apply mt-1.5 flex items-center gap-1 text-xs text-error;
+  }
+  .form-banner-error {
+    @apply flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-error dark:border-red-900/60 dark:bg-red-900/20 dark:text-coral-light;
+  }
+  .form-banner-success {
+    @apply flex items-start gap-2 rounded-lg border border-green-200 bg-success/10 px-3 py-2.5 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300;
+  }
 
   /* ---------- آیتم لیست — ۴۴px، دیوایدر، انتخاب ایندیگو ---------- */
   .list-item {

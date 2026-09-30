@@ -175,7 +175,7 @@ export default function DeviceFormPage() {
       <h1 className="text-xl font-bold dark:text-stone-50">{isEdit ? t.editDevice : t.addDevice}</h1>
 
       {error && (
-        <p className="p-3 bg-red-50 text-red-600 rounded-lg text-sm dark:bg-red-900/30 dark:text-red-300">{error}</p>
+        <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
       )}
 
       <form onSubmit={submit} className="card space-y-5">

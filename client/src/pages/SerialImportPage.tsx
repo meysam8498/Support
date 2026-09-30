@@ -484,9 +484,7 @@ export default function SerialImportPage() {
         )}
 
         {error && (
-          <p className="p-3 bg-coral/10 text-coral-dark rounded-xl text-sm border-2 border-coral/30 dark:text-coral-light">
-            {error}
-          </p>
+          <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
         )}
 
         <div className="flex flex-wrap gap-3">

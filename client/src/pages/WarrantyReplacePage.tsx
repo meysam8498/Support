@@ -193,7 +193,7 @@ export default function WarrantyReplacePage() {
         <span className="text-3xl">🔄</span>
         <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">{t.warrantyNew}</h1>
       </div>
-      {error && <p className="p-3 bg-coral/10 dark:bg-coral/20 text-coral-dark dark:text-coral-light rounded-lg text-sm border border-coral/30">{error}</p>}
+      {error && <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>}
 
       {/* گام ۱: انتخاب پروژه */}
       <div className="card card-accent">

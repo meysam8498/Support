@@ -176,7 +176,7 @@ export default function UsersPage() {
       {/* مدال افزودن کاربر */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="افزودن کاربر جدید">
         <div className="space-y-4">
-          {error && <p className="p-3 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-sm">{error}</p>}
+          {error && <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>}
           <div>
             <label className="label">{t.fullName}<span className="text-coral mr-1">*</span></label>
             <input className="input" value={createForm.fullName} onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })} autoFocus />
@@ -211,7 +211,7 @@ export default function UsersPage() {
       {/* مدال ویرایش کاربر */}
       <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title="ویرایش کاربر">
         <div className="space-y-4">
-          {error && <p className="p-3 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-sm">{error}</p>}
+          {error && <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>}
           <div>
             <label className="label">{t.fullName}</label>
             <input className="input" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} />
@@ -245,7 +245,7 @@ export default function UsersPage() {
       {/* مدال بازنشانی رمز */}
       <Modal open={!!resetTarget} onClose={() => setResetTarget(null)} title={`${t.resetPassword} — ${resetTarget?.fullName || ''}`}>
         <div className="space-y-4">
-          {error && <p className="p-3 bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-sm">{error}</p>}
+          {error && <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>}
           <div>
             <label className="label">رمز جدید<span className="text-coral mr-1">*</span></label>
             <input className="input" type="password" dir="ltr" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoFocus />

@@ -198,9 +198,7 @@ export default function BackupsPage() {
         </p>
       )}
       {error && (
-        <p className="p-3 bg-coral/10 text-coral-dark rounded-lg text-sm border border-coral/30 dark:text-coral-light">
-          {error}
-        </p>
+        <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
       )}
 
       {/* ---------- کارت وضعیت زمان‌بند + push ---------- */}

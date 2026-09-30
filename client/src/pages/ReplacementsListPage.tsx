@@ -120,9 +120,7 @@ export default function ReplacementsListPage() {
       </div>
 
       {error && (
-        <p className="p-3 bg-coral/10 dark:bg-coral/20 text-coral-dark dark:text-coral-light rounded-lg text-sm border border-coral/30">
-          {error}
-        </p>
+        <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
       )}
 
       {/* ---------- نوار جست‌وجوی درون‌صفحه ---------- */}

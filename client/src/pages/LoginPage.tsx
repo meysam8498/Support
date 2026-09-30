@@ -1,8 +1,7 @@
 // ============================================================
-// صفحه‌ی ورود — سیستم طراحی Ember Studio (تراکوتا/استون گرم)
+// صفحه‌ی ورود — زبان طراحی PipelinePro (ایندیگو/زینک، Outfit + Vazirmatn)
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
-// مینیمال و گرم: کارت سفید گرم روی پس‌زمینه‌ی کرم، لوگوی مربع تراکوتا،
-// بدون تزئین اضافه — گرمای طراحی از خود پالت می‌آید.
+// ساختار: لنگر ایندیگو + هدر Outfit + خطای رنگی (قرمز فقط خطای واقعی)
 // ============================================================
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -31,15 +30,17 @@ export default function LoginPage() {
     }
   };
 
+  const hasError = !!error;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-base px-4">
       <div className="w-full max-w-sm">
-        {/* لوگو */}
+        {/* لوگو — لنگر ایندیگو */}
         <div className="flex flex-col items-center mb-6">
           <span className="w-12 h-12 rounded-xl bg-brand-500 flex items-center justify-center text-white text-2xl font-bold shadow-glow mb-3">
             م
           </span>
-          <h1 className="heading-serif text-2xl font-bold text-stone-900 dark:text-stone-50">
+          <h1 className="heading-display text-2xl font-bold text-stone-900 dark:text-stone-50">
             {t.appName}
           </h1>
           <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
@@ -47,37 +48,42 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* کارت ورود — سطح گرم، حاشیه‌ی ۱px استون */}
+        {/* کارت ورود */}
         <div className="card !p-6">
-          <h2 className="text-lg font-semibold text-stone-800 dark:text-stone-100 mb-4">
+          <h2 className="heading-display text-lg font-semibold text-stone-800 dark:text-stone-100 mb-4">
             {t.loginTitle}
           </h2>
 
           {error && (
-            <p className="mb-4 p-3 rounded-lg bg-red-50 text-error text-sm border border-red-200 dark:bg-red-900/20 dark:border-red-900 dark:text-coral-light">
-              {error}
-            </p>
+            <div role="alert" className="form-banner-error mb-4">
+              <span aria-hidden>⚠</span>
+              <span>{error}</span>
+            </div>
           )}
 
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} className="space-y-4" noValidate>
             <div>
-              <label className="label">{t.username}</label>
+              <label className="label" htmlFor="login-username">{t.username}</label>
               <input
-                className="input"
+                id="login-username"
+                className={`input ${hasError ? 'input-error' : ''}`}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoFocus
                 required
+                autoComplete="username"
               />
             </div>
             <div>
-              <label className="label">{t.password}</label>
+              <label className="label" htmlFor="login-password">{t.password}</label>
               <input
-                className="input"
+                id="login-password"
+                className={`input ${hasError ? 'input-error' : ''}`}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
               />
             </div>
             {/* تنها CTA اصلی این نما */}

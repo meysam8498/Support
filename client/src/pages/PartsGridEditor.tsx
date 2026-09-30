@@ -220,14 +220,10 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
       </div>
 
       {error && (
-        <p className="p-3 bg-coral/10 dark:bg-coral/20 text-coral-dark dark:text-coral-light rounded-lg text-sm border border-coral/30">
-          {error}
-        </p>
+        <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
       )}
       {okMsg && (
-        <p className="p-3 bg-green-50 dark:bg-green-900/25 text-success dark:text-green-300 rounded-lg text-sm border border-green-200 dark:border-green-800">
-          {okMsg} — در حال بازگشت به تجهیز…
-        </p>
+        <div role="status" className="form-banner-success">✓ <span>{okMsg} — در حال بازگشت به تجهیز…</span></div>
       )}
 
       {/* ---------- گرید ---------- */}
