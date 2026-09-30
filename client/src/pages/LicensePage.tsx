@@ -7,7 +7,7 @@ import { api } from '../api/api';
 import { t } from '../i18n/fa';
 import { useAuth } from '../context/AuthContext';
 import JalaliDatePicker from '../components/JalaliDatePicker';
-import { gregorianToJalali } from '../lib/date';
+import { gregorianToJalali, toFa } from '../lib/date';
 
 interface LicenseStatus {
   plan: string;
@@ -52,6 +52,14 @@ const PLANS = [
   { value: 'lifetime', label: '♾️ دائمی', months: null as number | null },
 ] as const;
 
+const PLAN_MONTHS_FA: Record<string, string> = {
+  month: '۱ ماه',
+  quarter: '۳ ماه',
+  'half-year': '۶ ماه',
+  year: '۱۲ ماه',
+  lifetime: 'دائمی',
+};
+
 const PLAN_LABELS: Record<string, string> = {
   trial: 'آزمایشی/رایگان',
   month: 'یک‌ماهه',
@@ -83,6 +91,14 @@ export default function LicensePage() {
   const [revokedJtis, setRevokedJtis] = useState<string[]>([]);
   const [revokeJti, setRevokeJti] = useState('');
   const [revokeMsg, setRevokeMsg] = useState<string | null>(null);
+  // ---------- ساخت لایسنس برای مشتری (صدور از پنل) ----------
+  const [issPlan, setIssPlan] = useState('half-year');
+  const [issTo, setIssTo] = useState('');
+  const [issEmail, setIssEmail] = useState('');
+  const [issNote, setIssNote] = useState('');
+  const [issGrouped, setIssGrouped] = useState(true);
+  const [issued, setIssued] = useState<{ jti: string; plan: string; plan_label: string; purchased_months: number | null; code: string; code_days: number; licensed_to: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -206,6 +222,31 @@ export default function LicensePage() {
       await load();
     } catch (e) {
       const err = e as Error & { payload?: { error?: string } };
+      setError(err.payload?.error || err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---------- ساخت لایسنس برای مشتری (صدور از پنل) ----------
+  const issue = async () => {
+    if (!issTo.trim() || issTo.trim().length < 2) { setError('نام دارنده‌ی لایسنس را وارد کنید.'); return; }
+    setBusy(true); setError(''); setIssued(null); setCopied(false);
+    try {
+      const r = await api.post<{ jti: string; plan: string; plan_label: string; purchased_months: number | null; code: string; code_days: number; licensed_to: string }>(
+        '/license/issue',
+        {
+          plan: issPlan,
+          to: issTo.trim(),
+          email: issEmail.trim() || null,
+          note: issNote.trim() || null,
+          grouped: issGrouped,
+        }
+      );
+      setIssued(r);
+      await load();
+    } catch (e) {
+      const err = e as Error & { payload?: { error?: string; missing_key?: boolean } };
       setError(err.payload?.error || err.message);
     } finally {
       setBusy(false);
@@ -343,6 +384,7 @@ export default function LicensePage() {
                 <tr className="text-xs text-stone-400 border-b border-stone-200 dark:border-stone-700">
                   <th className="text-right py-2 px-2">تاریخ فعال‌سازی</th>
                   <th className="text-right py-2 px-2">طرح</th>
+                  <th className="text-right py-2 px-2">مدت</th>
                   <th className="text-right py-2 px-2">دارنده</th>
                   <th className="text-right py-2 px-2">شناسه‌ی کد</th>
                 </tr>
@@ -352,6 +394,7 @@ export default function LicensePage() {
                   <tr key={a.id} className={`border-b border-stone-100 dark:border-stone-800 ${a.revoked ? 'opacity-60' : ''}`}>
                     <td className="py-2 px-2 text-xs fa-nums">{a.activated_at?.replace('T', ' ').slice(0, 16) || '—'}</td>
                     <td className="py-2 px-2">{PLAN_LABELS[a.plan] ?? a.plan}{a.revoked && <span className="badge bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/40 mr-1 text-[10px]">باطل‌شده</span>}</td>
+                    <td className="py-2 px-2 text-xs text-stone-500 dark:text-stone-400 fa-nums">{PLAN_MONTHS_FA[a.plan] ?? '—'}</td>
                     <td className="py-2 px-2">{a.licensed_to || '—'}</td>
                     <td className="py-2 px-2 font-mono text-xs" dir="ltr">{a.jti}</td>
                   </tr>
@@ -359,6 +402,100 @@ export default function LicensePage() {
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {/* ─────────── ساخت لایسنس برای مشتری (فقط ادمین) ─────────── */}
+      {isAdmin && (
+        <section className="card p-5">
+          <h2 className="font-display text-base font-bold text-stone-900 dark:text-stone-50 mb-1">🧾 ساخت لایسنس برای مشتری</h2>
+          <p className="text-xs text-stone-400 mb-4 leading-6">
+            طرح و دارنده را وارد کنید و کد فعال‌سازی را همین‌جا بسازید تا برای مشتری بفرستید.
+            کد فقط اینجا یک‌بار نمایش داده می‌شود — آن را کپی/دانلود و نگهداری کنید.
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="label">طرح</label>
+              <select value={issPlan} onChange={(e) => setIssPlan(e.target.value)} className="input">
+                {PLANS.filter((p) => p.value !== 'trial').map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}{p.months ? ` — ${p.months} ماه` : ''}
+                  </option>
+                ))}
+              </select>
+              {monthsOf(issPlan) && (
+                <p className="text-[11px] text-stone-400 mt-1">مدت خریداری‌شده: {monthsOf(issPlan)} ماه — از لحظه‌ی فعال‌سازی مشتری شروع می‌شود</p>
+              )}
+            </div>
+            <div>
+              <label className="label">دارنده‌ی لایسنس (سازمان/شخص)</label>
+              <input value={issTo} onChange={(e) => setIssTo(e.target.value)} className="input" placeholder="مثلاً: شرکت نمونه" />
+            </div>
+            <div>
+              <label className="label">ایمیل مشتری (اختیاری)</label>
+              <input value={issEmail} onChange={(e) => setIssEmail(e.target.value)} className="input" dir="ltr" placeholder="info@company.ir" />
+            </div>
+            <div>
+              <label className="label">یادداشت / شماره فاکتور (اختیاری)</label>
+              <input value={issNote} onChange={(e) => setIssNote(e.target.value)} className="input" placeholder="مثلاً: فاکتور ۱۴۰۵-۰۰۱" />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 mt-3 text-sm text-stone-600 dark:text-stone-300">
+            <input type="checkbox" checked={issGrouped} onChange={(e) => setIssGrouped(e.target.checked)} className="accent-brand-500" />
+            کد گروه‌بندی‌شده (بلوک‌های ۲۴ نویسه با جداکننده + — برای تایپ آسان)
+          </label>
+          <button type="button" onClick={issue} disabled={busy || !issTo.trim()} className="btn-primary text-sm mt-4">
+            {busy ? '…' : '🧾 ساخت کد لایسنس'}
+          </button>
+
+          {issued && (
+            <div className="mt-4 rounded-lg border border-green-200 dark:border-green-800 bg-success/5 dark:bg-green-900/20 p-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 text-[10px]">
+                  {issued.plan_label}
+                </span>
+                <span className="text-stone-600 dark:text-stone-300">
+                  دارنده: <b>{issued.licensed_to}</b>
+                  {issued.purchased_months !== null && <> · مدت خریداری‌شده: <b className="fa-nums">{toFa(issued.purchased_months)} ماه</b></>}
+                  {issued.purchased_months === null && <> · مدت: <b>دائمی</b></>}
+                  {' '}· اعتبار ورود کد: <b className="fa-nums">{toFa(issued.code_days)} روز</b>
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-400">شناسه‌ی کد: <code className="font-mono" dir="ltr">{issued.jti}</code> — برای پیگیری/ابطال نگه دارید</p>
+              <textarea readOnly value={issued.code} rows={5} dir="ltr" className="input w-full font-mono text-xs leading-5 bg-white/60 dark:bg-black/20" />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={async () => { try { await navigator.clipboard.writeText(issued.code); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* */ } }}
+                  className="btn-secondary text-sm"
+                >
+                  {copied ? '✓ کپی شد' : '📋 کپی کد'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const blob = new Blob([issued.code + '\n'], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `license-${issued.jti}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="btn-secondary text-sm"
+                >
+                  ⬇️ دانلود فایل کد
+                </button>
+                <button type="button" onClick={() => setRevokeJti(issued.jti)} className="btn-ghost text-sm" title="پر کردن شناسه در بخش ابطال">
+                  ⛔ پر کردن در ابطال
+                </button>
+              </div>
+              <p className="text-xs text-stone-400">
+                ارسال: کد را در فایل یا کانال امن بفرستید — مشتری از منوی «🔑 ورود کد لایسنس» آن را فعال می‌کند؛
+                هر کد فقط یک‌بار و از لحظه‌ی فعال‌سازی شمارش می‌شود.
+              </p>
+            </div>
+          )}
         </section>
       )}
 

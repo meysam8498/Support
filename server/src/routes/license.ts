@@ -16,6 +16,9 @@ import { getDb } from '../db/db.js';
 import { requireRole } from '../middleware/auth.js';
 import { todayGregorian, todayJalali, addMonthsToJalali, jalaliToGregorianISO, gregorianToJalali } from '../lib/date.js';
 import { verifyLicenseCode } from '../lib/licenseCode.js';
+import { createSign, randomUUID } from 'node:crypto';
+import { readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 const router = Router();
 
@@ -234,6 +237,79 @@ router.put('/', requireRole('admin'), (req: Request, res: Response) => {
     WHERE id = 1
   `).run(b.plan, startsG, expiresG, b.licensed_to ?? null, b.notes ?? null);
   res.json(licenseStatus());
+});
+
+// ============================================================
+// صدور کد لایسنس در پنل (۱.۲۱) — ساخت کد از داخل سامانه و تحویل به مشتری
+// مسیر کلید: ENV LICENSE_ISSUE_KEY → keys/license_private.pem کنار محل اجرا.
+// کلید خصوصی نزد صادرکننده است؛ اگر نبود، صدور از پنل خطای راهنمادار می‌دهد
+// (مسیر scripts/make-license-code.mjs همچنان مستقل کار می‌کند).
+// ============================================================
+function loadIssuePrivateKey(): string | null {
+  const env = process.env.LICENSE_ISSUE_KEY;
+  if (env && env.includes('PRIVATE KEY')) return env.replace(/\\n/g, '\n');
+  for (const p of [join(process.cwd(), 'keys', 'license_private.pem')]) {
+    try { if (existsSync(p)) return readFileSync(p, 'utf8'); } catch { /* */ }
+  }
+  return null;
+}
+
+const ISSUE_PLANS: Record<string, { label: string; months: number | null }> = {
+  month: { label: 'یک‌ماهه', months: 1 },
+  quarter: { label: 'سه‌ماهه', months: 3 },
+  'half-year': { label: 'شش‌ماهه', months: 6 },
+  year: { label: 'یک‌ساله', months: 12 },
+  lifetime: { label: 'دائمی', months: null },
+};
+
+const issueSchema = z.object({
+  plan: z.enum(['month', 'quarter', 'half-year', 'year', 'lifetime']),
+  to: z.string().min(2).max(120),
+  email: z.string().max(120).optional().nullable(),
+  note: z.string().max(300).optional().nullable(),
+  code_days: z.number().int().min(1).max(3650).optional(), // اعتبار ورود خود کد — پیش‌فرض ۱۸۰
+  grouped: z.boolean().optional(),
+});
+
+router.post('/issue', requireRole('admin'), (req: Request, res: Response) => {
+  const parsed = issueSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'ورودی صدور نامعتبر است.', detail: parsed.error.flatten() });
+  const b = parsed.data;
+  const priv = loadIssuePrivateKey();
+  if (!priv) {
+    return res.status(503).json({
+      error: 'کلید خصوصی صدور روی این سرور نصب نیست — کد را با scripts/make-license-code.mjs صادر کنید یا فایل keys/license_private.pem را کنار محل اجرا بگذارید (LICENSE_ISSUE_KEY هم پذیرفته است).',
+      missing_key: true,
+    });
+  }
+  const jti = [...Array(4)].map(() => randomUUID().replace(/-/g, '').slice(0, 4).toUpperCase()).join('-');
+  const now = Math.floor(Date.now() / 1000);
+  const codeDays = b.code_days ?? 180;
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    jti, plan: b.plan, to: b.to.trim(),
+    email: b.email?.trim() || null,
+    note: b.note?.trim() || null,
+    iat: now, exp: now + codeDays * 86400,
+  })).toString('base64url');
+  const signer = createSign('RSA-SHA256');
+  signer.update(`${header}.${payload}`);
+  let token = `${header}.${payload}.${signer.sign(priv, 'base64url')}`;
+  if (b.grouped) {
+    token = token.split('.').map((seg) => (seg.match(/.{1,24}/g) || [seg]).join('+')).join('.');
+  }
+  const p = ISSUE_PLANS[b.plan];
+  res.status(201).json({
+    ok: true,
+    jti,
+    plan: b.plan,
+    plan_label: p.label,
+    purchased_months: p.months, // مدت خریداری‌شده (null = دائمی)
+    licensed_to: b.to.trim(),
+    code: token,
+    code_days: codeDays,
+    grouped: !!b.grouped,
+  });
 });
 
 const revokeSchema = z.object({
