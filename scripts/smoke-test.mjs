@@ -6,7 +6,9 @@
 // استفاده:
 //   node scripts/smoke-test.mjs                          # localhost:4000
 //   BASE=http://localhost:4000 node scripts/smoke-test.mjs
-//   # با کد لایسنس واقعی (تست فعال‌سازی — پایان تست، وضعیت برمی‌گردد):
+//   # چرخه‌ی کامل کد لایسنس: صدور خودکار + بررسی/فعال‌سازی/replay/جعلی (مناسب پیش از release):
+//   node scripts/smoke-test.mjs --issue [--plan year] [--code-days 1] [--grouped]
+//   # با کد لایسنس آماده (تست فعال‌سازی — پایان تست، وضعیت برمی‌گردد):
 //   node scripts/smoke-test.mjs --code-file path/to/code.txt
 //   # با کاربر غیر از پیش‌فرض:
 //   ADMIN_USER=admin ADMIN_PASS=admin123 node scripts/smoke-test.mjs
@@ -16,21 +18,60 @@
 //   ۲) GET /api/license و /api/license/device-limit (بدون 500 — رگرسیون schema)
 //   ۳) POST /api/devices تا سقف (با TRIAL_LIMIT_ENFORCE=1 سرور) → مورد s+1 باید 402
 //      با پیام ارتقا بدهد؛ بعد از ارتقا به طرح پرداختی همان درخواست باید 201 شود
-//   ۴) فعال‌سازی کد: code-status ✓ / activate 201 / replay 409 / جعلی 400
+//   ۴) چرخه‌ی کد لایسنس: با --issue صدور واقعی با make-license-code (کلید فروشنده)
+//      + تأیید امضا با --verify → code-status ✓ / activate 201 / replay 409 / جعلی 400
+//      / ابطال و لغو ابطال — یا با --code-file/LICENSE_CODE کد آماده
 //   ۵) برگشت وضعیت اولیه (طرح قبلی + حذف تجهیزات ساخته‌شده در تست)
 // خروجی: ✓/✗ گام‌به‌گام + کد خروج 0/1 (مناسب CI و اجرای پیش از publish)
 // ============================================================
 
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const BASE = (process.env.BASE || 'http://localhost:4000').replace(/\/$/, '');
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
+const argv = process.argv.slice(2);
 
-// کد لایسنس برای گام فعال‌سازی — از فایل یا ENV
+// کد لایسنس برای گام فعال‌سازی — --issue (صدور خودکار) / فایل / ENV
 let LICENSE_CODE = process.env.LICENSE_CODE || '';
-if (process.argv.includes('--code-file')) {
-  const f = process.argv[process.argv.indexOf('--code-file') + 1];
+let issuedMeta = null; // { jti, plan, note } برای گزارش
+const flagVal = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
+if (argv.includes('--issue')) {
+  // صدور واقعی با ابزار فروشنده — همان مسیری که در فروش واقعی می‌رود:
+  // کلید خصوصی keys/license_private.pem لازم است (node scripts/make-license-code.mjs --gen-keys)
+  const here = dirname(fileURLToPath(import.meta.url));
+  const plan = flagVal('--plan') || 'year';
+  const codeDays = flagVal('--code-days') || '1';
+  const wantGrouped = argv.includes('--grouped');
+  const note = `smoke-test-${new Date().toISOString().slice(0, 19)}`;
+  const out = execFileSync('node', [
+    join(here, 'make-license-code.mjs'),
+    '--plan', plan,
+    '--to', 'Smoke Test Issuer',
+    '--email', 'smoke-test@localhost',
+    '--note', note,
+    '--code-days', codeDays,
+  ], { encoding: 'utf8', cwd: process.cwd() });
+  const lines = out.split('\n').map((l) => l.trim()).filter(Boolean);
+  // خط کد = تنها خطی که شکل JWT دارد (سه بخش با نقطه) — خطوط جداکننده‌ی ─── را رد می‌کند
+  const plain = lines.find((l) => l.length > 50 && l.split('.').length === 3 && /^[A-Za-z0-9_.+-]+$/.test(l));
+  if (!plain) { console.error('  ✗ خروجی صدور قابل خواندن نبود.'); process.exit(1); }
+  const metaLine = lines.find((l) => l.startsWith('jti:'));
+  issuedMeta = { jti: metaLine?.match(/jti:\s*(\S+)/)?.[1] ?? '?', plan, note };
+  console.log(`  ℹ کد صادر شد: plan=${plan} · jti=${issuedMeta.jti} · ${wantGrouped ? 'grouped (+) · ' : ''}code-days=${codeDays}`);
+  // تأیید محلی امضا با همان ابزار (بدون سرور) — روی کد خام (بدون گروه‌بندی)
+  const ver = execFileSync('node', [join(here, 'make-license-code.mjs'), '--verify', plain], { encoding: 'utf8' });
+  if (!ver.includes('"signature_ok": true')) { console.error('  ✗ امضای کد صادرشده محلی تأیید نشد — کلیدها را چک کنید.'); process.exit(1); }
+  console.log('  ✓ امضای محلی (--verify) تأیید شد');
+  // گروه‌بندی محلی با همان الگوی ابزار (بلوک‌های ۲۴ نویسه + جداکننده‌ی +) — سرور آن را می‌شناسد
+  LICENSE_CODE = wantGrouped
+    ? plain.split('.').map((seg) => (seg.match(/.{1,24}/g) || [seg]).join('+')).join('.')
+    : plain;
+} else if (argv.includes('--code-file')) {
+  const f = flagVal('--code-file');
   if (f) LICENSE_CODE = readFileSync(f, 'utf8').trim();
 }
 
@@ -153,6 +194,9 @@ console.log('\n— فعال‌سازی کد لایسنس');
 if (LICENSE_CODE) {
   const cs = await api('POST', '/api/license/code-status', { token: TOKEN, body: { code: LICENSE_CODE } });
   ok('code-status → valid:true', cs.status === 200 && cs.data?.valid === true, JSON.stringify(cs.data).slice(0, 120));
+  if (issuedMeta) {
+    ok('محتوای کد صادرشده سالم رسید (plan/jti/note)', cs.data?.plan === issuedMeta.plan && cs.data?.jti === issuedMeta.jti && String(cs.data?.note ?? '').startsWith('smoke-test-'), JSON.stringify({ plan: cs.data?.plan, jti: cs.data?.jti }));
+  }
   const act = await api('POST', '/api/license/activate', { token: TOKEN, body: { code: LICENSE_CODE } });
   ok('activate → 201 (یا 409 اگر قبلاً استفاده شده)', act.status === 201 || (act.status === 409 && act.data?.already_used === true), `status=${act.status}`);
   const replay = await api('POST', '/api/license/activate', { token: TOKEN, body: { code: LICENSE_CODE } });

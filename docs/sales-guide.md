@@ -79,11 +79,17 @@ node scripts/make-license-code.mjs --verify "کد کپی‌شده"
 خروجی باید `signature_ok: true` بدهد و payload طرح/دارنده/انقضا را نشان دهد —
 به‌ویژه برای کدهای گروه‌بندی‌شده (`--grouped`) که جداکننده‌ی `+` دارند، امضا را حتماً چک کنید.
 
-قبل از اولین فروش واقعی، کل چرخه را با سرور تست کنید:
+قبل از هر release یا اولین فروش واقعی، کل چرخه را با یک دستور تست کنید:
 
 ```bash
-node scripts/smoke-test.mjs   # BASE/ADMIN_PASS/LICENSE_CODE را تنظیم کنید
+node scripts/smoke-test.mjs --issue   # صدور خودکار + بررسی/فعال‌سازی/replay/جعلی/ابطال
+# روی سرور تست: BASE=http://host:4000 ADMIN_PASS=... node scripts/smoke-test.mjs --issue
+# یا با کد آماده: node scripts/smoke-test.mjs --code-file path/to/code.txt
 ```
+
+`--issue` با همان ابزار و کلید خصوصی شما کد واقعی صادر می‌کند (پیش‌فرض یک‌روزه)، امضای محلی
+را با `--verify` تأیید می‌کند و بعد چرخه‌ی کامل را روی سرور می‌گذراند — کلید خصوصی فقط روی
+سیستم شما می‌ماند و به سرور نمی‌رود.
 
 ## ۴) ارسال امن به مشتری
 
