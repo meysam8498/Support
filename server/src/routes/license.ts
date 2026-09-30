@@ -249,7 +249,7 @@ const extendSchema = z.object({
 router.post('/revoke', requireRole('admin'), (req: Request, res: Response) => {
   const parsed = revokeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
-  let jti = parsed.data.jti?.trim();
+  let jti: string | undefined = parsed.data.jti?.trim();
   if (!jti && parsed.data.code) {
     try {
       jti = verifyLicenseCode(parsed.data.code).payload.jti;
@@ -259,7 +259,7 @@ router.post('/revoke', requireRole('admin'), (req: Request, res: Response) => {
   }
   if (!jti) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
   const db = getDb();
-  // jti ناشناخته هم پذیرفته می‌شود (سناریوی سوقت کدِ فعال‌نشده — هنوز در سوابق نیست)
+  // jti ناشناخته هم پذیرفته می‌شود (سناریوی سرقت کدِ فعال‌نشده — هنوز در سوابق نیست)
   // اما known:false در پاسخ برمی‌گردد تا UI هشدار تایپ بدهد؛ خطای تایپ بی‌ضرر است.
   const known = isKnownJti(db, jti);
   const revoked = addRevokedJti(db, jti);
@@ -268,8 +268,16 @@ router.post('/revoke', requireRole('admin'), (req: Request, res: Response) => {
 
 router.post('/unrevoke', requireRole('admin'), (req: Request, res: Response) => {
   const parsed = revokeSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'شناسه‌ی کد (jti) را وارد کنید.' });
-  const jti = parsed.data.jti.trim();
+  if (!parsed.success) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
+  let jti = (parsed.data.jti ?? '').trim();
+  if (!jti && parsed.data.code) {
+    try {
+      jti = verifyLicenseCode(parsed.data.code).payload.jti;
+    } catch (e) {
+      return res.status(400).json({ error: (e as Error).message, invalid_code: true });
+    }
+  }
+  if (!jti) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
   const db = getDb();
   const revoked = removeRevokedJti(db, jti);
   res.json({ ok: true, jti, revoked_count: revoked.length, revoked: false });
