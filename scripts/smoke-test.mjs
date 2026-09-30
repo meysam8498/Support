@@ -161,6 +161,22 @@ if (LICENSE_CODE) {
   ok('کد جعلی → 400', fake.status === 400, `status=${fake.status}`);
   const acts = await api('GET', '/api/license/activations', { token: TOKEN });
   ok('GET /activations → 200 آرایه', acts.status === 200 && Array.isArray(acts.data));
+
+  // ابطال (۱.۱۹): jti ناشناخته هم پذیرفته می‌شود (سناریوی سرقت کدِ فعال‌نشده)
+  const bogus = await api('POST', '/api/license/revoke', { token: TOKEN, body: { jti: 'NOPE-1234' } });
+  ok('revoke jti نامعلوم → 200 با known:false', bogus.status === 200 && bogus.data?.known === false, `status=${bogus.status} ${JSON.stringify(bogus.data).slice(0, 80)}`);
+  const empty = await api('POST', '/api/license/revoke', { token: TOKEN, body: {} });
+  ok('revoke بدون ورودی → 400', empty.status === 400, `status=${empty.status}`);
+  // چرخه‌ی کامل ابطال/لغو ابطال روی jti کد واقعی
+  const csJti = cs.data?.jti;
+  if (csJti) {
+    const rev = await api('POST', '/api/license/revoke', { token: TOKEN, body: { jti: csJti } });
+    ok('revoke → ok:true', rev.status === 200 && rev.data?.ok === true && rev.data?.known === true, `status=${rev.status} ${JSON.stringify(rev.data).slice(0, 80)}`);
+    const list = await api('GET', '/api/license/revoked', { token: TOKEN });
+    ok('GET /revoked شامل jti', list.status === 200 && Array.isArray(list.data?.jtis) && list.data.jtis.includes(csJti), JSON.stringify(list.data).slice(0, 80));
+    const unrevoke = await api('POST', '/api/license/unrevoke', { token: TOKEN, body: { jti: csJti } });
+    ok('unrevoke → revoked:false', unrevoke.status === 200 && unrevoke.data?.revoked === false, `status=${unrevoke.status}`);
+  }
 } else {
   console.log('  ℹ بدون --code-file/«LICENSE_CODE» — تست فعال‌سازی کد skip شد.');
 }

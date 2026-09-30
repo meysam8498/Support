@@ -11,9 +11,11 @@
 // ============================================================
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
+import type { DatabaseSync } from 'node:sqlite';
 import { getDb } from '../db/db.js';
 import { requireRole } from '../middleware/auth.js';
 import { todayGregorian, todayJalali, addMonthsToJalali, jalaliToGregorianISO, gregorianToJalali } from '../lib/date.js';
+import { verifyLicenseCode } from '../lib/licenseCode.js';
 
 const router = Router();
 
@@ -81,6 +83,71 @@ export function licenseStatus() {
 router.get('/', (_req: Request, res: Response) => {
   res.json(licenseStatus());
 });
+
+// ============================================================
+// ابطال کد لایسنس (۱.۱۹) — jtiهای باطل‌شده در license_info.revoked_jtis (JSON)
+// سناریو: استرداد خرید، سرقت/لو رفتن کد پیش از فعال‌سازی، اشتباه در صدور.
+// ابطال جلوی فعال‌سازی را می‌گیرد (activate → 403). توجه: مکانیزم جعلی‌ستیزی
+// این سامانه امضای RS256 با کلید خصوصی نزد فروشنده است؛ لیست ابطال یک لایه‌ی
+// اضافه است — اگر کد و کلید خصوصی هر دو لو رفته باشند، چرخش کلید لازم است.
+// ============================================================
+/** خواندن لیست jtiهای باطل‌شده (آرایه‌ی رشته‌ها) — با خودترمیمی اگر خراب بود */
+export function getRevokedJtis(db: ReturnType<typeof getDb>): string[] {
+  let raw: string | null = null;
+  try {
+    const row = db.prepare(`SELECT revoked_jtis FROM license_info WHERE id = 1`).get() as { revoked_jtis?: string | null } | undefined;
+    raw = row?.revoked_jtis ?? null;
+  } catch { /* ستون نیست — DB قدیمی که مهاجرت ندیده */ }
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    // JSON خراب — به لیست خالی برمی‌گردیم (نوشتن بعدی با '[]' ترمیم می‌کند)
+    return [];
+  }
+}
+
+/** افزودن jti به لیست ابطال (idempotent — بدون تکرار) */
+function addRevokedJti(db: ReturnType<typeof getDb>, jti: string): string[] {
+  const cur = getRevokedJtis(db);
+  if (cur.includes(jti)) return cur;
+  const next = [...cur, jti];
+  db.prepare(`UPDATE license_info SET revoked_jtis = ?, updated_at = datetime('now') WHERE id = 1`).run(JSON.stringify(next));
+  return next;
+}
+
+/** حذف jti از لیست ابطال (idempotent) */
+function removeRevokedJti(db: ReturnType<typeof getDb>, jti: string): string[] {
+  const cur = getRevokedJtis(db);
+  if (!cur.includes(jti)) return cur;
+  const next = cur.filter((x) => x !== jti);
+  db.prepare(`UPDATE license_info SET revoked_jtis = ?, updated_at = datetime('now') WHERE id = 1`).run(JSON.stringify(next));
+  return next;
+}
+
+/** آیا این jti در سوابق فعال‌سازی‌های این سامانه دیده شده؟ (برای جلوگیری از ابطال تایپی) */
+function isKnownJti(db: DatabaseSync, jti: string): boolean {
+  // جدول سوابق — idempotent (برای DBهای قدیمی که schema.sql را ندیده‌اند)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS license_activations (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        jti            TEXT NOT NULL UNIQUE,
+        plan           TEXT NOT NULL,
+        licensed_to    TEXT,
+        email          TEXT,
+        note           TEXT,
+        code_iat       INTEGER,
+        activated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+        activated_by   INTEGER,
+        FOREIGN KEY (activated_by) REFERENCES users(id)
+      );
+    `);
+  } catch { /* */ }
+  const row = db.prepare(`SELECT 1 AS x FROM license_activations WHERE jti = ? LIMIT 1`).get(jti) as { x?: number } | undefined;
+  return !!row;
+}
 
 // ============================================================
 // سقف تجهیزات نسخه‌ی رایگان/آزمایشی
@@ -169,9 +236,47 @@ router.put('/', requireRole('admin'), (req: Request, res: Response) => {
   res.json(licenseStatus());
 });
 
+const revokeSchema = z.object({
+  jti: z.string().min(1).max(120).optional(),
+  code: z.string().min(20).max(4000).optional(), // اگر خودِ کد فرستاده شود، jti از payload تأییدشده استخراج می‌شود (ضد تایپ)
+}).refine((d) => d.jti || d.code, { message: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
+
 const extendSchema = z.object({
   months: z.number().int().min(1).max(36),
   from_expiry: z.boolean().optional(), // true = از پایان فعلی تمدید (نه از امروز)
+});
+
+router.post('/revoke', requireRole('admin'), (req: Request, res: Response) => {
+  const parsed = revokeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
+  let jti = parsed.data.jti?.trim();
+  if (!jti && parsed.data.code) {
+    try {
+      jti = verifyLicenseCode(parsed.data.code).payload.jti;
+    } catch (e) {
+      return res.status(400).json({ error: (e as Error).message, invalid_code: true });
+    }
+  }
+  if (!jti) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
+  const db = getDb();
+  // jti ناشناخته هم پذیرفته می‌شود (سناریوی سوقت کدِ فعال‌نشده — هنوز در سوابق نیست)
+  // اما known:false در پاسخ برمی‌گردد تا UI هشدار تایپ بدهد؛ خطای تایپ بی‌ضرر است.
+  const known = isKnownJti(db, jti);
+  const revoked = addRevokedJti(db, jti);
+  res.json({ ok: true, jti, known, revoked_count: revoked.length, revoked: true });
+});
+
+router.post('/unrevoke', requireRole('admin'), (req: Request, res: Response) => {
+  const parsed = revokeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'شناسه‌ی کد (jti) را وارد کنید.' });
+  const jti = parsed.data.jti.trim();
+  const db = getDb();
+  const revoked = removeRevokedJti(db, jti);
+  res.json({ ok: true, jti, revoked_count: revoked.length, revoked: false });
+});
+
+router.get('/revoked', requireRole('admin'), (_req: Request, res: Response) => {
+  res.json({ jtis: getRevokedJtis(getDb()) });
 });
 
 router.post('/extend', requireRole('admin'), (req: Request, res: Response) => {

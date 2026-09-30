@@ -17,7 +17,7 @@ import { getDb } from '../db/db.js';
 import { requireRole } from '../middleware/auth.js';
 import { verifyLicenseCode, type LicenseCodePlan } from '../lib/licenseCode.js';
 import { todayJalali, jalaliToGregorianISO, addMonthsToJalali, gregorianToJalali } from '../lib/date.js';
-import { licenseStatus, PLAN_MONTHS, deviceLimitInfo } from './license.js';
+import { licenseStatus, PLAN_MONTHS, deviceLimitInfo, getRevokedJtis } from './license.js';
 
 const router = Router();
 
@@ -75,10 +75,23 @@ router.post('/activate', requireRole('admin'), (req: Request, res: Response) => 
     | { id: number; activated_at: string | null }
     | undefined;
   if (dup) {
+    const alsoRevoked = getRevokedJtis(db).includes(jti);
     return res.status(409).json({
-      error: 'این کد لایسنس قبلاً استفاده شده است.',
+      error: alsoRevoked
+        ? 'این کد قبلاً استفاده شده و سپس باطل شده است (استرداد/سرقت).'
+        : 'این کد لایسنس قبلاً استفاده شده است.',
       activated_at: dup.activated_at,
       already_used: true,
+      ...(alsoRevoked ? { revoked: true } : {}),
+    });
+  }
+
+  // ۲+۱) ضد ابطال — کدهای باطل‌شده (استرداد/سرقت) فعال نمی‌شوند
+  if (getRevokedJtis(db).includes(jti)) {
+    return res.status(403).json({
+      error: 'این کد لایسنس باطل شده است (استرداد/سرقت/اشتباه در صدور) — با فروشنده تماس بگیرید.',
+      revoked: true,
+      jti,
     });
   }
 
@@ -126,8 +139,9 @@ router.post('/activate', requireRole('admin'), (req: Request, res: Response) => 
 router.get('/activations', requireRole('admin'), (_req: Request, res: Response) => {
   const db = getDb();
   try { ensureActivationsTable(db); } catch { /* */ }
-  const rows = db.prepare(`SELECT id, jti, plan, licensed_to, email, note, code_iat, activated_at FROM license_activations ORDER BY id DESC LIMIT 100`).all();
-  res.json(rows);
+  const rows = db.prepare(`SELECT id, jti, plan, licensed_to, email, note, code_iat, activated_at FROM license_activations ORDER BY id DESC LIMIT 100`).all() as Array<Record<string, unknown>>;
+  const revoked = new Set(getRevokedJtis(db));
+  res.json(rows.map((r) => ({ ...r, revoked: revoked.has(String(r.jti)) })));
 });
 
 router.post('/code-status', requireRole('admin'), (req: Request, res: Response) => {

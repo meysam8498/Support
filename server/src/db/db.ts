@@ -92,6 +92,8 @@ const COLUMN_MIGRATIONS: ColumnMigration[] = [
   { table: 'license_info', column: 'code_jti', ddl: "TEXT" },
   { table: 'license_info', column: 'code_fingerprint', ddl: "TEXT" },
   { table: 'license_info', column: 'activated_at', ddl: "TEXT" },
+  // ابطال کد لایسنس (۱.۱۹) — لیست jtiهای باطل‌شده به‌صورت JSON در ردیف لایسنس
+  { table: 'license_info', column: 'revoked_jtis', ddl: "TEXT NOT NULL DEFAULT '[]'" },
 ];
 
 /**

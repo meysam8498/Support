@@ -260,7 +260,8 @@ CREATE TABLE IF NOT EXISTS license_info (
   updated_at     TEXT,
   code_jti       TEXT,
   code_fingerprint TEXT,
-  activated_at   TEXT
+  activated_at   TEXT,
+  revoked_jtis   TEXT                                -- شناسه‌های باطل‌شده (JSON) — جعلی/فروخته‌شده نیستند
 );
 INSERT OR IGNORE INTO license_info (id, plan, licensed_to, notes)
   VALUES (1, 'trial', 'ارزیابی', 'نسخه‌ی رایگان — بدون محدودیت زمانی فعلاً');
