@@ -12,6 +12,7 @@ import { t } from '../i18n/fa';
 import { toFa } from '../lib/date';
 import { downloadAuthenticated } from '../lib/download';
 import Modal from '../components/Modal';
+import Alert from '../components/Alert';
 import { useAuth } from '../context/AuthContext';
 
 interface BackupInfo {
@@ -192,11 +193,7 @@ export default function BackupsPage() {
         </div>
       </div>
 
-      {msg && (
-        <p className="p-3 bg-green-50 dark:bg-green-900/25 text-success dark:text-green-300 rounded-lg text-sm border border-green-200 dark:border-green-800">
-          {msg}
-        </p>
-      )}
+      {msg && <Alert variant="success">{msg}</Alert>}
       {error && (
         <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
       )}
@@ -296,10 +293,10 @@ export default function BackupsPage() {
       {/* ---------- دیالوگ تأیید نهایی بازیابی (مرحله‌ی ۲) ---------- */}
       <Modal open={restoreConfirmOpen} onClose={() => setRestoreConfirmOpen(false)} title="تأیید نهایی بازیابی دیتابیس">
         <div className="space-y-4">
-          <p className="p-3 rounded-lg bg-coral/10 border border-coral/30 text-sm text-coral-dark dark:text-coral-light leading-6">
-            ⚠️ دیتابیس فعلی به‌طور کامل با محتوای بکاپ انتخابی <b>جایگزین می‌شود</b>. هر داده‌ای که بعد از زمان این بکاپ ثبت شده از بین می‌رود
+          <Alert variant="danger" className="leading-6">
+            دیتابیس فعلی به‌طور کامل با محتوای بکاپ انتخابی <b>جایگزین می‌شود</b>. هر داده‌ای که بعد از زمان این بکاپ ثبت شده از بین می‌رود
             (یک بکاپ ایمنی از وضعیت فعلی گرفته شده و در فهرست باقی می‌ماند). پس از تأیید، سرور ری‌استارت می‌شود و همه‌ی کاربران باید دوباره وارد شوند.
-          </p>
+          </Alert>
           <div className="rounded-lg border border-stone-200 dark:border-stone-700 p-3 text-sm space-y-1">
             <p><b>بکاپ بازیابی‌شونده:</b> <span className="fa-nums">{restoreTarget && fmtStamp(restoreTarget.file)}</span></p>
             <p><b>بکاپ ایمنی (وضعیت فعلی):</b> <span className="fa-nums">{restoreSafety && fmtStamp(restoreSafety)}</span></p>

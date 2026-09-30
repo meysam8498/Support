@@ -9,6 +9,7 @@
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import Modal from './Modal';
+import Alert from './Alert';
 import JalaliDatePicker from './JalaliDatePicker';
 import { t } from '../i18n/fa';
 import { toFa, jalaliRangePreset } from '../lib/date';
@@ -237,9 +238,9 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
         </div>
 
         {error && (
-          <p className="p-2 bg-coral/10 text-coral-dark rounded-lg text-xs border border-coral/30 dark:text-coral-light">
+          <Alert variant="danger" className="text-xs">
             {error}
-          </p>
+          </Alert>
         )}
 
         <div className="flex gap-2 justify-end">

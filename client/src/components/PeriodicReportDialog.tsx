@@ -7,6 +7,7 @@
 // ============================================================
 import React, { useState } from 'react';
 import Modal from './Modal';
+import Alert from './Alert';
 import JalaliDatePicker from './JalaliDatePicker';
 import { downloadAuthenticated } from '../lib/download';
 import { api } from '../api/api';
@@ -139,7 +140,7 @@ export default function PeriodicReportDialog({ open, onClose }: { open: boolean;
           بدون هیچ ورودی: آخرین دوره‌ی کامل قبل از امروز گزارش می‌شود.
         </p>
 
-        {error && <p className="p-2 bg-coral/10 text-coral-dark rounded-lg text-xs border border-coral/30 dark:text-coral-light">{error}</p>}
+        {error && <Alert variant="danger" className="text-xs">{error}</Alert>}
 
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="btn-secondary">انصراف</button>

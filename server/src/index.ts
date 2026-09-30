@@ -37,6 +37,19 @@ config();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 4000;
 
+// ─────────────────────────────────────────────────────────────
+// حالت سرورِ پشتیبانی (۱.۲۴) — SUPPORT_ONLY=1
+// نسخه‌ای فقط برای بررسی/رفع ایراد مشتری‌ها: با لاگ مشتری یا درخواست اتصال
+// کار می‌کند؛ داده‌ی واقعی مشتری را نگه نمی‌دارد و صدور لایسنس اینجاست.
+// اثر: ورود/جست‌وجوی نمونه، خواندن سلامت/ورژن/لاگ و ابزارهای لایسنس فعال‌اند؛
+// مسیرهای داده‌ی واقعی (devices/parts/warranty/serial-import/backups) بسته‌اند.
+// ─────────────────────────────────────────────────────────────
+const SUPPORT_ONLY = process.env.SUPPORT_ONLY === '1';
+const SUPPORT_BLOCKED_PREFIXES = ['/api/devices', '/api/parts', '/api/warranty', '/api/serial-import', '/api/backups', '/api/procurement'];
+if (SUPPORT_ONLY) {
+  console.log('🛟 حالت سرور پشتیبانی (SUPPORT_ONLY=1) — مسیرهای داده‌ی واقعی غیرفعال‌اند.');
+}
+
 const app = express();
 
 app.use(cors());
@@ -51,6 +64,21 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/version', (_req, res) => {
   res.json({ version: APP_VERSION });
 });
+
+// --- گیت حالت پشتیبانی — قبل از همه‌ی مسیرهای محافظت‌شده ---
+// ⚠️ روی mount سطح app، req.path مسیر کامل است؛ برای اطمینان از originalUrl استفاده می‌کنیم
+if (SUPPORT_ONLY) {
+  app.use((req, res, next) => {
+    const url = req.originalUrl.split('?')[0];
+    if (SUPPORT_BLOCKED_PREFIXES.some((p) => url === p || url.startsWith(p + '/'))) {
+      return res.status(403).json({
+        error: 'این سرور فقط برای پشتیبانی است (SUPPORT_ONLY) — داده‌ی مشتری اینجا نگه‌داری نمی‌شود.',
+        support_only: true,
+      });
+    }
+    next();
+  });
+}
 
 // --- مسیرهای عمومی ---
 app.use('/api/auth', authRoutes);

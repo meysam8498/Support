@@ -12,6 +12,7 @@ import { api, type Device, type Project } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa } from '../lib/date';
 import { downloadAuthenticated } from '../lib/download';
+import Alert from '../components/Alert';
 
 interface ImportSummary {
   file: string;
@@ -484,7 +485,7 @@ export default function SerialImportPage() {
         )}
 
         {error && (
-          <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
+          <Alert variant="danger">{error}</Alert>
         )}
 
         <div className="flex flex-wrap gap-3">
@@ -506,11 +507,7 @@ export default function SerialImportPage() {
         </div>
       </form>
 
-      {previewError && (
-        <p className="p-3 bg-coral/10 text-coral-dark rounded-xl text-sm border-2 border-coral/30 dark:text-coral-light">
-          {previewError}
-        </p>
-      )}
+      {previewError && <Alert variant="danger">{previewError}</Alert>}
 
       {preview && <PreviewPanel p={preview} />}
 

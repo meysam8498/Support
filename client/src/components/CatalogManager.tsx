@@ -12,6 +12,7 @@ import { api } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa } from '../lib/date';
 import Modal from './Modal';
+import Alert from './Alert';
 import InlineEditCell from './InlineEditCell';
 import { useAuth } from '../context/AuthContext';
 import { downloadAuthenticated } from '../lib/download';
@@ -572,9 +573,9 @@ export default function CatalogManager() {
       </div>
 
       {msg && (
-        <p className="p-3 bg-green-50 dark:bg-green-900/25 text-success dark:text-green-300 rounded-lg text-sm border border-green-200 dark:border-green-800">
+        <Alert variant="success" className="text-sm">
           {msg}
-        </p>
+        </Alert>
       )}
 
       {/* جدول مراجع */}
@@ -752,7 +753,7 @@ export default function CatalogManager() {
           ) : (
             <input ref={importInputRef} type="file" accept=".xlsx,.xls" className="input" onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportResult(null); setImportResolutions({}); }} />
           )}
-          {importError && <p className="p-2 bg-coral/10 text-coral-dark rounded-lg text-xs border border-coral/30 dark:text-coral-light">{importError}</p>}
+          {importError && <Alert variant="danger" className="text-xs">{importError}</Alert>}
           {importResult && (
             <div className="rounded-xl bg-surface-card dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 p-3 space-y-2">
               <p className="text-xs font-bold text-brand-700 dark:text-brand-300">
