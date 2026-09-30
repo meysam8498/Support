@@ -57,12 +57,13 @@ app.use(express.json({ limit: '5mb' }));
 
 // --- سلامت و ورژن سرور ---
 // APP_VERSION در Dockerfile/runtime ست می‌شود؛ fallback برای اجرای dev محلی
+// support_only برای بنر ثابت UI (۱.۲۵) — کاربر بداند روی سرور پشتیبانی است
 const APP_VERSION = process.env.APP_VERSION || 'dev';
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, time: new Date().toISOString() });
+  res.json({ ok: true, time: new Date().toISOString(), support_only: SUPPORT_ONLY });
 });
 app.get('/api/version', (_req, res) => {
-  res.json({ version: APP_VERSION });
+  res.json({ version: APP_VERSION, support_only: SUPPORT_ONLY });
 });
 
 // --- گیت حالت پشتیبانی — قبل از همه‌ی مسیرهای محافظت‌شده ---

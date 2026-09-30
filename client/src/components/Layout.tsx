@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 import { t } from '../i18n/fa';
 import GlobalSearchBox from './GlobalSearchBox';
 import LicenseBadge from './LicenseBadge';
+import { api } from '../api/api';
 
 interface NavItem {
   to: string;
@@ -48,6 +49,14 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  // سرور پشتیبانی (SUPPORT_ONLY=1) — بنر ثابت زیر هدر (۱.۲۵)
+  const [supportOnly, setSupportOnly] = useState(false);
+
+  useEffect(() => {
+    api.get<{ support_only?: boolean }>('/version')
+      .then((r) => setSupportOnly(!!r.support_only))
+      .catch(() => { /* بی‌صدا */ });
+  }, []);
 
   const mainItems = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
   const userItems = USER_MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
@@ -221,6 +230,17 @@ export default function Layout() {
           </nav>
         )}
       </header>
+
+      {/* بنر ثابت سرور پشتیبانی — در همه‌ی صفحات (۱.۲۵) */}
+      {supportOnly && (
+        <div
+          role="status"
+          className="shrink-0 z-10 bg-gold/15 border-b border-gold/40 px-4 py-1.5 text-center text-xs font-semibold text-gold-dark dark:text-gold-light"
+          title="این استقرار با SUPPORT_ONLY=1 اجرا شده — داده‌ی مشتری اینجا نگه‌داری نمی‌شود"
+        >
+          🛟 سرور پشتیبانی — این سامانه فقط برای بررسی ایرادها و ساخت کد لایسنس است؛ داده‌ی مشتری اینجا نگه‌داری نمی‌شود.
+        </div>
+      )}
 
       {/* محتوای اصلی */}
       <main className="flex-1 overflow-y-auto bg-surface-base dark:bg-stone-900">
