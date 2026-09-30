@@ -1,12 +1,14 @@
 // ============================================================
 // صفحه‌ی «درباره‌ی سامانه» — معرفی، امکانات، وضعیت لایسنس و تماس
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
+// همگام با داشبورد: بنر وضعیت سقف تجهیز + لینک پنل ساخت لایسنس (/issue)
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/api';
 import { toFa } from '../lib/date';
 import { useAuth } from '../context/AuthContext';
+import Alert from '../components/Alert';
 
 interface LicenseStatus {
   plan: string;
@@ -22,6 +24,7 @@ interface DeviceLimit {
   remaining: number | null;
   is_trial: boolean;
   enforce: boolean;
+  limit_reached?: boolean;
 }
 
 const FEATURES: { icon: string; title: string; desc: string }[] = [
@@ -37,6 +40,7 @@ const FEATURES: { icon: string; title: string; desc: string }[] = [
 
 export default function AboutPage() {
   const { role } = useAuth();
+  const isAdmin = role === 'admin';
   const [version, setVersion] = useState('…');
   const [license, setLicense] = useState<LicenseStatus | null>(null);
   const [deviceLimit, setDeviceLimit] = useState<DeviceLimit | null>(null);
@@ -47,6 +51,16 @@ export default function AboutPage() {
     api.get<DeviceLimit>('/license/device-limit').then(setDeviceLimit).catch(() => setDeviceLimit(null));
   }, []);
 
+  // وضعیت سقف — منطق مشترک با داشبورد
+  const isTrial = !!deviceLimit?.is_trial;
+  const limit = deviceLimit?.limit ?? null;
+  const used = deviceLimit?.used ?? 0;
+  const remaining = deviceLimit?.remaining ?? null;
+  const enforce = !!deviceLimit?.enforce;
+  const nearLimit = isTrial && enforce && limit !== null && remaining !== null && remaining <= 3;
+  const reached = isTrial && enforce && limit !== null && remaining !== null && remaining <= 0;
+  const usedPct = limit !== null ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* هدر معرفی */}
@@ -56,7 +70,7 @@ export default function AboutPage() {
             م
           </span>
           <div className="min-w-0">
-            <h1 className="font-display text-2xl font-bold text-stone-900 dark:text-stone-50">
+            <h1 className="heading-display text-2xl font-bold text-stone-900 dark:text-stone-50">
               سامانه‌ی مدیریت تجهیزات و قطعات یدکی
             </h1>
             <p className="text-sm text-stone-500 dark:text-stone-400 mt-1 leading-6">
@@ -80,15 +94,16 @@ export default function AboutPage() {
                   {license.expired && ' · منقضی'}
                 </span>
               )}
-              {deviceLimit?.is_trial && deviceLimit.limit !== null && (
+              {isTrial && limit !== null && (
                 <span
                   className={`badge fa-nums ${
-                    deviceLimit.enforce && deviceLimit.remaining !== null && deviceLimit.remaining <= 3
+                    nearLimit
                       ? 'bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40'
                       : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-600'
                   }`}
                 >
-                  🖥️ {toFa(deviceLimit.used)} / {toFa(deviceLimit.limit)} تجهیز
+                  🖥️ {toFa(used)} / {toFa(limit)} تجهیز
+                  {enforce && remaining !== null && ` · ${toFa(remaining)} باقی‌مانده`}
                 </span>
               )}
             </div>
@@ -96,9 +111,44 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* وضعیت سقف تجهیز — همگام با داشبورد */}
+      {isTrial && limit !== null && (
+        <section className="card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="heading-display text-base font-bold text-stone-900 dark:text-stone-50">🖥️ سقف تجهیزات نسخه‌ی آزمایشی</h2>
+            <span className={`badge fa-nums ${nearLimit ? 'bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40' : 'bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-600'}`}>
+              {toFa(used)} / {toFa(limit)}
+            </span>
+          </div>
+          <div className="progress-track">
+            <div
+              className={`h-full rounded-full transition-all duration-200 ease-out ${nearLimit ? 'bg-gold' : 'bg-brand-500'}`}
+              style={{ width: `${usedPct}%` }}
+            />
+          </div>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-2 fa-nums">
+            {toFa(used)} تجهیز ثبت شده از {toFa(limit)}
+            {enforce && remaining !== null && <> — {toFa(remaining)} باقی‌مانده</>}
+            {!enforce && ' — سقف فقط گزارش می‌شود (TRIAL_LIMIT_ENFORCE خاموش)'}
+          </p>
+          {reached && (
+            <Alert variant="danger" className="mt-3">
+              سقف نسخه‌ی آزمایشی پر شده است{enforce ? ' — افزودن تجهیز جدید با ۴۰۲ رد می‌شود' : ''}.
+              {isAdmin ? <> برای ارتقا، <Link to="/issue" className="underline font-semibold">کد لایسنس بسازید</Link> یا فعال کنید: <Link to="/license" className="underline font-semibold">ورود کد لایسنس</Link></> : ' — با مدیر سامانه تماس بگیرید.'}
+            </Alert>
+          )}
+          {!reached && nearLimit && (
+            <Alert variant="warning" className="mt-3">
+              فقط <b className="fa-nums">{toFa(remaining ?? 0)}</b> تجهیز تا سقف باقی مانده —
+              {isAdmin ? <> <Link to="/issue" className="underline font-semibold">ساخت کد لایسنس</Link> (پنل فروشنده) یا <Link to="/license" className="underline font-semibold">ورود کد</Link></> : ' برای ارتقا با مدیر سامانه تماس بگیرید.'}
+            </Alert>
+          )}
+        </section>
+      )}
+
       {/* امکانات */}
       <section>
-        <h2 className="font-display text-lg font-bold text-stone-900 dark:text-stone-50 mb-3">امکانات سامانه</h2>
+        <h2 className="heading-display text-lg font-bold text-stone-900 dark:text-stone-50 mb-3">امکانات سامانه</h2>
         <div className="grid sm:grid-cols-2 gap-3">
           {FEATURES.map((f) => (
             <div key={f.title} className="card p-4">
@@ -118,7 +168,7 @@ export default function AboutPage() {
 
       {/* طراح + تماس */}
       <section className="card p-6">
-        <h2 className="font-display text-lg font-bold text-stone-900 dark:text-stone-50 mb-3">طراح و توسعه‌دهنده</h2>
+        <h2 className="heading-display text-lg font-bold text-stone-900 dark:text-stone-50 mb-3">طراح و توسعه‌دهنده</h2>
         <div className="flex flex-wrap items-center gap-4">
           <span className="w-12 h-12 rounded-full bg-brand-500 flex items-center justify-center text-white text-lg font-bold">
             م
@@ -150,10 +200,15 @@ export default function AboutPage() {
           >
             🐙 گیت‌هاب
           </a>
-          {role === 'admin' && (
-            <Link to="/license" className="btn-ghost !min-h-[34px] text-xs">
-              🔑 ورود کد لایسنس
-            </Link>
+          {isAdmin && (
+            <>
+              <Link to="/issue" className="btn-secondary !min-h-[34px] text-xs">
+                🧾 پنل ساخت لایسنس
+              </Link>
+              <Link to="/license" className="btn-ghost !min-h-[34px] text-xs">
+                🔑 ورود کد لایسنس
+              </Link>
+            </>
           )}
         </div>
         <p className="text-[11px] text-stone-400 mt-4 leading-5">
