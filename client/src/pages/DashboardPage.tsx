@@ -16,6 +16,7 @@ import TrendChart from '../components/TrendChart';
 /** ورژن جاری — از /api/version (در داکر از APP_VERSION/تگ گیت) */
 function AboutCard() {
   const [version, setVersion] = useState<string>('…');
+  const { isAdmin } = useAuth();
   const [license, setLicense] = useState<{ plan_label: string; days_left: number | null; expired: boolean; licensed_to: string | null } | null>(null);
   const [deviceLimit, setDeviceLimit] = useState<{ limit: number | null; used: number; remaining: number | null; is_trial: boolean; enforce: boolean } | null>(null);
   useEffect(() => {
@@ -36,7 +37,13 @@ function AboutCard() {
           </div>
           {license && (
             <span
-              className={`badge text-[10px] shrink-0 ${license.expired ? 'bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/40' : 'bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800'}`}
+              className={`badge text-[10px] shrink-0 ${
+                license.expired
+                  ? 'bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/40'
+                  : deviceLimit?.is_trial && deviceLimit.enforce
+                    ? 'bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40'
+                    : 'bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800'
+              }`}
               title={license.licensed_to ? `ثبت‌شده برای: ${license.licensed_to}` : 'وضعیت لایسنس سامانه'}
             >
               📄 لایسنس: {license.plan_label}
@@ -59,6 +66,15 @@ function AboutCard() {
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          {isAdmin && (
+            <Link
+              to="/license"
+              className="btn-primary !min-h-[32px] text-xs"
+              title="ورود کد لایسنس، ارتقای طرح و تمدید — صفحه‌ی لایسنس"
+            >
+              🔑 ورود کد لایسنس
+            </Link>
+          )}
           <a
             href="https://hub.docker.com/r/meysam8498/support-equipment-management"
             target="_blank"
