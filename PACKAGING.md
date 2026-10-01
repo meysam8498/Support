@@ -17,6 +17,16 @@
 ### فناوری پیشنهادی: Tauri v2 (سبک، ~۱۰MB، WebView2 ویندوزی)
 جایگزین‌ها: Electron (ساده‌تر، سنگین‌تر ~۱۵۰MB) یا NSIS روی Node سرویس‌شده (بدون UI دسکتاپ).
 
+> **✅ پیاده‌سازی شد (۱.۲۶.۰)** — پوشه‌ی `desktop/`: پوسته‌ی Tauri v2 با اجرای سرور به‌صورت
+> child process (باندل esbuild + `node.exe` کنار اجرایی در `resources/`)؛ پنجره به
+> `http://localhost:<port>` ناوبری می‌کند و سرور همان فرانت بیلدشده را سرو می‌کند
+> (بدون CORS و بدون تغییر کد کلاینت). انحراف عمدی از طرح بالا: به‌جای سرویس ویندوز
+> `node-windows`، سرور چرخه‌ی عمرش با اپ است (روی `ExitRequested` خاموشی تمیز) —
+> ساده‌تر برای نصب/حذف مشتری؛ سرویس ویندوز در آینده در صورت نیاز اضافه می‌شود.
+> بیلد: `cd desktop && npm run build:customer` (پورت 4000 + `LICENSE_ENFORCE=1`،
+> داده در `%LOCALAPPDATA%\SupportEquipment`) یا `npm run build:support`
+> (پورت 4200 + `SUPPORT_ONLY=1` + کلید صدور، داده‌ی نمونه‌ی موقت).
+
 ### گام‌های پیاده‌سازی
 1. **سرویس‌سازی سرور**: `server/` را با `node-windows` به سرویس ویندوز تبدیل کن (نصب/حذف با `svc install/remove`)؛ پورت پیش‌فرض 4000 با چک اشغال.
 2. **Tauri wrapper**: فرانت را در WebView باز کن؛ پس‌زمینه سرور را به‌صورت child process با `tauri-plugin-shell` مدیریت کن (خروج تمیز هنگام بستن اپ → رویداد `ExitRequested`).

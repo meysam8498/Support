@@ -140,7 +140,10 @@ app.use('/api/reports', authRequired, reportsRoutes);
 app.use('/api/users', authRequired, usersRoutes); // فقط مدیر (درون روتر چک می‌شود)
 
 // --- سرو فایل‌های بیلد فرانت‌اند در محیط تولید ---
-const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
+// در نصب دسکتاپ (Tauri) مسیر فرانت با CLIENT_DIST داده می‌شود؛ پیش‌فرض: مخزن کنار سرور
+const clientDist = process.env.CLIENT_DIST
+  ? path.resolve(process.env.CLIENT_DIST)
+  : path.join(__dirname, '..', '..', 'client', 'dist');
 app.use(express.static(clientDist));
 app.get(/^\/(?!api).*/, (_req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));

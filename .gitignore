@@ -36,5 +36,11 @@ Thumbs.db
 tsunbuildinfo
 *.tsbuildinfo
 
+# Desktop (Tauri) build artifacts — رزورس‌ها شامل node.exe و باندل سرور است و هرگز کامیت نمی‌شود
+desktop/src-tauri/target/
+desktop/src-tauri/resources/
+desktop/src-tauri/gen/
+desktop/src-tauri/static-dist/
+
 # Freebuff agent workspace
 .freebuff/

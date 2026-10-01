@@ -89,6 +89,12 @@ patch('تاریخچه هاب', 'DOCKER_HUB_OVERVIEW.md', (s) =>
   insertRowUnderHead(s, '## 🗂️ تاریخچه‌ی نسخه‌ها', `| **${NEW}** | «شرح تغییرات این نسخه را اینجا بنویسید» |`) ?? s
 );
 
+// --- ۳.۵) فایل‌های دسکتاپ (Tauri) — همگام با ریشه ---
+if (!isRecommit) {
+  try { execSync(`node scripts/set-version.mjs ${NEW}`, { stdio: 'inherit' }); replaced.push('desktop/* ✓ (set-version.mjs)'); }
+  catch { console.error('  ✖ set-version.mjs شکست خورد — دستی همگام کنید.'); process.exitCode = 1; }
+}
+
 // --- ۴) Dockerfile + compose ---
 patch('ARG APP_VERSION', 'Dockerfile', (s) => s.replace(`ARG APP_VERSION=${current}`, `ARG APP_VERSION=${NEW}`));
 patch('هدر داکرفایل', 'Dockerfile', (s) => s.replace(`# نسخه: ${current} (پیش‌فرض؛ در CI از تگ گیت با ARG APP_VERSION پر می‌شود)`, `# نسخه: ${NEW} (پیش‌فرض؛ در CI از تگ گیت با ARG APP_VERSION پر می‌شود)`));
@@ -120,7 +126,7 @@ if (!checkOk || hasPlaceholder) {
 }
 
 // --- ۶) کامیت / تگ / هاب (فقط وقتی چک سبز و شرح‌ها واقعی است) ---
-const FILES = ['package.json', 'server/package.json', 'client/package.json', 'package-lock.json', 'README.md', 'DOCKER_HUB_OVERVIEW.md', 'Dockerfile', 'docker-compose.yml'];
+const FILES = ['package.json', 'server/package.json', 'client/package.json', 'package-lock.json', 'README.md', 'DOCKER_HUB_OVERVIEW.md', 'Dockerfile', 'docker-compose.yml', 'desktop/package.json', 'desktop/src-tauri/Cargo.toml', 'desktop/src-tauri/tauri.conf.json', 'desktop/src-tauri/tauri.support.conf.json'];
 const summary = `ورژن ${NEW}`;
 if (OPT.commit) {
   const allFiles = [...FILES, ...EXTRA_PATHS];

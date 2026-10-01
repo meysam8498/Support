@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>در حال آماده‌سازی…</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #1e1b4b; color: #e0e7ff;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { max-width: 560px; padding: 36px 40px; background: #312e81; border-radius: 16px; text-align: center; }
+    h1 { margin-top: 0; font-size: 20px; }
+    p { line-height: 1.9; color: #c7d2fe; }
+    .spin { display: inline-block; width: 28px; height: 28px; border: 3px solid #818cf8;
+            border-top-color: transparent; border-radius: 50%; animation: s 1s linear infinite; margin-bottom: 12px; }
+    @keyframes s { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spin"></div>
+    <h1>در حال آماده‌سازی سامانه…</h1>
+    <p>سرور محلی در حال راه‌اندازی است؛ چند لحظه صبر کنید.</p>
+    <p style="font-size: 12px; color: #a5b4fc">اگر بیش از یک دقیقه در همین صفحه ماندید، برنامه را ببندید و دوباره اجرا کنید.</p>
+  </div>
+  <script>
+    // تا سرور بالا بیاید هر ثانیه سلامت را چک کن؛ سپس برو به اپ اصلی
+    (function () {
+      var n = 0;
+      var t = setInterval(function () {
+        n++;
+        fetch('/api/health', { cache: 'no-store' })
+          .then(function (r) { if (r.ok) { clearInterval(t); location.replace('/'); } })
+          .catch(function () {});
+        if (n > 60) clearInterval(t);
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>
