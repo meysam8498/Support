@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.25.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.26.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -154,9 +154,9 @@ curl http://localhost:4000/api/health
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.25.0
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.26.0
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.25.0
+docker push meysam8498/support-equipment-management:1.26.0
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
@@ -343,6 +343,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.26.0** | 2026-10-01 | نصب‌کننده‌ی ویندوز با Tauri v2 (desktop/) — دو پروفایل: مشتری (پورت 4000، لایسنس، داده‌ی محلی) و سرور پشتیبانی (پورت 4200، SUPPORT_ONLY + کلید صدور)؛ سرور به‌صورت child process کنار اپ؛ تست اجرایی هر دو نصب‌کننده ✓ |
 | **1.25.0** | 2026-09-30 | 🛟 بنر ثابت سرور پشتیبانی در UI — وقتی SUPPORT_ONLY=1 است، زیر هدر همه‌ی صفحات «سرور پشتیبانی — داده‌ی مشتری اینجا نگه‌داری نمی‌شود» نمایش داده می‌شود (پرچم support_only در /api/version و /api/health) |
 | **1.24.1** | 2026-09-30 | /about همگام با داشبورد: کارت «سقف تجهیزات آزمایشی» با نوار پیشرفت و Alert هشدار/سقف‌پر (لینک پنل ساخت لایسنس برای ادمین، پیام تماس با مدیر برای بقیه) + دکمه‌های «پنل ساخت لایسنس» و «ورود کد لایسنس» در بخش تماس |
 | **1.24.0** | 2026-09-30 | 🛟 حالت سرور پشتیبانی (SUPPORT_ONLY=1) — مسیرهای داده‌ی مشتری ۴۰۳؛ فقط بررسی/لایسنس · 🧩 مولفه‌ی Alert مشترک (danger/success/warning) + مهاجرت مودال‌های کاتالوگ/گزارش/ستون‌ها و بکاپ‌ها · 🔐 LoginPage: اعتبارسنجی فارسی زیر فیلد قبل از ارسال + تم تاریک گرادیانی ایندیگو · 📦 نقشه‌ی راه بسته‌بندی (PACKAGING.md): دو نصب‌کننده‌ی ویندوز (مشتری + سرور پشتیبانی با Tauri) و اپ اندروید بارکدخوان |

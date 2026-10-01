@@ -1,0 +1,20 @@
+[package]
+name = "support-desktop"
+version = "1.26.0"
+description = "پوسته‌ی دسکتاپ ویندوز — سامانه‌ی مدیریت تجهیزات و قطعات یدکی"
+authors = ["Meysam Ijadi <M.Ijadi@Hotmail.com>"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+cfg-if = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
