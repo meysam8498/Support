@@ -81,8 +81,8 @@ const ok = (name, cond, detail = '') => {
   else { fail++; console.log(`  ✗ ${name}${detail ? ` — ${detail}` : ''}`); }
 };
 
-async function api(method, path, { token, body } = {}) {
-  const headers = {};
+async function api(method, path, { token, body, headers: extraHeaders = {} } = {}) {
+  const headers = { ...extraHeaders };
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${BASE}${path}`, {
@@ -110,6 +110,29 @@ const health = await api('GET', '/api/health');
 ok('GET /api/health → 200', health.status === 200 && health.data?.ok === true);
 const version = await api('GET', '/api/version');
 ok('GET /api/version → ورژن معتبر', version.status === 200 && /^\d+\.\d+\.\d+$|^dev$/.test(version.data?.version ?? ''), JSON.stringify(version.data));
+
+// ─────────── ۱.۵) endpoint لاگ سرور /api/logs — تطبیقی (۱.۲۷) ───────────
+// smoke-test ممکن است به سرور SUPPORT_ONLY یا سرور عادی وصل شود — هر دو مسیر درست چک می‌شود.
+// توکن لاگ: SUPPORT_LOG_TOKEN یا SUPPORT_TOKEN (همان که سرور با آن مقایسه می‌کند).
+console.log('\n— لاگ سرور /api/logs');
+const LOG_TOKEN = process.env.SUPPORT_LOG_TOKEN || process.env.SUPPORT_TOKEN || '';
+const isSupportOnly = version.data?.support_only === true;
+if (isSupportOnly) {
+  if (!LOG_TOKEN) console.log('  ℹ SUPPORT_LOG_TOKEN/SUPPORT_TOKEN تنظیم نشده — فقط رفتار ۴۰۱ چک می‌شود.');
+  const logNo = await api('GET', '/api/logs');
+  ok('لاگ: بدون هدر → 401', logNo.status === 401, `status=${logNo.status}`);
+  const logBad = await api('GET', '/api/logs', { headers: { 'X-Support-Token': 'definitely-wrong' } });
+  ok('لاگ: هدر غلط → 401', logBad.status === 401, `status=${logBad.status}`);
+  if (LOG_TOKEN) {
+    const logOk = await api('GET', '/api/logs?lines=5', { headers: { 'X-Support-Token': LOG_TOKEN } });
+    ok('لاگ: توکن درست → 200', logOk.status === 200, `status=${logOk.status}`);
+    ok('لاگ: شکل پاسخ (support_only/total/entries)', logOk.data?.support_only === true && typeof logOk.data?.total === 'number' && Array.isArray(logOk.data?.entries), JSON.stringify(logOk.data).slice(0, 100));
+    ok('لاگ: حداکثر ۵ سطر با lines=5', logOk.data?.entries?.length <= 5, `n=${logOk.data?.entries?.length}`);
+  }
+} else {
+  const logStd = await api('GET', '/api/logs', { headers: { 'X-Support-Token': 'whatever' } });
+  ok('لاگ: سرور عادی → 404 (endpoint mount نشده)', logStd.status === 404, `status=${logStd.status}`);
+}
 
 // ─────────── ۲) وضعیت لایسنس (رگرسیون 500 «no such table») ───────────
 console.log('\n— وضعیت لایسنس');
@@ -164,10 +187,15 @@ if (!pid || !tid || !mid || !bid) {
     console.log('  ℹ TRIAL_LIMIT_ENFORCE فعال نیست (فقط گزارش) — یک تجهیز تست می‌سازیم و 402 را skip می‌کنیم.');
   }
   // یک تجهیز برای چک 201 (وقتی سقف فعال و پر نشده، این همان capacity اول است)
+  // روی سرور پشتیبانی (SUPPORT_ONLY) ثبت تجهیز طبق طراحی 403 می‌دهد — بجای fail، همین رفتار چک می‌شود.
   if (!enforceActive) {
     const r = await api('POST', '/api/devices', { token: TOKEN, body });
-    ok('POST /api/devices → 201', r.status === 201, `status=${r.status}`);
-    if (r.data?.id) created.push(r.data.id);
+    if (isSupportOnly) {
+      ok('SUPPORT_ONLY: POST /api/devices → 403 (گیت پشتیبانی)', r.status === 403 && r.data?.support_only === true, `status=${r.status} ${JSON.stringify(r.data).slice(0, 80)}`);
+    } else {
+      ok('POST /api/devices → 201', r.status === 201, `status=${r.status}`);
+      if (r.data?.id) created.push(r.data.id);
+    }
   }
 }
 

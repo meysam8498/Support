@@ -100,7 +100,7 @@ cp .env.example .env
 ```
 
 > متغیرهای لایسنس (`LICENSE_ENFORCE`، `TRIAL_DEVICE_LIMIT`، `TRIAL_LIMIT_ENFORCE`) هم در `.env.example` مستند شده‌اند — در نسخه‌ی فعلی هر سه خاموش‌اند (رایگان، بدون محدودیت).
-> 🛟 **سرور پشتیبانی**: اجرا با `SUPPORT_ONLY=1` مسیرهای داده‌ی مشتری (devices/parts/warranty/serial-import/backups/procurement) را ۴۰۳ می‌کند — نسخه‌ای فقط برای بررسی ایراد با لاگ مشتری؛ ابزار صدور لایسنس (`/issue`) فقط همین‌جاست. جزئیات بسته‌بندی ویندوز/اندروید: [PACKAGING.md](PACKAGING.md).
+> 🛟 **سرور پشتیبانی**: اجرا با `SUPPORT_ONLY=1` مسیرهای داده‌ی مشتری (devices/parts/warranty/serial-import/backups/procurement) را ۴۰۳ می‌کند — نسخه‌ای فقط برای بررسی ایراد با لاگ مشتری؛ ابزار صدور لایسنس (`/issue`) فقط همین‌جاست. خواندن لاگ سرور: endpoint `GET /api/logs` با هدر `X-Support-Token` (مقدار `SUPPORT_LOG_TOKEN` یا `SUPPORT_TOKEN`) و صفحه‌ی «📜 لاگ سرور» در منوی ادمین. تست خودکار این endpoint در هر دو حالت سرور: `node scripts/logs-test.mjs`. جزئیات بسته‌بندی ویندوز/اندروید: [PACKAGING.md](PACKAGING.md).
 
 ### ۲) ساخت و اجرا
 

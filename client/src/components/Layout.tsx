@@ -40,6 +40,8 @@ const USER_MENU_ITEMS: NavItem[] = [
   { to: '/users', icon: '👥', label: t.navUsers, roles: ['admin'] },
   { to: '/backups', icon: '🗄️', label: t.navBackups, roles: ['admin'] },
   { to: '/license', icon: '🔑', label: t.navLicense, roles: ['admin'] },
+  // نمایشگر لاگ سرور — فقط در استقرار پشتیبانی (SUPPORT_ONLY=1) معنا دارد
+  { to: '/logs', icon: '📜', label: t.navLogs, roles: ['admin'] },
 ];
 
 export default function Layout() {

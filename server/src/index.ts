@@ -11,6 +11,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { existsSync } from 'node:fs';
+import crypto from 'node:crypto';
+import { inspect } from 'node:util';
 
 import { getDb, applySchema, migrateSchema } from './db/db.js';
 import { seedIfEmpty } from './db/init.js';
@@ -34,6 +36,28 @@ import licenseActivateRoutes from './routes/licenseActivate.js';
 
 config();
 
+// ─────────────────────────────────────────────────────────────
+// بافر لاگ درون‌حافظه‌ای (۱.۲۷) — گزارش لاگ سرور برای پشتیبانی
+// همه‌ی console.log/error را می‌گیرد و در حلقه‌ی محدود نگه می‌دارد؛
+// مسیر GET /api/logs فقط در حالت SUPPORT_ONLY با هدر X-Support-Token باز است
+// (بدون توکن، ۴۰۱؛ توکن از ENV پشتیبانی: SUPPORT_LOG_TOKEN یا SUPPORT_TOKEN).
+// در داکر/سرور معمولی داده‌ای لو نمی‌رود: مسیر بدون SUPPORT_ONLY اصلاً mount نمی‌شود.
+// ─────────────────────────────────────────────────────────────
+const LOG_RING_MAX = 500;
+type LogEntry = { t: string; level: 'info' | 'error'; msg: string };
+const logRing: LogEntry[] = [];
+function pushLog(level: LogEntry['level'], args: unknown[]): void {
+  try {
+    const msg = args.map((a) => (typeof a === 'string' ? a : inspect(a))).join(' ').slice(0, 500);
+    logRing.push({ t: new Date().toISOString(), level, msg });
+    if (logRing.length > LOG_RING_MAX) logRing.splice(0, logRing.length - LOG_RING_MAX);
+  } catch { /* noop */ }
+}
+const _clog = console.log.bind(console);
+const _cerr = console.error.bind(console);
+console.log = (...args: unknown[]) => { pushLog('info', args); _clog(...args); };
+console.error = (...args: unknown[]) => { pushLog('error', args); _cerr(...args); };
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 4000;
 
@@ -45,6 +69,15 @@ const PORT = Number(process.env.PORT) || 4000;
 // مسیرهای داده‌ی واقعی (devices/parts/warranty/serial-import/backups) بسته‌اند.
 // ─────────────────────────────────────────────────────────────
 const SUPPORT_ONLY = process.env.SUPPORT_ONLY === '1';
+
+// مقایسه‌ی امن توکن پشتیبانی (timing-safe) — توکن از ENV
+function supportLogTokenOk(provided: string): boolean {
+  const expected = process.env.SUPPORT_LOG_TOKEN || process.env.SUPPORT_TOKEN || '';
+  if (!expected || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 const SUPPORT_BLOCKED_PREFIXES = ['/api/devices', '/api/parts', '/api/warranty', '/api/serial-import', '/api/backups', '/api/procurement'];
 if (SUPPORT_ONLY) {
   console.log('🛟 حالت سرور پشتیبانی (SUPPORT_ONLY=1) — مسیرهای داده‌ی واقعی غیرفعال‌اند.');
@@ -65,6 +98,27 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/version', (_req, res) => {
   res.json({ version: APP_VERSION, support_only: SUPPORT_ONLY });
 });
+
+// --- گزارش لاگ سرور برای اشکال‌زدایی مشتری (۱.۲۷) ---
+// فقط در حالت SUPPORT_ONLY mount می‌شود؛ بدون توکن → ۴۰۱؛ توکن غلط → ۴۰۱
+// ?lines=N تا سقف ۲۰۰ خط آخر را برمی‌گرداند؛ هدر no-store تا هیچ کشی لاگ را نگه ندارد
+if (SUPPORT_ONLY) {
+  app.get('/api/logs', (req, res) => {
+    const token = String(req.headers['x-support-token'] || '');
+    if (!token) {
+      res.status(401).json({ error: 'توکن پشتیبانی الزامی است (هدر X-Support-Token).' });
+      return;
+    }
+    if (!supportLogTokenOk(token)) {
+      res.status(401).json({ error: 'توکن پشتیبانی نامعتبر است.' });
+      return;
+    }
+    const lines = Math.min(Math.max(parseInt(String(req.query.lines || ''), 10) || 100, 1), 200);
+    const entries = logRing.slice(-lines);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ support_only: true, version: APP_VERSION, total: logRing.length, entries });
+  });
+}
 
 // --- گیت حالت پشتیبانی — قبل از همه‌ی مسیرهای محافظت‌شده ---
 // ⚠️ روی mount سطح app، req.path مسیر کامل است؛ برای اطمینان از originalUrl استفاده می‌کنیم

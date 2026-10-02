@@ -31,6 +31,7 @@ export const t = {
   navUsers: 'مدیریت کاربران',
   navBackups: 'مدیریت پشتیبان‌ها',
   navLicense: 'ورود کد لایسنس',
+  navLogs: 'لاگ سرور',
   navSettings: 'تنظیمات',
 
   // تم
