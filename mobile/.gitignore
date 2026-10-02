@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# React Native
+.android/
+.ios/
+android/app/build/
+android/build/
+ios/Pods/
+ios/build/
+
+# Metro
+.metro-health-check*
+
+# Environment
+.env
+
+# OS
+.DS_Store
+Thumbs.db

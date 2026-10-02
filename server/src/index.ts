@@ -29,6 +29,7 @@ import usersRoutes from './routes/users.js';
 import warrantyRequestRoutes from './routes/warrantyRequests.js';
 import procurementRoutes from './routes/procurement.js';
 import serialImportRoutes from './routes/serialImport.js';
+import serialImportMobileRoutes from './routes/serialImportMobile.js';
 import searchRoutes from './routes/search.js';
 import partCatalogRoutes from './routes/partCatalog.js';
 import licenseRoutes from './routes/license.js';
@@ -146,6 +147,7 @@ app.use('/api/warranty', authRequired, warrantyRoutes);
 app.use('/api/warranty-requests', authRequired, warrantyRequestRoutes);
 app.use('/api/procurement', authRequired, procurementRoutes);
 app.use('/api/serial-import', authRequired, serialImportRoutes);
+app.use('/api/serial-import', authRequired, serialImportMobileRoutes); // اپ موبایل (بارکدخوان) — PACKAGING.md بخش ۲
 app.use('/api/dashboard', authRequired, dashboardRoutes);
 app.use('/api/search', authRequired, searchRoutes);
 app.use('/api/part-catalog', authRequired, partCatalogRoutes);
