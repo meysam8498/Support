@@ -175,6 +175,7 @@ CREATE TABLE IF NOT EXISTS parts (
   tech_specs            TEXT,                     -- مشخصات فنی
   part_number_1         TEXT,                     -- پارت‌نامبر اول
   part_number_2         TEXT,                     -- پارت‌نامبر دوم
+  catalog_id            INTEGER REFERENCES part_catalog(id), -- اتصال به کاتالوگ قطعات (sync/merge)
   part_serial_number    TEXT,                     -- شماره سریال قطعه
   status                TEXT NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active', 'replaced', 'defective')),
