@@ -5,6 +5,8 @@ import { verifyPassword, signToken } from '../lib/auth.js';
 
 const router = Router();
 
+// لاگین عمداً فقط min(1) — حداقل طول واقعی (۲/۴) روی «ساخت/تغییر» اعتبارنامه
+// اعمال می‌شود (lib/validation.ts) تا حساب‌های قدیمی با رمز کوتاه قفل نشوند.
 const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),

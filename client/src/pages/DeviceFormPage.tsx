@@ -11,6 +11,15 @@ import { t } from '../i18n/fa';
 import SelectField from '../components/SelectField';
 import JalaliDatePicker from '../components/JalaliDatePicker';
 import { addMonthsToJalali, formatJalaliLong } from '../lib/date';
+import Alert from '../components/Alert';
+import VendorContact from '../components/VendorContact';
+
+/** خطاهای اعتبارسنجی فیلد به فیلد — پیام فارسی زیر هر فیلد (الگوی LoginPage) */
+interface FieldErrors {
+  project_id?: string;
+  device_type_id?: string;
+  warranty_duration_months?: string;
+}
 
 interface DeviceForm {
   project_id: number | '';
@@ -63,7 +72,9 @@ export default function DeviceFormPage() {
   const [lists, setLists] = useState<Lists | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  // خطا می‌تواند رشته یا JSX باشد (خطای ۴۰۲ لینک mailto دارد — VendorContact)
+  const [error, setError] = useState<React.ReactNode>('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [form, setForm] = useState<DeviceForm>(EMPTY);
 
   useEffect(() => {
@@ -104,8 +115,14 @@ export default function DeviceFormPage() {
     })();
   }, [id]);
 
-  const set = <K extends keyof DeviceForm>(k: K, v: DeviceForm[K]) =>
+  // با هر تغییر فیلد، خطای همان فیلد پاک می‌شود
+  const clearFieldError = (k: keyof FieldErrors) =>
+    setFieldErrors((f) => (f[k] ? { ...f, [k]: undefined } : f));
+
+  const set = <K extends keyof DeviceForm>(k: K, v: DeviceForm[K]) => {
+    clearFieldError(k as keyof FieldErrors);
     setForm((f) => ({ ...f, [k]: v }));
+  };
 
   // پایان گارانتی به‌صورت نمایشی محاسبه می‌شود (محاسبه‌ی نهایی در backend انجام می‌شود)
   const warrantyEndPreview = useMemo(() => {
@@ -115,10 +132,15 @@ export default function DeviceFormPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.project_id || !form.device_type_id) {
-      setError('نام پروژه و نوع تجهیز الزامی است.');
-      return;
+    // ── اعتبارسنجی فیلد به فیلد — پیام فارسی زیر هر فیلد، قبل از تماس با سرور ──
+    const fe: FieldErrors = {};
+    if (!form.project_id) fe.project_id = 'نام پروژه را انتخاب کنید.';
+    if (!form.device_type_id) fe.device_type_id = 'نوع تجهیز را انتخاب کنید.';
+    if (form.warranty_duration_months !== '' && Number(form.warranty_duration_months) < 0) {
+      fe.warranty_duration_months = 'مدت گارانتی نمی‌تواند منفی باشد.';
     }
+    setFieldErrors(fe);
+    if (Object.keys(fe).length > 0) return;
     setSaving(true);
     setError('');
     try {
@@ -155,7 +177,8 @@ export default function DeviceFormPage() {
       const e = err as Error & { upgrade?: boolean; status?: number };
       // ۴۰۲ = سقف نسخه‌ی آزمایشی — پیام ارتقا با لینک تماس
       if (e.upgrade || e.status === 402) {
-        setError(`🚀 ${e.message} برای ارتقا با ما تماس بگیرید: M.Ijadi@Hotmail.com`);
+        // متن و ایمیل از ثابت مشترک — همگام با بنرهای ارتقای داشبورد/درباره
+        setError(<>🚀 {e.message}<VendorContact /></>);
       } else {
         setError(e.message);
       }
@@ -175,16 +198,16 @@ export default function DeviceFormPage() {
       <h1 className="text-xl font-bold dark:text-stone-50">{isEdit ? t.editDevice : t.addDevice}</h1>
 
       {error && (
-        <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
+        <Alert variant="danger">{error}</Alert>
       )}
 
-      <form onSubmit={submit} className="card space-y-5">
+      <form onSubmit={submit} className="card space-y-5" noValidate>
         {/* اطلاعات پایه */}
         <div>
           <h3 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">اطلاعات پایه</h3>
           <div className="grid md:grid-cols-2 gap-4">
             <SelectField label={t.projectName} value={form.project_id} onChange={(v) => set('project_id', v as number)} required
-              options={lists?.projects || []} />
+              options={lists?.projects || []} error={fieldErrors.project_id} />
             <div>
               <label className="label">{t.contractNumber}</label>
               <input className="input" value={form.contract_number} onChange={(e) => set('contract_number', e.target.value)} dir="ltr" />
@@ -204,7 +227,7 @@ export default function DeviceFormPage() {
               <input className="input" value={form.part_number_2} onChange={(e) => set('part_number_2', e.target.value)} dir="ltr" />
             </div>
             <SelectField label={t.deviceType} value={form.device_type_id} onChange={(v) => set('device_type_id', v as number)} required
-              options={lists?.deviceTypes || []} />
+              options={lists?.deviceTypes || []} error={fieldErrors.device_type_id} />
             <SelectField label={t.brand} value={form.brand_id} onChange={(v) => set('brand_id', v as number)}
               options={lists?.brands || []} />
             <SelectField label={t.deviceModel} value={form.device_model_id} onChange={(v) => set('device_model_id', v as number)}
@@ -229,8 +252,12 @@ export default function DeviceFormPage() {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="label">{t.warrantyDuration}</label>
-              <input type="number" min={0} className="input fa-nums" dir="ltr" value={form.warranty_duration_months}
+              <input type="number" min={0} className={`input fa-nums ${fieldErrors.warranty_duration_months ? 'input-error' : ''}`} dir="ltr"
+                value={form.warranty_duration_months} aria-invalid={!!fieldErrors.warranty_duration_months}
                 onChange={(e) => set('warranty_duration_months', e.target.value ? Number(e.target.value) : '')} />
+              {fieldErrors.warranty_duration_months && (
+                <p className="field-error">⚠ {fieldErrors.warranty_duration_months}</p>
+              )}
             </div>
             <JalaliDatePicker label={t.warrantyStart} value={form.warranty_start_jalali} onChange={(v) => set('warranty_start_jalali', v)} />
           </div>

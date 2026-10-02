@@ -6,6 +6,13 @@ import { t } from '../i18n/fa';
 import JalaliDatePicker from '../components/JalaliDatePicker';
 import CatalogAutocomplete from '../components/CatalogAutocomplete';
 import { useAuth } from '../context/AuthContext';
+import Alert from '../components/Alert';
+
+/** خطاهای اعتبارسنجی فیلد به فیلد — پیام فارسی زیر هر فیلد (الگوی LoginPage) */
+interface FieldErrors {
+  device_id?: string;
+  title?: string;
+}
 
 export default function PartFormPage() {
   const { id } = useParams();
@@ -18,6 +25,7 @@ export default function PartFormPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const [form, setForm] = useState({
     device_id: presetDevice ? Number(presetDevice) : '' as number | '',
@@ -50,15 +58,24 @@ export default function PartFormPage() {
     })();
   }, [id]);
 
-  const set = <K extends keyof typeof form>(k: K, v: typeof form[K]) =>
+  // با هر تغییر فیلد، خطای همان فیلد پاک می‌شود
+  const clearFieldError = (k: keyof FieldErrors) =>
+    setFieldErrors((f) => (f[k] ? { ...f, [k]: undefined } : f));
+
+  const set = <K extends keyof typeof form>(k: K, v: typeof form[K]) => {
+    clearFieldError(k as keyof FieldErrors);
     setForm((f) => ({ ...f, [k]: v }));
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.device_id || !form.title.trim()) {
-      setError('دستگاه و عنوان قطعه الزامی است.');
-      return;
-    }
+    // ── اعتبارسنجی فیلد به فیلد — پیام فارسی زیر هر فیلد، قبل از تماس با سرور ──
+    const fe: FieldErrors = {};
+    if (!form.device_id) fe.device_id = 'دستگاه را انتخاب کنید.';
+    if (!form.title.trim()) fe.title = 'عنوان قطعه را وارد کنید.';
+    else if (form.title.trim().length < 2) fe.title = 'عنوان قطعه حداقل ۲ نویسه است.';
+    setFieldErrors(fe);
+    if (Object.keys(fe).length > 0) return;
     setSaving(true); setError('');
     try {
       const payload = {
@@ -95,20 +112,25 @@ export default function PartFormPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <h1 className="text-xl font-bold dark:text-stone-50">{isEdit ? 'ویرایش قطعه' : t.addPart}</h1>
-      {error && <div role="alert" className="form-banner-error mb-3">⚠ <span>{error}</span></div>}
-      <form onSubmit={submit} className="card space-y-4">
+      {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+      <form onSubmit={submit} className="card space-y-4" noValidate>
         <div>
           <label className="label">دستگاه<span className="text-coral mr-1">*</span></label>
-          <select className="input" value={form.device_id} onChange={(e) => set('device_id', Number(e.target.value))} required disabled={!!presetDevice && !isEdit}>
+          <select className={`input ${fieldErrors.device_id ? 'input-error' : ''}`} value={form.device_id}
+            onChange={(e) => set('device_id', e.target.value ? Number(e.target.value) : '')}
+            required aria-invalid={!!fieldErrors.device_id} disabled={!!presetDevice && !isEdit}>
             <option value="">انتخاب دستگاه...</option>
             {devices.map((d) => (
               <option key={d.id} value={d.id}>{d.project_name} — {d.main_serial || d.device_type_name}</option>
             ))}
           </select>
+          {fieldErrors.device_id && <p className="field-error">⚠ {fieldErrors.device_id}</p>}
         </div>
         <div>
           <label className="label">{t.partTitle}<span className="text-coral mr-1">*</span></label>
-          <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} required />
+          <input className={`input ${fieldErrors.title ? 'input-error' : ''}`} value={form.title}
+            onChange={(e) => set('title', e.target.value)} required aria-invalid={!!fieldErrors.title} />
+          {fieldErrors.title && <p className="field-error">⚠ {fieldErrors.title}</p>}
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div>

@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { getDb } from '../db/db.js';
 import { hashPassword, ROLES } from '../lib/auth.js';
 import { requireRole } from '../middleware/auth.js';
+import { usernameSchema, passwordSchema, firstZodMessage } from '../lib/validation.js';
 
 const router = Router();
 
@@ -17,9 +18,10 @@ router.use(requireRole('admin'));
 
 const roleEnum = z.enum(ROLES as [string, ...string[]]);
 
+// حداقل طول نام کاربری/رمز از قوانین مشترک می‌آید — همگام با گیت UX کلاینت (lib/validation.ts)
 const createSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
+  username: usernameSchema,
+  password: passwordSchema,
   full_name: z.string().min(1),
   email: z.string().optional().nullable(),
   role: roleEnum.default('viewer'),
@@ -33,7 +35,7 @@ const updateSchema = z.object({
   active: z.number().int().min(0).max(1).optional(),
 });
 
-const resetPasswordSchema = z.object({ password: z.string().min(1) });
+const resetPasswordSchema = z.object({ password: passwordSchema });
 
 /** GET /api/users — فهرست همه‌ی کاربران (بدون هش رمز) */
 router.get('/', (_req, res) => {
@@ -48,7 +50,8 @@ router.get('/', (_req, res) => {
 router.post('/', (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: 'ورودی نامعتبر است.', detail: parsed.error.flatten() });
+    // پیام فارسی مشخص (مثلاً «نام کاربری حداقل ۲ نویسه است.») — همان متن گیت کلاینت
+    return res.status(400).json({ error: firstZodMessage(parsed.error), detail: parsed.error.flatten() });
   }
   const b = parsed.data;
   const db = getDb();
@@ -102,7 +105,7 @@ router.put('/:id', (req, res) => {
 router.post('/:id/reset-password', (req, res) => {
   const parsed = resetPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: 'رمز جدید الزامی است.', detail: parsed.error.flatten() });
+    return res.status(400).json({ error: firstZodMessage(parsed.error), detail: parsed.error.flatten() });
   }
   const id = Number(req.params.id);
   const exists = getDb().prepare(`SELECT id FROM users WHERE id = ?`).get(id);
