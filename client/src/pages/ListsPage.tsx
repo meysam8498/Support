@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { api, type Lists, type SelectItem } from '../api/api';
 import { t } from '../i18n/fa';
 import Modal from '../components/Modal';
+import Alert from '../components/Alert';
 import CatalogManager from '../components/CatalogManager';
 import { useAuth } from '../context/AuthContext';
 
@@ -57,6 +58,8 @@ export default function ListsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<{ name: string; phone: string; brand_id: string; contract_number: string; sales_expert_id: string; expert_role: string }>({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '', expert_role: 'sales' });
   const [saving, setSaving] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [pageError, setPageError] = useState('');
 
   const load = async () => {
     try { setLists(await api.get<Lists>('/lists')); } catch { /* */ }
@@ -76,12 +79,14 @@ export default function ListsPage() {
     (lists?.[active.key] as unknown[] as any) || [];
 
   const openAddModal = () => {
+    setModalError('');
     setEditingId(null);
     setForm({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '', expert_role: active.defaultExpertRole ?? 'sales' });
     setModalOpen(true);
   };
 
   const openEditModal = (item: any) => {
+    setModalError('');
     setEditingId(item.id);
     setForm({
       name: item.name || '',
@@ -124,21 +129,21 @@ export default function ListsPage() {
       }
       setModalOpen(false);
       await load();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { setModalError((e as Error).message); }
     finally { setSaving(false); }
   };
 
   const remove = async (id: number) => {
     if (!confirm(t.confirmDelete)) return;
     try { await api.delete(`/lists/${active.path}/${id}`); await load(); }
-    catch (e) { alert((e as Error).message); }
+    catch (e) { setPageError((e as Error).message); }
   };
 
   const toggleActive = async (id: number, currentActive: number) => {
     try {
       await api.put(`/lists/${active.path}/${id}`, { active: currentActive ? 0 : 1 });
       await load();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { setPageError((e as Error).message); }
   };
 
   const modalTitle = editingId ? `${t.edit} — ${active.label}` : `${t.addItem} — ${active.label}`;
@@ -146,6 +151,8 @@ export default function ListsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold dark:text-stone-50">{t.navLists}</h1>
+
+      {pageError && <Alert variant="danger" className="mb-3">{pageError}</Alert>}
 
       {/* تب‌ها */}
       <div className="flex flex-wrap gap-2">
@@ -244,6 +251,7 @@ export default function ListsPage() {
 
       <Modal open={modalOpen && !showCatalog} onClose={() => setModalOpen(false)} title={modalTitle}>
         <div className="space-y-4">
+          {modalError && <Alert variant="danger">{modalError}</Alert>}
           {active.key !== 'projects' && (
             <div>
               <label className="label">{t.name}</label>

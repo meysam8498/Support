@@ -538,12 +538,10 @@ export default function SerialImportPage() {
 
           {/* توضیحات چندگانه — برای انتخاب توضیح درست */}
           {(result!.descConflicts?.length ?? 0) > 0 && (
-            <div className="rounded-2xl bg-gold/10 border-2 border-gold/40 px-4 py-3 text-sm space-y-2">
-              <p className="font-bold text-[#8a6d00] dark:text-gold-light">
-                ⚠ توضیحات متفاوت برای یک پارت‌نامبر ({toFa(result!.descConflicts!.length)}): همگی در
-                فیلد «مشخصات فنی» ذخیره شدند — در فهرست قطعات توضیح درست را انتخاب کنید.
-              </p>
-              <ul className="space-y-1 text-xs">
+            <Alert variant="warning">
+              توضیحات متفاوت برای یک پارت‌نامبر ({toFa(result!.descConflicts!.length)}): همگی در
+              فیلد «مشخصات فنی» ذخیره شدند — در فهرست قطعات توضیح درست را انتخاب کنید.
+              <ul className="space-y-1 text-xs mt-2">
                 {result!.descConflicts!.map((dc) => (
                   <li key={dc.partNumber}>
                     <span dir="ltr" className="font-bold">{dc.partNumber}</span>{' '}({dc.title}):{' '}
@@ -551,7 +549,7 @@ export default function SerialImportPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Alert>
           )}
 
           {result!.unmatchedPartNumbers.length > 0 && (
@@ -637,12 +635,10 @@ function PreviewPanel({ p }: { p: ImportPreview }) {
 
       {/* پیشنهاد مرجع کاتالوگ — پارت‌نامبرهای ناشناس با اطلاعات فایل */}
       {p.catalogSuggestions.length > 0 && (
-        <div className="rounded-2xl bg-gold/10 border-2 border-gold/40 px-4 py-3 text-sm space-y-2">
-          <p className="font-bold text-[#8a6d00] dark:text-gold-light">
-            🧩 پیشنهاد مرجع کاتالوگ ({toFa(p.catalogSuggestions.length)} پارت‌نامبر ناشناس):
-            {' '}با ثبت این فایل، مراجع زیر ساخته می‌شوند تا اطلاعات همه‌ی قطعات هم‌پارت‌نامبر یکسان بماند.
-          </p>
-          <ul className="space-y-1.5">
+        <Alert variant="warning">
+          🧩 پیشنهاد مرجع کاتالوگ ({toFa(p.catalogSuggestions.length)} پارت‌نامبر ناشناس):
+          {' '}با ثبت این فایل، مراجع زیر ساخته می‌شوند تا اطلاعات همه‌ی قطعات هم‌پارت‌نامبر یکسان بماند.
+          <ul className="space-y-1.5 mt-2">
             {p.catalogSuggestions.map((s) => (
               <li key={s.partNumber} className="rounded-xl bg-surface-card dark:bg-stone-800/70 border border-gold/30 px-3 py-2">
                 <div className="flex flex-wrap items-center gap-2">
@@ -658,15 +654,17 @@ function PreviewPanel({ p }: { p: ImportPreview }) {
               </li>
             ))}
           </ul>
-        </div>
+        </Alert>
       )}
 
       {p.warnings.length > 0 && (
-        <div className="rounded-2xl bg-gold/10 border-2 border-gold/40 px-4 py-3 text-sm space-y-1">
-          {p.warnings.map((w) => (
-            <p key={w} className="text-[#8a6d00] dark:text-gold-light">⚠ {w}</p>
-          ))}
-        </div>
+        <Alert variant="warning">
+          <ul className="space-y-1">
+            {p.warnings.map((w) => (
+              <li key={w}>⚠ {w}</li>
+            ))}
+          </ul>
+        </Alert>
       )}
 
       {/* تطبیق ستون‌ها — ستون به ستون: تطبیق دارد / ساخته می‌شود / سریال دستگاه */}

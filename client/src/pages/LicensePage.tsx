@@ -9,6 +9,7 @@ import { t } from '../i18n/fa';
 import { useAuth } from '../context/AuthContext';
 import JalaliDatePicker from '../components/JalaliDatePicker';
 import { gregorianToJalali, toFa } from '../lib/date';
+import Alert from '../components/Alert';
 
 interface LicenseStatus {
   plan: string;
@@ -299,7 +300,7 @@ export default function LicensePage() {
             <button type="button" onClick={() => extend(3)} disabled={busy} className="btn-secondary text-sm">+۳ ماه</button>
             <button type="button" onClick={() => extend(12)} disabled={busy} className="btn-secondary text-sm">+۱۲ ماه</button>
           </div>
-          {adminMsg && <div role="status" className="form-banner-success mt-3">✓ <span>{adminMsg}</span></div>}
+          {adminMsg && <Alert variant="success" className="mt-3">{adminMsg}</Alert>}
           <p className="text-[11px] text-stone-400 mt-2">
             توجه: در نسخه‌ی فعلی محدودسازی انقضا فقط با متغیر محیطی <code className="font-mono" dir="ltr">LICENSE_ENFORCE=1</code> اعمال می‌شود؛ بدون آن، انقضا فقط هشدار است.
           </p>
@@ -328,8 +329,8 @@ export default function LicensePage() {
           <button type="button" onClick={checkCode} disabled={busy} className="btn-secondary text-sm">بررسی کد</button>
           <button type="button" onClick={() => { setCode(''); setPreview(null); setResult(null); setError(''); }} className="btn-ghost text-sm">پاک کردن</button>
         </div>
-        {error && <div role="alert" className="form-banner-error mt-3">⚠ <span>{error}</span></div>}
-        {result && <div role="status" className="form-banner-success mt-3">✓ <span>{result}</span></div>}
+        {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
+        {result && <Alert variant="success" className="mt-3">{result}</Alert>}
 
         {preview && (
           <div className="mt-4 rounded-lg border border-green-200 dark:border-green-800 bg-success/5 dark:bg-green-900/20 p-4 text-sm space-y-1.5">
@@ -406,7 +407,7 @@ export default function LicensePage() {
             <button type="button" onClick={() => doRevoke(false)} disabled={busy || !revokeJti.trim()} className="btn-primary text-sm">⛔ ابطال</button>
             <button type="button" onClick={() => doRevoke(true)} disabled={busy || !revokeJti.trim()} className="btn-secondary text-sm">↩ لغو ابطال</button>
           </div>
-          {revokeMsg && <div role="status" className="form-banner-success mt-3">✓ <span>{revokeMsg}</span></div>}
+          {revokeMsg && <Alert variant="success" className="mt-3">{revokeMsg}</Alert>}
           {revokedJtis.length > 0 && (
             <p className="text-xs text-stone-400 mt-2">
               کدهای باطل‌شده فعلی: {revokedJtis.map((j) => <code key={j} className="font-mono" dir="ltr">{j}</code>).reduce<React.ReactNode[]>((acc, el, i) => (i ? [...acc, '، ', el] : [el]), [])}

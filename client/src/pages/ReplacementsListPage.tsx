@@ -12,6 +12,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
+import Alert from '../components/Alert';
 import PeriodicReportDialog from '../components/PeriodicReportDialog';
 import { useAuth } from '../context/AuthContext';
 
@@ -120,7 +121,7 @@ export default function ReplacementsListPage() {
       </div>
 
       {error && (
-        <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
+        <Alert variant="danger">{error}</Alert>
       )}
 
       {/* ---------- نوار جست‌وجوی درون‌صفحه ---------- */}

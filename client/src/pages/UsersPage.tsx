@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { api, type User, type Role, ROLE_LABELS } from '../api/api';
 import { t } from '../i18n/fa';
 import Modal from '../components/Modal';
+import Alert from '../components/Alert';
 import { useAuth } from '../context/AuthContext';
 
 /** رنگ بج هر نقش */
@@ -22,6 +23,7 @@ export default function UsersPage() {
   const [resetTarget, setResetTarget] = useState<User | null>(null);
   const [editTarget, setEditTarget] = useState<User | null>(null);
   const [error, setError] = useState('');
+  const [pageError, setPageError] = useState('');
 
   const [createForm, setCreateForm] = useState({
     username: '',
@@ -120,7 +122,7 @@ export default function UsersPage() {
   const remove = async (u: User) => {
     if (!confirm(`حذف کاربر «${u.fullName}»؟`)) return;
     try { await api.delete(`/users/${u.id}`); await load(); }
-    catch (e) { alert((e as Error).message); }
+    catch (e) { setPageError((e as Error).message); }
   };
 
   return (
@@ -129,6 +131,8 @@ export default function UsersPage() {
         <h1 className="text-xl font-bold dark:text-stone-50">{t.navUsers}</h1>
         <button onClick={openCreate} className="btn-primary text-sm">افزودن کاربر</button>
       </div>
+
+      {pageError && <Alert variant="danger">{pageError}</Alert>}
 
       <div className="card">
         <div className="overflow-x-auto">
@@ -176,7 +180,7 @@ export default function UsersPage() {
       {/* مدال افزودن کاربر */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="افزودن کاربر جدید">
         <div className="space-y-4">
-          {error && <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>}
+          {error && <Alert variant="danger">{error}</Alert>}
           <div>
             <label className="label">{t.fullName}<span className="text-coral mr-1">*</span></label>
             <input className="input" value={createForm.fullName} onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })} autoFocus />
@@ -211,7 +215,7 @@ export default function UsersPage() {
       {/* مدال ویرایش کاربر */}
       <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title="ویرایش کاربر">
         <div className="space-y-4">
-          {error && <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>}
+          {error && <Alert variant="danger">{error}</Alert>}
           <div>
             <label className="label">{t.fullName}</label>
             <input className="input" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} />
@@ -245,7 +249,7 @@ export default function UsersPage() {
       {/* مدال بازنشانی رمز */}
       <Modal open={!!resetTarget} onClose={() => setResetTarget(null)} title={`${t.resetPassword} — ${resetTarget?.fullName || ''}`}>
         <div className="space-y-4">
-          {error && <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>}
+          {error && <Alert variant="danger">{error}</Alert>}
           <div>
             <label className="label">رمز جدید<span className="text-coral mr-1">*</span></label>
             <input className="input" type="password" dir="ltr" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoFocus />

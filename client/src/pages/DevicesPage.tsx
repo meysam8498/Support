@@ -11,6 +11,7 @@ import { t } from '../i18n/fa';
 import { formatJalaliLong, toFa } from '../lib/date';
 import StatusBadge from '../components/StatusBadge';
 import { downloadAuthenticated } from '../lib/download';
+import Alert from '../components/Alert';
 
 export default function DevicesPage() {
   const { canWrite } = useAuth();
@@ -19,6 +20,7 @@ export default function DevicesPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [pageError, setPageError] = useState('');
 
   const load = async () => {
     try {
@@ -51,7 +53,7 @@ export default function DevicesPage() {
     try {
       await downloadAuthenticated('/devices/export/warehouse', 'devices-warehouse.xlsx');
     } catch (err) {
-      alert((err as Error).message);
+      setPageError((err as Error).message);
     } finally {
       setExporting(false);
     }
@@ -108,6 +110,8 @@ export default function DevicesPage() {
           )}
         </div>
       </div>
+
+      {pageError && <Alert variant="danger" className="mb-3">{pageError}</Alert>}
 
       {/* جست‌وجو + چایپ‌های فیلتر وضعیت */}
       <div className="flex gap-3 flex-wrap items-center">

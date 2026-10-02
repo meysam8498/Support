@@ -14,6 +14,7 @@ import { api } from '../api/api';
 import { t } from '../i18n/fa';
 import { toFa } from '../lib/date';
 import { useAuth } from '../context/AuthContext';
+import Alert from '../components/Alert';
 import {
   parseClipboardParts,
   rebuildRows,
@@ -220,10 +221,10 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
       </div>
 
       {error && (
-        <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
+        <Alert variant="danger">{error}</Alert>
       )}
       {okMsg && (
-        <div role="status" className="form-banner-success">✓ <span>{okMsg} — در حال بازگشت به تجهیز…</span></div>
+        <Alert variant="success">{okMsg} — در حال بازگشت به تجهیز…</Alert>
       )}
 
       {/* ---------- گرید ---------- */}

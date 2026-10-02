@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/api';
 import { toFa } from '../lib/date';
 import { useAuth } from '../context/AuthContext';
+import Alert from '../components/Alert';
 
 interface IssuedResult {
   jti: string;
@@ -166,7 +167,7 @@ export default function IssuePage() {
           کد فقط یک‌بار نمایش داده می‌شود؛ کپی/دانلود و نگهداری کنید. کلید خصوصی باید روی این سرور باشد
           (<code className="font-mono" dir="ltr">keys/license_private.pem</code> یا ENV <code className="font-mono" dir="ltr">LICENSE_ISSUE_KEY</code>).
         </p>
-        {error && <div role="alert" className="form-banner-error mb-3">⚠ <span>{error}</span></div>}
+        {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="label">طرح</label>

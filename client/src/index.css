@@ -175,6 +175,18 @@ body {
   .form-banner-success {
     @apply flex items-start gap-2 rounded-lg border border-green-200 bg-success/10 px-3 py-2.5 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300;
   }
+  /* هشدار فوریت — نارنجی/طلایی (قانون PipelinePro: هرگز قرمز نیست) — بنر ارتقای داشبورد/درباره و ... */
+  .form-banner-warning {
+    @apply flex items-start gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2.5 text-sm text-gold-dark dark:text-gold-light;
+  }
+  /* پیام خنثی/راهنما — آبی فیروزه‌ای برند، بی‌فوریت */
+  .form-banner-info {
+    @apply flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5 text-sm text-brand-700 dark:border-brand-700/40 dark:bg-brand-900/20 dark:text-brand-300;
+  }
+  /* در جریان/نیمه‌تمام — زیتونی ملایم (نه فوری، نه خطا) */
+  .form-banner-pending {
+    @apply flex items-start gap-2 rounded-lg border border-lime-300 bg-lime-50 px-3 py-2.5 text-sm text-lime-800 dark:border-lime-800/60 dark:bg-lime-900/20 dark:text-lime-300;
+  }
 
   /* ---------- آیتم لیست — ۴۴px، دیوایدر، انتخاب ایندیگو ---------- */
   .list-item {

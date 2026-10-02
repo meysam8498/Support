@@ -9,6 +9,7 @@ import SelectField from '../components/SelectField';
 import StatusBadge from '../components/StatusBadge';
 import CatalogAutocomplete from '../components/CatalogAutocomplete';
 import { useAuth } from '../context/AuthContext';
+import Alert from '../components/Alert';
 
 /**
  * صفحه‌ی تعویض قطعه تحت گارنتی.
@@ -193,7 +194,7 @@ export default function WarrantyReplacePage() {
         <span className="text-3xl">🔄</span>
         <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">{t.warrantyNew}</h1>
       </div>
-      {error && <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>}
+      {error && <Alert variant="danger">{error}</Alert>}
 
       {/* گام ۱: انتخاب پروژه */}
       <div className="card card-accent">

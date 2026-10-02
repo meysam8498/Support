@@ -12,6 +12,7 @@ import { t } from '../i18n/fa';
 import { formatJalaliLong, toFa } from '../lib/date';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
+import Alert from '../components/Alert';
 import { useAuth } from '../context/AuthContext';
 import { downloadAuthenticated } from '../lib/download';
 import InlineEditCell from '../components/InlineEditCell';
@@ -31,6 +32,7 @@ export default function PartsPage() {
   const [loading, setLoading] = useState(true);
   const [descDialog, setDescDialog] = useState<{ pn: string; group: Part[] } | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [pageError, setPageError] = useState('');
   // جست‌وجوی فوری سریال — query زنده به سرور (بدون بارگذاری همه‌ی قطعات)
   const [serialSearch, setSerialSearch] = useState('');
   const [serialHits, setSerialHits] = useState<Part[] | null>(null);
@@ -50,7 +52,7 @@ export default function PartsPage() {
         'parts-warehouse.xlsx'
       );
     } catch (err) {
-      alert((err as Error).message);
+      setPageError((err as Error).message);
     } finally {
       setExporting(false);
     }
@@ -98,7 +100,7 @@ export default function PartsPage() {
         `/parts/serial-check?serial=${encodeURIComponent(serial)}`,
       );
       setOwnerDialog({ serial, matches: r.matches || [] });
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { setPageError((e as Error).message); }
   };
 
   // قطعاتی که سریالشان با قطعه‌ی دیگرِ فهرست یکی است (درون همین صفحه)
@@ -264,11 +266,13 @@ export default function PartsPage() {
         )}
       </div>
 
+      {pageError && <Alert variant="danger" className="mb-3">{pageError}</Alert>}
+
       {dupPns.size > 0 && !dupOnly && (
-        <div className="rounded-2xl bg-gold/10 border-2 border-gold/40 px-4 py-3 text-sm text-[#8a6d00] dark:text-gold-light">
-          ⚠ {toFa(dupPns.size)} پارت‌نامبر با بیش از یک رکورد یافت شد — با فیلتر «فقط تکراری‌ها» بررسی و
+        <Alert variant="warning">
+          {toFa(dupPns.size)} پارت‌نامبر با بیش از یک رکورد یافت شد — با فیلتر «فقط تکراری‌ها» بررسی و
           توضیح درست را انتخاب کنید.
-        </div>
+        </Alert>
       )}
 
       {serialSearch.trim() && (
@@ -634,13 +638,9 @@ function DescDialog({
         </div>
 
         {syncedInfo && (
-          <p className="p-2 bg-green-50 dark:bg-green-900/25 text-success dark:text-green-300 rounded-xl text-sm border border-green-200 dark:border-green-800">
-            ✓ {syncedInfo}
-          </p>
+          <Alert variant="success" className="text-sm">{syncedInfo}</Alert>
         )}
-        {error && (
-          <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
-        )}
+        {error && <Alert variant="danger">{error}</Alert>}
 
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="btn-secondary text-sm">

@@ -194,9 +194,7 @@ export default function BackupsPage() {
       </div>
 
       {msg && <Alert variant="success">{msg}</Alert>}
-      {error && (
-        <div role="alert" className="form-banner-error">⚠ <span>{error}</span></div>
-      )}
+      {error && <Alert variant="danger">{error}</Alert>}
 
       {/* ---------- کارت وضعیت زمان‌بند + push ---------- */}
       <div className="card">
