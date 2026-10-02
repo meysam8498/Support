@@ -9,6 +9,8 @@ import { api } from '../api/api';
 import { toFa } from '../lib/date';
 import { useAuth } from '../context/AuthContext';
 import Alert from '../components/Alert';
+import VendorContact from '../components/VendorContact';
+import { VENDOR_EMAIL } from '../lib/upgrade';
 
 interface LicenseStatus {
   plan: string;
@@ -134,13 +136,13 @@ export default function AboutPage() {
           {reached && (
             <Alert variant="danger" className="mt-3">
               سقف نسخه‌ی آزمایشی پر شده است{enforce ? ' — افزودن تجهیز جدید با ۴۰۲ رد می‌شود' : ''}.
-              {isAdmin ? <> برای ارتقا، <Link to="/issue" className="underline font-semibold">کد لایسنس بسازید</Link> یا فعال کنید: <Link to="/license" className="underline font-semibold">ورود کد لایسنس</Link></> : ' — با مدیر سامانه تماس بگیرید.'}
+              {isAdmin ? <> برای ارتقا، <Link to="/issue" className="underline font-semibold">کد لایسنس بسازید</Link> یا فعال کنید: <Link to="/license" className="underline font-semibold">ورود کد لایسنس</Link></> : <VendorContact suffix="." />}
             </Alert>
           )}
           {!reached && nearLimit && (
             <Alert variant="warning" className="mt-3">
               فقط <b className="fa-nums">{toFa(remaining ?? 0)}</b> تجهیز تا سقف باقی مانده —
-              {isAdmin ? <> <Link to="/issue" className="underline font-semibold">ساخت کد لایسنس</Link> (پنل فروشنده) یا <Link to="/license" className="underline font-semibold">ورود کد</Link></> : ' برای ارتقا با مدیر سامانه تماس بگیرید.'}
+              {isAdmin ? <> <Link to="/issue" className="underline font-semibold">ساخت کد لایسنس</Link> (پنل فروشنده) یا <Link to="/license" className="underline font-semibold">ورود کد</Link></> : <VendorContact prefix=" " suffix="." />}
             </Alert>
           )}
         </section>
@@ -181,7 +183,7 @@ export default function AboutPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mt-5">
-          <a href="mailto:M.Ijadi@Hotmail.com" className="btn-primary !min-h-[34px] text-xs">
+          <a href={`mailto:${VENDOR_EMAIL}`} className="btn-primary !min-h-[34px] text-xs">
             ✉️ تماس برای خرید/پشتیبانی
           </a>
           <a

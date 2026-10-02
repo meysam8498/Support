@@ -12,6 +12,8 @@ import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong } from '../lib/date';
 import { useAuth } from '../context/AuthContext';
 import TrendChart from '../components/TrendChart';
+import Alert from '../components/Alert';
+import VendorContact from '../components/VendorContact';
 
 /** ورژن جاری — از /api/version (در داکر از APP_VERSION/تگ گیت) */
 function AboutCard() {
@@ -199,17 +201,16 @@ export default function DashboardPage() {
 
       {/* ---------- بنر هشدار ارتقا — سقف آزمایشی در حال پر شدن ---------- */}
       {upgradeWarn && (
-        <div role="alert" className="form-banner-error !bg-gold/10 !border-gold/40 !text-gold-dark dark:!text-gold-light">
-          ⏳ <span>
-            فقط <b className="fa-nums">{toFa(deviceLimit?.remaining ?? 0)}</b> تجهیز تا سقف نسخه‌ی آزمایشی
-            (<span className="fa-nums">{toFa(deviceLimit?.used ?? 0)}/{toFa(deviceLimit?.limit ?? 0)}</span>) باقی مانده —
-            برای افزودن نامحدود، <b>کد لایسنس</b> بگیرید{user?.role === 'admin' ? (
-              <> — <Link to="/license" className="underline font-semibold">ورود کد لایسنس</Link></>
-            ) : (
-              <> — با مدیر سامانه تماس بگیرید</>
-            )}
-          </span>
-        </div>
+        <Alert variant="warning">
+          فقط <b className="fa-nums">{toFa(deviceLimit?.remaining ?? 0)}</b> تجهیز تا سقف نسخه‌ی آزمایشی
+          (<span className="fa-nums">{toFa(deviceLimit?.used ?? 0)}/{toFa(deviceLimit?.limit ?? 0)}</span>) باقی مانده —
+          برای افزودن نامحدود، <b>کد لایسنس</b> بگیرید
+          {user?.role === 'admin' ? (
+            <> — <Link to="/license" className="underline font-semibold">ورود کد لایسنس</Link></>
+          ) : (
+            <VendorContact />
+          )}
+        </Alert>
       )}
 
       {/* ---------- هدر خوش‌آمد: سِری نمایشی + Overline ---------- */}

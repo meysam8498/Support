@@ -1,6 +1,7 @@
 /**
  * کلاینت API — ارتباط با بک‌اند
  */
+import { UPGRADE_402_FALLBACK } from '../lib/upgrade';
 
 const BASE = '/api';
 
@@ -42,13 +43,33 @@ async function request<T>(
   if (!res.ok) {
     // 402 = سقف نسخه‌ی آزمایشی — پیام ارتقا برجسته‌تر
     if (res.status === 402 && data.upgrade) {
-      const err = new Error(data.error || 'سقف نسخه‌ی آزمایشی پر شده است — برای ادامه، سامانه را ارتقا دهید.') as Error & { payload?: unknown; status?: number; upgrade?: boolean };
+      const err = new Error(data.error || UPGRADE_402_FALLBACK) as Error & { payload?: unknown; status?: number; upgrade?: boolean };
       err.payload = data;
       err.status = 402;
       err.upgrade = true;
       throw err;
     }
     // بدنه‌ی خطا (مثل conflict در 409) به Error می‌چسبد تا فراخوان‌ها بتوانند تصمیم بگیرند
+    const err = new Error(data.error || `خطای ${res.status}`) as Error & { payload?: unknown; status?: number };
+    err.payload = data;
+    err.status = res.status;
+    throw err;
+  }
+  return data as T;
+}
+
+/**
+ * GET با هدر سفارشی — بدون دست‌کاری نشست.
+ * برای /api/logs (لاگ سرور پشتیبانی) استفاده می‌شود: ۴۰۱ اینجا یعنی «توکن لاگ
+ * نامعتبر است» و نباید مانند ۴۰۱ عادی، نشست کاربر را پاک یا به /login ریدایرکت کند.
+ */
+export async function getWithHeaders<T>(
+  path: string,
+  headers: Record<string, string>,
+): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: 'GET', headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
     const err = new Error(data.error || `خطای ${res.status}`) as Error & { payload?: unknown; status?: number };
     err.payload = data;
     err.status = res.status;
