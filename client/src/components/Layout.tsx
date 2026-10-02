@@ -79,13 +79,14 @@ export default function Layout() {
     `flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
       isActive
         ? 'bg-brand-500 text-white font-semibold shadow-glow'
-        : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-stone-800'
+        : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-white/5'
     }`;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* ═══════════ منوی بالای صفحه ═══════════ */}
-      <header className="shrink-0 z-20 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800">
+      {/* تم تاریک: گرادیان ایندیگوی متمایز — هم‌زبان با صفحه‌ی لاگین (یکدستی کل اپ) */}
+      <header className="shrink-0 z-20 bg-white dark:bg-[linear-gradient(180deg,#191932_0%,#12121f_100%)] border-b border-stone-200 dark:border-indigo-500/20">
         <div className="flex items-center gap-3 px-4 h-14">
           {/* لوگو */}
           <NavLink to="/" className="flex items-center gap-2 shrink-0">
@@ -143,7 +144,7 @@ export default function Layout() {
               className={`flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 ${
                 menuOpen
                   ? 'bg-brand-50 border-brand-200 dark:bg-brand-900/30 dark:border-brand-700'
-                  : 'border-transparent hover:bg-surface-raised dark:hover:bg-stone-800'
+                  : 'border-transparent hover:bg-surface-raised dark:hover:bg-white/5'
               }`}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
@@ -160,10 +161,10 @@ export default function Layout() {
             {menuOpen && (
               <div
                 role="menu"
-                className="absolute left-0 mt-2 w-60 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-lg py-1.5 z-30"
+                className="absolute left-0 mt-2 w-60 rounded-lg border border-stone-200 dark:border-indigo-500/25 bg-white dark:bg-[#161628] shadow-lg py-1.5 z-30"
               >
                 {/* هدر پروفایل */}
-                <div className="px-3 pb-2 pt-1 border-b border-stone-100 dark:border-stone-700">
+                <div className="px-3 pb-2 pt-1 border-b border-stone-100 dark:border-white/10">
                   <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate">{user?.fullName}</p>
                   <p className="text-[11px] text-stone-400 mt-0.5">
                     {role === 'admin' ? t.roleAdmin : role === 'viewer' ? t.roleUser : role === 'warehouse' ? 'انباردار' : role === 'sales' ? 'کارشناس فروش' : 'کارشناس فنی'}
@@ -181,7 +182,7 @@ export default function Layout() {
                     <span>{item.label}</span>
                   </NavLink>
                 ))}
-                <div className="border-t border-stone-100 dark:border-stone-700 mt-1 pt-1">
+                <div className="border-t border-stone-100 dark:border-white/10 mt-1 pt-1">
                   <button
                     onClick={doLogout}
                     className="list-item !border-b-0 !h-10 w-full text-coral dark:text-coral-light"
@@ -197,7 +198,7 @@ export default function Layout() {
 
         {/* منوی موبایل — کشویی زیر هدر */}
         {mobileOpen && (
-          <nav className="lg:hidden border-t border-stone-200 dark:border-stone-800 px-3 py-2 grid grid-cols-2 gap-1">
+          <nav className="lg:hidden border-t border-stone-200 dark:border-indigo-500/20 px-3 py-2 grid grid-cols-2 gap-1">
             {mainItems.map((item) => (
               <NavLink
                 key={item.to}
@@ -242,8 +243,8 @@ export default function Layout() {
         </div>
       )}
 
-      {/* محتوای اصلی */}
-      <main className="flex-1 overflow-y-auto bg-surface-base dark:bg-stone-900">
+      {/* محتوای اصلی — تم تاریک: بوم سنگی تیره + هاله‌ی ایندیگوی ملایم بالای بوم */}
+      <main className="flex-1 overflow-y-auto bg-surface-base dark:bg-[#1c1917] dark:bg-[radial-gradient(1100px_520px_at_50%_-12%,rgba(99,102,241,0.09),transparent)]">
         <div className="p-4 md:p-6">
           <Outlet />
         </div>

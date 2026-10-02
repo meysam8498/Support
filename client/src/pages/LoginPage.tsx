@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { setUser } = useAuth();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const dark = theme === 'dark';
 
   const submit = async (e: React.FormEvent) => {
@@ -58,11 +58,32 @@ export default function LoginPage() {
     <div
       className={`min-h-screen flex items-center justify-center px-4 transition-colors duration-200 ${
         dark
-          ? 'bg-[radial-gradient(1200px_600px_at_50%_-10%,rgba(79,70,229,0.35),transparent),radial-gradient(800px_400px_at_80%_110%,rgba(6,182,212,0.18),transparent),linear-gradient(180deg,#18181b,#1e1b4b)]'
+          ? 'relative overflow-hidden bg-[radial-gradient(1100px_550px_at_50%_-12%,rgba(99,102,241,0.42),transparent),radial-gradient(750px_480px_at_88%_112%,rgba(6,182,212,0.16),transparent),linear-gradient(160deg,#101024_0%,#1e1b4b_55%,#312e81_100%)]'
           : 'bg-surface-base'
       }`}
     >
-      <div className="w-full max-w-sm">
+      {/* دکمه‌ی تغییر تم — گوشه‌ی بالا (خارج از کارت، در هر دو تم) */}
+      <button
+        onClick={toggleTheme}
+        className={`absolute top-4 left-4 z-10 w-10 h-10 rounded-full border flex items-center justify-center text-lg transition-colors duration-150 ${
+          dark
+            ? 'border-indigo-500/40 bg-stone-900/70 text-indigo-200 hover:bg-stone-800/90 backdrop-blur-sm'
+            : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50 shadow-sm'
+        }`}
+        title={t.toggleTheme}
+        aria-label={t.toggleTheme}
+      >
+        {dark ? '☀️' : '🌙'}
+      </button>
+
+      {/* هاله‌های تزئینی — فقط در تم تاریک (عمق گرادیان ایندیگو) */}
+      {dark && (
+        <>
+          <span aria-hidden className="pointer-events-none absolute -top-28 -left-24 w-[26rem] h-[26rem] rounded-full bg-indigo-500/20 blur-3xl" />
+          <span aria-hidden className="pointer-events-none absolute -bottom-32 -right-24 w-[24rem] h-[24rem] rounded-full bg-indigo-400/15 blur-3xl" />
+        </>
+      )}
+      <div className="relative w-full max-w-sm">
         {/* لوگو — لنگر ایندیگو */}
         <div className="flex flex-col items-center mb-6">
           <span className="w-12 h-12 rounded-xl bg-brand-500 flex items-center justify-center text-white text-2xl font-bold shadow-glow mb-3">
@@ -71,13 +92,13 @@ export default function LoginPage() {
           <h1 className={`heading-display text-2xl font-bold ${dark ? 'text-white' : 'text-stone-900 dark:text-stone-50'}`}>
             {t.appName}
           </h1>
-          <p className={`text-xs mt-1 ${dark ? 'text-stone-300' : 'text-stone-500 dark:text-stone-400'}`}>
+          <p className={`text-xs mt-1 ${dark ? 'text-indigo-200/80' : 'text-stone-500 dark:text-stone-400'}`}>
             مدیریت پروژه و تجهیزات
           </p>
         </div>
 
         {/* کارت ورود — در تاریک روی گرادیان */}
-        <div className={dark ? 'card !p-6 !bg-stone-900/80 !border-stone-700 backdrop-blur-sm' : 'card !p-6'}>
+        <div className={dark ? 'card !p-6 !bg-stone-900/85 !border-indigo-500/30 backdrop-blur-md shadow-2xl shadow-indigo-950/50' : 'card !p-6'}>
           <h2 className="heading-display text-lg font-semibold text-stone-800 dark:text-stone-100 mb-4">
             {t.loginTitle}
           </h2>
