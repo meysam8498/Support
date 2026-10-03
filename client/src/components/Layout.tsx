@@ -46,9 +46,10 @@ const USER_MENU_ITEMS: NavItem[] = [
 
 export default function Layout() {
   const { user, role, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme: themeMode, isDark, setTheme } = useTheme();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   // سرور پشتیبانی (SUPPORT_ONLY=1) — بنر ثابت زیر هدر (۱.۲۵)
@@ -63,10 +64,12 @@ export default function Layout() {
   const mainItems = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
   const userItems = USER_MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
 
-  // بستن منوی کاربر با کلیک بیرون
+  // بستن منوی کاربر و منوی تم با کلیک بیرون
+  const themeMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) setThemeMenuOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
@@ -129,15 +132,49 @@ export default function Layout() {
             <LicenseBadge />
           </div>
 
-          {/* تم */}
-          <button
-            onClick={toggleTheme}
-            className="btn-ghost min-h-[36px] px-2.5 text-base shrink-0"
-            title={t.toggleTheme}
-            aria-label={t.toggleTheme}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          {/* تم — منوی سه‌گزینه‌ای: روشن / تاریک / همگام با سیستم */}
+          <div className="relative shrink-0" ref={themeMenuRef}>
+            <button
+              onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+              className={`btn-ghost min-h-[36px] px-2.5 text-base shrink-0 ${themeMenuOpen ? 'bg-brand-50 dark:bg-brand-900/30' : ''}`}
+              title={t.toggleTheme}
+              aria-label={t.toggleTheme}
+              aria-haspopup="menu"
+              aria-expanded={themeMenuOpen}
+            >
+              {themeMode === 'system' ? '🖥️' : isDark ? '☀️' : '🌙'}
+              <span className="text-[10px] text-stone-400 mr-0.5">{themeMenuOpen ? '▴' : '▾'}</span>
+            </button>
+            {themeMenuOpen && (
+              <div
+                role="menu"
+                className="absolute left-0 mt-2 w-44 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-lg py-1.5 z-30"
+              >
+                <p className="px-3 pb-1.5 pt-0.5 text-[11px] text-stone-400">{t.themeMenu}</p>
+                {([
+                  { mode: 'light' as const, icon: '☀️', label: t.themeLight },
+                  { mode: 'dark' as const, icon: '🌙', label: t.themeDark },
+                  { mode: 'system' as const, icon: '🖥️', label: t.themeSystem },
+                ]).map((opt) => (
+                  <button
+                    key={opt.mode}
+                    role="menuitemradio"
+                    aria-checked={themeMode === opt.mode}
+                    onClick={() => { setTheme(opt.mode); setThemeMenuOpen(false); }}
+                    className={`list-item border-b-0 h-10 w-full text-sm ${
+                      themeMode === opt.mode
+                        ? 'text-brand-700 font-semibold dark:text-brand-300'
+                        : 'text-stone-700 dark:text-stone-200'
+                    }`}
+                  >
+                    <span className="text-base leading-none">{opt.icon}</span>
+                    <span className="flex-1 text-right">{opt.label}</span>
+                    {themeMode === opt.mode && <span className="text-brand-500 text-xs">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* منوی کاربر */}
           <div className="relative shrink-0" ref={menuRef}>

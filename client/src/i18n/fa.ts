@@ -35,8 +35,10 @@ export const t = {
   navSettings: 'تنظیمات',
 
   // تم
-  themeLight: 'تم روشن',
-  themeDark: 'تم تیره',
+  themeLight: 'روشن',
+  themeDark: 'تاریک',
+  themeSystem: 'همگام با سیستم',
+  themeMenu: 'تم نمایش',
   toggleTheme: 'تغییر تم',
 
   // داشبورد

@@ -24,8 +24,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { setUser } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const dark = theme === 'dark';
+  const { isDark: dark, toggleTheme } = useTheme();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
