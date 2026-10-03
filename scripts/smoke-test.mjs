@@ -17,7 +17,8 @@
 //   ۱) GET /api/health و /api/version
 //   ۲) GET /api/license و /api/license/device-limit (بدون 500 — رگرسیون schema)
 //   ۳) POST /api/devices تا سقف (با TRIAL_LIMIT_ENFORCE=1 سرور) → مورد s+1 باید 402
-//      با پیام ارتقا بدهد؛ بعد از ارتقا به طرح پرداختی همان درخواست باید 201 شود
+//      با پیام ارتقا بدهد (متن دقیق باید عیناً با کلاینت هم‌واژه باشد)؛ بعد از ارتقا به طرح
+//      پرداختی همان درخواست باید 201 شود
 //   ۴) چرخه‌ی کد لایسنس: با --issue صدور واقعی با make-license-code (کلید فروشنده)
 //      + تأیید امضا با --verify → code-status ✓ / activate 201 / replay 409 / جعلی 400
 //      / ابطال و لغو ابطال — یا با --code-file/LICENSE_CODE کد آماده
@@ -34,6 +35,9 @@ const BASE = (process.env.BASE || 'http://localhost:4000').replace(/\/$/, '');
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 const argv = process.argv.slice(2);
+
+/** متن ثابت ۴۰۲ — عیناً UPGRADE_402_FALLBACK در client/src/lib/upgrade.ts؛ هر تغییری باید هم‌زمان در هر دو سمت انجام شود */
+const UPGRADE_402_FALLBACK = 'سقف نسخه‌ی آزمایشی پر شده است — برای ادامه، سامانه را ارتقا دهید.';
 
 // کد لایسنس برای گام فعال‌سازی — --issue (صدور خودکار) / فایل / ENV
 let LICENSE_CODE = process.env.LICENSE_CODE || '';
@@ -177,7 +181,7 @@ if (!pid || !tid || !mid || !bid) {
       if (r.status === 402) {
         saw402 = true;
         ok('POST بعد از سقف → 402', true);
-        ok('پیام ارتقای فارسی', typeof r.data?.error === 'string' && r.data.error.includes('ارتقا'), r.data?.error);
+        ok('پیام ارتقا = متن دقیق کلاینت', r.data?.error === UPGRADE_402_FALLBACK, `دریافتی: ${JSON.stringify(r.data?.error)} / انتظار: ${JSON.stringify(UPGRADE_402_FALLBACK)}`);
         ok('upgrade:true + limit/used', r.data?.upgrade === true && typeof r.data?.limit === 'number');
         break;
       }

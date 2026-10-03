@@ -214,7 +214,8 @@ export function deviceLimitInfo(deviceCount?: number): DeviceLimitInfo {
   const limit_reached = enforceLimit && limit !== null && used >= limit;
   const message = is_trial && limit !== null
     ? (limit_reached
-      ? `سقف نسخه‌ی آزمایشی (${TRIAL_DEVICE_LIMIT} تجهیز) پر شده است — برای افزودن بیشتر، سامانه را ارتقا دهید.`
+      // عیناً UPGRADE_402_FALLBACK در client/src/lib/upgrade.ts — متن ثابت ارتقا، هم‌واژه با کلاینت
+      ? 'سقف نسخه‌ی آزمایشی پر شده است — برای ادامه، سامانه را ارتقا دهید.'
       : null)
     : null;
   void licenseEnforce;
