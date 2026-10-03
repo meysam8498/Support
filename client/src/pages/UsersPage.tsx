@@ -5,6 +5,9 @@ import { t } from '../i18n/fa';
 import Modal from '../components/Modal';
 import Alert from '../components/Alert';
 import { useAuth } from '../context/AuthContext';
+// پیام‌ها/حداقل‌ها همگام با سرور (server/src/lib/validation.ts) — رشته‌های فارسی عیناً همان‌جا
+const MSG_USERNAME_SHORT = 'نام کاربری حداقل ۲ نویسه است.';
+const MSG_PASSWORD_SHORT = 'رمز عبور حداقل ۴ نویسه است.';
 
 /** رنگ بج هر نقش */
 const ROLE_CLS: Record<Role, string> = {
@@ -42,6 +45,11 @@ export default function UsersPage() {
 
   const [newPassword, setNewPassword] = useState('');
 
+  // خطاهای فیلدبه‌فیلد هر مدال — همان الگوی DeviceForm/PartForm
+  const [createErrors, setCreateErrors] = useState<{ username?: string; fullName?: string; email?: string; password?: string }>({});
+  const [editErrors, setEditErrors] = useState<{ fullName?: string; email?: string }>({});
+  const [resetError, setResetError] = useState('');
+
   const load = async () => {
     try { setUsers(await api.get<User[]>('/users')); }
     catch { /* */ }
@@ -61,15 +69,26 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setCreateForm({ username: '', fullName: '', email: '', password: '', role: 'viewer' });
+    setCreateErrors({});
     setError('');
     setModalOpen(true);
   };
 
+  // پاک کردن خطای یک فیلد با تغییر همان فیلد
+  const clearCreateError = (k: keyof typeof createErrors) =>
+    setCreateErrors((f) => (f[k] ? { ...f, [k]: undefined } : f));
+
   const submitCreate = async () => {
-    if (!createForm.username.trim() || !createForm.password.trim() || !createForm.fullName.trim()) {
-      setError('نام کاربری، نام کامل و رمز عبور الزامی است.');
-      return;
-    }
+    // ── اعتبارسنجی فیلد به فیلد — پیام فارسی زیر هر فیلد، قبل از تماس با سرور ──
+    const fe: typeof createErrors = {};
+    if (!createForm.fullName.trim()) fe.fullName = 'نام کامل الزامی است.';
+    if (!createForm.username.trim()) fe.username = 'نام کاربری الزامی است.';
+    else if (createForm.username.trim().length < 2) fe.username = MSG_USERNAME_SHORT;
+    if (!createForm.password) fe.password = 'رمز عبور الزامی است.';
+    else if (createForm.password.length < 4) fe.password = MSG_PASSWORD_SHORT;
+    if (createForm.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(createForm.email.trim())) fe.email = 'ایمیل معتبر نیست.';
+    setCreateErrors(fe);
+    if (Object.keys(fe).length > 0) return;
     try {
       await api.post('/users', {
         username: createForm.username.trim(),
@@ -91,11 +110,22 @@ export default function UsersPage() {
       role: u.role,
       active: u.active ?? 1,
     });
+    setEditErrors({});
     setError('');
   };
 
+  const clearEditError = (k: keyof typeof editErrors) =>
+    setEditErrors((f) => (f[k] ? { ...f, [k]: undefined } : f));
+
   const submitEdit = async () => {
     if (!editTarget) return;
+    const fe: typeof editErrors = {};
+    if (!editForm.fullName.trim()) fe.fullName = 'نام کامل الزامی است.';
+    if (editForm.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(editForm.email.trim())) {
+      fe.email = 'ایمیل معتبر نیست.';
+    }
+    setEditErrors(fe);
+    if (Object.keys(fe).length > 0) return;
     try {
       await api.put(`/users/${editTarget.id}`, {
         full_name: editForm.fullName.trim(),
@@ -110,13 +140,15 @@ export default function UsersPage() {
 
   const submitReset = async () => {
     if (!resetTarget) return;
-    if (!newPassword.trim()) { setError('رمز جدید الزامی است.'); return; }
+    if (!newPassword) { setResetError('رمز جدید الزامی است.'); return; }
+    if (newPassword.length < 4) { setResetError(MSG_PASSWORD_SHORT); return; }
     try {
       await api.post(`/users/${resetTarget.id}/reset-password`, { new_password: newPassword });
       setResetTarget(null);
       setNewPassword('');
+      setResetError('');
       setError('');
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { setResetError((e as Error).message); }
   };
 
   const remove = async (u: User) => {
@@ -164,7 +196,7 @@ export default function UsersPage() {
                   <td className="px-3 py-2">
                     <div className="flex gap-2 flex-wrap">
                       <button onClick={() => openEdit(u)} className="text-brand-600 dark:text-brand-400 hover:underline text-xs">{t.edit}</button>
-                      <button onClick={() => { setResetTarget(u); setNewPassword(''); setError(''); }} className="text-amber-600 dark:text-amber-400 hover:underline text-xs">{t.resetPassword}</button>
+                      <button onClick={() => { setResetTarget(u); setNewPassword(''); setResetError(''); setError(''); }} className="text-amber-600 dark:text-amber-400 hover:underline text-xs">{t.resetPassword}</button>
                       {u.id !== currentUser?.id && (
                         <button onClick={() => remove(u)} className="text-coral hover:text-coral-dark text-xs">{t.delete}</button>
                       )}
@@ -183,19 +215,31 @@ export default function UsersPage() {
           {error && <Alert variant="danger">{error}</Alert>}
           <div>
             <label className="label">{t.fullName}<span className="text-coral mr-1">*</span></label>
-            <input className="input" value={createForm.fullName} onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })} autoFocus />
+            <input className={`input ${createErrors.fullName ? 'input-error' : ''}`} value={createForm.fullName}
+              aria-invalid={!!createErrors.fullName}
+              onChange={(e) => { clearCreateError('fullName'); setCreateForm({ ...createForm, fullName: e.target.value }); }} autoFocus />
+            {createErrors.fullName && <p className="field-error">⚠ {createErrors.fullName}</p>}
           </div>
           <div>
             <label className="label">{t.username}<span className="text-coral mr-1">*</span></label>
-            <input className="input" dir="ltr" value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} />
+            <input className={`input ${createErrors.username ? 'input-error' : ''}`} dir="ltr" value={createForm.username}
+              aria-invalid={!!createErrors.username}
+              onChange={(e) => { clearCreateError('username'); setCreateForm({ ...createForm, username: e.target.value }); }} />
+            {createErrors.username && <p className="field-error">⚠ {createErrors.username}</p>}
           </div>
           <div>
             <label className="label">{t.email}</label>
-            <input className="input" dir="ltr" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} />
+            <input className={`input ${createErrors.email ? 'input-error' : ''}`} dir="ltr" value={createForm.email}
+              aria-invalid={!!createErrors.email}
+              onChange={(e) => { clearCreateError('email'); setCreateForm({ ...createForm, email: e.target.value }); }} />
+            {createErrors.email && <p className="field-error">⚠ {createErrors.email}</p>}
           </div>
           <div>
             <label className="label">{t.password}<span className="text-coral mr-1">*</span></label>
-            <input className="input" type="password" dir="ltr" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} />
+            <input className={`input ${createErrors.password ? 'input-error' : ''}`} type="password" dir="ltr" value={createForm.password}
+              aria-invalid={!!createErrors.password}
+              onChange={(e) => { clearCreateError('password'); setCreateForm({ ...createForm, password: e.target.value }); }} />
+            {createErrors.password && <p className="field-error">⚠ {createErrors.password}</p>}
           </div>
           <div>
             <label className="label">نقش</label>
@@ -217,12 +261,18 @@ export default function UsersPage() {
         <div className="space-y-4">
           {error && <Alert variant="danger">{error}</Alert>}
           <div>
-            <label className="label">{t.fullName}</label>
-            <input className="input" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} />
+            <label className="label">{t.fullName}<span className="text-coral mr-1">*</span></label>
+            <input className={`input ${editErrors.fullName ? 'input-error' : ''}`} value={editForm.fullName}
+              aria-invalid={!!editErrors.fullName}
+              onChange={(e) => { clearEditError('fullName'); setEditForm({ ...editForm, fullName: e.target.value }); }} />
+            {editErrors.fullName && <p className="field-error">⚠ {editErrors.fullName}</p>}
           </div>
           <div>
             <label className="label">{t.email}</label>
-            <input className="input" dir="ltr" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+            <input className={`input ${editErrors.email ? 'input-error' : ''}`} dir="ltr" value={editForm.email}
+              aria-invalid={!!editErrors.email}
+              onChange={(e) => { clearEditError('email'); setEditForm({ ...editForm, email: e.target.value }); }} />
+            {editErrors.email && <p className="field-error">⚠ {editErrors.email}</p>}
           </div>
           <div>
             <label className="label">نقش</label>
@@ -252,7 +302,10 @@ export default function UsersPage() {
           {error && <Alert variant="danger">{error}</Alert>}
           <div>
             <label className="label">رمز جدید<span className="text-coral mr-1">*</span></label>
-            <input className="input" type="password" dir="ltr" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoFocus />
+            <input className={`input ${resetError ? 'input-error' : ''}`} type="password" dir="ltr" value={newPassword}
+              aria-invalid={!!resetError}
+              onChange={(e) => { if (resetError) setResetError(''); setNewPassword(e.target.value); }} autoFocus />
+            {resetError && <p className="field-error">⚠ {resetError}</p>}
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setResetTarget(null)} className="btn-secondary">{t.cancel}</button>

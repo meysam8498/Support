@@ -60,6 +60,8 @@ export default function ListsPage() {
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState('');
   const [pageError, setPageError] = useState('');
+  // خطاهای فیلدبه‌فیلد مدال — همان الگوی DeviceForm/PartForm
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; phone?: string; brand_id?: string }>({});
 
   const load = async () => {
     try { setLists(await api.get<Lists>('/lists')); } catch { /* */ }
@@ -80,6 +82,7 @@ export default function ListsPage() {
 
   const openAddModal = () => {
     setModalError('');
+    setFieldErrors({});
     setEditingId(null);
     setForm({ name: '', phone: '', brand_id: '', contract_number: '', sales_expert_id: '', expert_role: active.defaultExpertRole ?? 'sales' });
     setModalOpen(true);
@@ -87,6 +90,7 @@ export default function ListsPage() {
 
   const openEditModal = (item: any) => {
     setModalError('');
+    setFieldErrors({});
     setEditingId(item.id);
     setForm({
       name: item.name || '',
@@ -99,8 +103,20 @@ export default function ListsPage() {
     setModalOpen(true);
   };
 
+  // پاک کردن خطای یک فیلد با تغییر همان فیلد
+  const clearFieldError = (k: keyof typeof fieldErrors) =>
+    setFieldErrors((f) => (f[k] ? { ...f, [k]: undefined } : f));
+
   const save = async () => {
-    if (!form.name.trim() && !active.extraField) return;
+    // ── اعتبارسنجی فیلد به فیلد — پیام فارسی زیر هر فیلد، قبل از تماس با سرور ──
+    const fe: typeof fieldErrors = {};
+    if (!form.name.trim()) fe.name = 'نام الزامی است.';
+    if (active.hasPhone && form.phone && !/^[0-9+\-()\s]{6,}$/.test(form.phone.trim())) {
+      fe.phone = 'شماره تلفن معتبر نیست.';
+    }
+    if (active.extraField && !form.brand_id) fe.brand_id = 'برند را انتخاب کنید.';
+    setFieldErrors(fe);
+    if (Object.keys(fe).length > 0) return;
     setSaving(true);
     try {
       const body: any = {};
@@ -254,14 +270,20 @@ export default function ListsPage() {
           {modalError && <Alert variant="danger">{modalError}</Alert>}
           {active.key !== 'projects' && (
             <div>
-              <label className="label">{t.name}</label>
-              <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+              <label className="label">{t.name}<span className="text-coral mr-1">*</span></label>
+              <input className={`input ${fieldErrors.name ? 'input-error' : ''}`} value={form.name}
+                aria-invalid={!!fieldErrors.name}
+                onChange={(e) => { clearFieldError('name'); setForm({ ...form, name: e.target.value }); }} autoFocus />
+              {fieldErrors.name && <p className="field-error">⚠ {fieldErrors.name}</p>}
             </div>
           )}
           {active.hasPhone && (
             <div>
               <label className="label">{t.phone}</label>
-              <input className="input" dir="ltr" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <input className={`input ${fieldErrors.phone ? 'input-error' : ''}`} dir="ltr" value={form.phone}
+                aria-invalid={!!fieldErrors.phone}
+                onChange={(e) => { clearFieldError('phone'); setForm({ ...form, phone: e.target.value }); }} />
+              {fieldErrors.phone && <p className="field-error">⚠ {fieldErrors.phone}</p>}
             </div>
           )}
           {active.hasExpertRole && (
@@ -276,18 +298,24 @@ export default function ListsPage() {
           )}
           {active.extraField && (
             <div>
-              <label className="label">{t.brand}</label>
-              <select className="input" value={form.brand_id} onChange={(e) => setForm({ ...form, brand_id: e.target.value })}>
+              <label className="label">{t.brand}<span className="text-coral mr-1">*</span></label>
+              <select className={`input ${fieldErrors.brand_id ? 'input-error' : ''}`} value={form.brand_id}
+                aria-invalid={!!fieldErrors.brand_id}
+                onChange={(e) => { clearFieldError('brand_id'); setForm({ ...form, brand_id: e.target.value }); }}>
                 <option value="">انتخاب برند...</option>
                 {lists?.brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
+              {fieldErrors.brand_id && <p className="field-error">⚠ {fieldErrors.brand_id}</p>}
             </div>
           )}
           {active.key === 'projects' && (
             <>
               <div>
-                <label className="label">{t.name} (پروژه/مشتری)</label>
-                <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+                <label className="label">{t.name} (پروژه/مشتری)<span className="text-coral mr-1">*</span></label>
+                <input className={`input ${fieldErrors.name ? 'input-error' : ''}`} value={form.name}
+                  aria-invalid={!!fieldErrors.name}
+                  onChange={(e) => { clearFieldError('name'); setForm({ ...form, name: e.target.value }); }} autoFocus />
+                {fieldErrors.name && <p className="field-error">⚠ {fieldErrors.name}</p>}
               </div>
               <div>
                 <label className="label">شماره قرارداد</label>
