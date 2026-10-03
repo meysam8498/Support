@@ -19,7 +19,8 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:smoke:full": "node scripts/smoke-test.mjs --issue",
     "test:logs": "node scripts/logs-test.mjs",
-    "test:retention": "npx tsx scripts/retention-test.mjs"
+    "test:retention": "npx tsx scripts/retention-test.mjs",
+    "check:schema": "node scripts/schema-drift-check.mjs"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

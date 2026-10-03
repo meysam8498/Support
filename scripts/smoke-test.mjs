@@ -138,7 +138,20 @@ if (isSupportOnly) {
   ok('لاگ: سرور عادی → 404 (endpoint mount نشده)', logStd.status === 404, `status=${logStd.status}`);
 }
 
-// ─────────── ۲) وضعیت لایسنس (رگرسیون 500 «no such table») ───────────
+// ─────────── ۲) درفت اسکیما (رگرسیون catalog_id: ستونی که در مهاجرت بود و از schema.sql جا افتاد) ───────────
+// چک مستقل درون‌پردازشی — بدون سرور؛ همان منطق npm run check:schema با خروجی خلاصه
+console.log('\n— درفت اسکیما (schema.sql در برابر مهاجرت‌ها)');
+try {
+  const { execFileSync: ex } = await import('node:child_process');
+  const driftRoot = dirname(fileURLToPath(import.meta.url)) + '/..';
+  ex(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), 'schema-drift-check.mjs')], { cwd: driftRoot, stdio: 'pipe' });
+  ok('schema.sql پوشش کامل مهاجرت‌ها (بدون درفت)', true);
+} catch (e) {
+  const out = (e.stdout || '').toString().split('\n').filter((l) => l.includes('✗')).join('\n');
+  ok('schema.sql پوشش کامل مهاجرت‌ها (بدون درفت)', false, out || e.message);
+}
+
+// ─────────── ۲ب) وضعیت لایسنس (رگرسیون 500 «no such table») ───────────
 console.log('\n— وضعیت لایسنس');
 const lic = await api('GET', '/api/license', { token: TOKEN });
 ok('GET /api/license → 200 (نه 500)', lic.status === 200, `status=${lic.status} ${JSON.stringify(lic.data).slice(0, 120)}`);

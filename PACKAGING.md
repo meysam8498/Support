@@ -82,3 +82,4 @@
 - [ ] smoke: `npm run test:smoke:full -- --plan month` (معادل `node scripts/smoke-test.mjs --issue --plan month`) روی هر دو نصب
 - [ ] لاگ سرور: `npm run test:logs` سبز باشد — endpoint `GET /api/logs` در هر دو حالت سرور (۲۷ چک)
 - [ ] نگهداشت بکاپ: `npm run test:retention` سبز باشد
+- [ ] درفت اسکیما: `npm run check:schema` سبز باشد — هر ستونِ COLUMN_MIGRATIONS در schema.sql هم هست (رگرسیون catalog_id)

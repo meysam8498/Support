@@ -183,13 +183,14 @@ git push origin v1.2.2
 چهار تست خودکار مخزن با npm script اجرا می‌شوند:
 
 ```bash
-npm run test:smoke        # smoke سریع — لایسنس/سقف/402/فعال‌سازی (بدون صدور)
+npm run test:smoke        # smoke سریع — لایسنس/سقف/402/فعال‌سازی (بدون صدور) + درفت اسکیما
 npm run test:smoke:full   # + چرخه‌ی کامل صدور کد لایسنس (--issue؛ کلید محلی لازم دارد)
 npm run test:logs         # endpoint لاگ سرور در هر دو حالت (SUPPORT_ONLY و معمولی) — ۲۷ چک
 npm run test:retention    # نگهداشت بکاپ (retention)
+npm run check:schema      # درفت schema.sql در برابر مهاجرت‌های ستونی — دیگر ستونی از قلم نیفتد
 ```
 
-> `test:logs` و `test:retention` کاملاً خودکفا هستند (سرور temp خودشان را بالا می‌آورند و پاک می‌کنند)؛ `test:smoke` و `test:smoke:full` به سرور در حال اجرا وصل می‌شوند (پیش‌فرض `BASE=http://localhost:4000` — با `BASE=...` روی هر نصبی اجرا کنید).
+> `test:logs` و `test:retention` و بخش درفت اسکیما کاملاً خودکفا هستند (سرور/دیتابیس temp خودشان را بالا می‌آورند و پاک می‌کنند)؛ `test:smoke` و `test:smoke:full` به سرور در حال اجرا وصل می‌شوند (پیش‌فرض `BASE=http://localhost:4000` — با `BASE=...` روی هر نصبی اجرا کنید).
 
 پیش از هر ریلیز هر چهار سبز باشند؛ چک‌لیست بسته‌بندی در [PACKAGING.md](PACKAGING.md).
 

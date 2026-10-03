@@ -97,6 +97,18 @@ const COLUMN_MIGRATIONS: ColumnMigration[] = [
   // تاریخچه‌ی ابطال (۱.۲۳) — چه کسی و کِی باطل کرده
   { table: 'license_info', column: 'revoked_at', ddl: "TEXT" },
   { table: 'license_info', column: 'revoked_by', ddl: "INTEGER REFERENCES users(id)" },
+  // تکمیل پوشش (چک schema-drift): ستون‌هایی که در schema.sql هست ولی مهاجرت نداشتند —
+  // نصب‌های خیلی قدیمی هم باید به وضعیت کامل اسکیمای فعلی برسند
+  { table: 'users', column: 'created_at', ddl: "TEXT" },
+  { table: 'sales_experts', column: 'active', ddl: "INTEGER NOT NULL DEFAULT 1" },
+  { table: 'sales_experts', column: 'created_at', ddl: "TEXT" },
+  { table: 'technical_experts', column: 'active', ddl: "INTEGER NOT NULL DEFAULT 1" },
+  { table: 'technical_experts', column: 'created_at', ddl: "TEXT" },
+  { table: 'parts', column: 'status', ddl: "TEXT NOT NULL DEFAULT 'active'" },
+  { table: 'parts', column: 'sold_at_jalali', ddl: "TEXT" },
+  { table: 'parts', column: 'sold_at_gregorian', ddl: "TEXT" },
+  { table: 'parts', column: 'replaces_part_id', ddl: "INTEGER" },
+  { table: 'parts', column: 'created_by', ddl: "INTEGER" },
 ];
 
 /**
