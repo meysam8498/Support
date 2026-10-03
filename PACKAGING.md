@@ -79,4 +79,6 @@
 - [ ] تگ `vX.Y.Z` پابلیش داکر؛ تگ `win-vX.Y.Z` بیلد ویندوز؛ APK در Release گیت‌هاب
 - [ ] `SUPPORT_ONLY=1` در نصب پشتیبانی تست شود (403 روی `/api/devices`)
 - [ ] نصب تازه‌ی مشتری: فعال‌سازی با کد لایسنس واقعی از `/issue` سرور پشتیبانی
-- [ ] smoke: `node scripts/smoke-test.mjs --issue --plan month` روی هر دو نصب
+- [ ] smoke: `npm run test:smoke:full -- --plan month` (معادل `node scripts/smoke-test.mjs --issue --plan month`) روی هر دو نصب
+- [ ] لاگ سرور: `npm run test:logs` سبز باشد — endpoint `GET /api/logs` در هر دو حالت سرور (۲۷ چک)
+- [ ] نگهداشت بکاپ: `npm run test:retention` سبز باشد

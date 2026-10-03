@@ -100,7 +100,7 @@ cp .env.example .env
 ```
 
 > متغیرهای لایسنس (`LICENSE_ENFORCE`، `TRIAL_DEVICE_LIMIT`، `TRIAL_LIMIT_ENFORCE`) هم در `.env.example` مستند شده‌اند — در نسخه‌ی فعلی هر سه خاموش‌اند (رایگان، بدون محدودیت).
-> 🛟 **سرور پشتیبانی**: اجرا با `SUPPORT_ONLY=1` مسیرهای داده‌ی مشتری (devices/parts/warranty/serial-import/backups/procurement) را ۴۰۳ می‌کند — نسخه‌ای فقط برای بررسی ایراد با لاگ مشتری؛ ابزار صدور لایسنس (`/issue`) فقط همین‌جاست. خواندن لاگ سرور: endpoint `GET /api/logs` با هدر `X-Support-Token` (مقدار `SUPPORT_LOG_TOKEN` یا `SUPPORT_TOKEN`) و صفحه‌ی «📜 لاگ سرور» در منوی ادمین. تست خودکار این endpoint در هر دو حالت سرور: `node scripts/logs-test.mjs`. جزئیات بسته‌بندی ویندوز/اندروید: [PACKAGING.md](PACKAGING.md).
+> 🛟 **سرور پشتیبانی**: اجرا با `SUPPORT_ONLY=1` مسیرهای داده‌ی مشتری (devices/parts/warranty/serial-import/backups/procurement) را ۴۰۳ می‌کند — نسخه‌ای فقط برای بررسی ایراد با لاگ مشتری؛ ابزار صدور لایسنس (`/issue`) فقط همین‌جاست. خواندن لاگ سرور: endpoint `GET /api/logs` با هدر `X-Support-Token` (مقدار `SUPPORT_LOG_TOKEN` یا `SUPPORT_TOKEN`) و صفحه‌ی «📜 لاگ سرور» در منوی ادمین. تست خودکار این endpoint در هر دو حالت سرور: `npm run test:logs`. جزئیات بسته‌بندی ویندوز/اندروید: [PACKAGING.md](PACKAGING.md).
 
 ### ۲) ساخت و اجرا
 
@@ -123,9 +123,9 @@ docker compose up -d --build
 1. «بررسی کد» → امضا با کلید عمومی داخل سرور تأیید و طرح/دارنده نمایش داده می‌شود (بدون اینترنت)
 2. «🔓 فعال‌سازی» → طرح، دارنده و تاریخ پایان اعمال و سقف تجهیزات برداشته می‌شود
 3. هر کد فقط یک‌بار قابل استفاده است؛ سوابق فعال‌سازی در همان صفحه دیده می‌شود
-4. **تست پیش از انتشار (smoke)**: `node scripts/smoke-test.mjs --issue` کل چرخه‌ی کد لایسنس را خودکار
+4. **تست پیش از انتشار (smoke)**: `npm run test:smoke:full` (خودِ `node scripts/smoke-test.mjs --issue`) کل چرخه‌ی کد لایسنس را خودکار
    تست می‌کند — صدور واقعی با ابزار فروشنده + تأیید امضای محلی + بررسی/فعال‌سازی/replay/جعلی/ابطال
-   (کلید خصوصی محلی لازم است؛ روی سرور تست با `BASE=...` هم اجرا می‌شود)
+   (کلید خصوصی محلی لازم است؛ روی سرور تست با `BASE=...` هم اجرا می‌شود)؛ بدون فلگ `--issue` هم با `npm run test:smoke` چک‌های سریع لایسنس/سقف اجرا می‌شود
 5. **ابطال کد (ادمین)**: برای استرداد خرید یا سرقت کد، شناسه‌ی کد (jti) یا خودِ کد را در بخش
    «⛔ ابطال کد لایسنس» وارد کنید — کد باطل‌شده در آن سامانه فعال نمی‌شود (403)؛ ابطال با
    «لغو ابطال» برگشت‌پذیر است. فرآیند فروشنده: [docs/sales-guide.md](docs/sales-guide.md)
@@ -178,7 +178,22 @@ git push origin v1.2.2
 - نسخه‌ی OCI LABEL داخل image هم از تگ گیت پر می‌شود (`ARG APP_VERSION`).
 - فایل workflow: [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
 
-### ۸) یادآور همگام‌سازی مستندات و نسخه‌ها
+### ۸) چک‌های خودکار پیش از ریلیز
+
+چهار تست خودکار مخزن با npm script اجرا می‌شوند:
+
+```bash
+npm run test:smoke        # smoke سریع — لایسنس/سقف/402/فعال‌سازی (بدون صدور)
+npm run test:smoke:full   # + چرخه‌ی کامل صدور کد لایسنس (--issue؛ کلید محلی لازم دارد)
+npm run test:logs         # endpoint لاگ سرور در هر دو حالت (SUPPORT_ONLY و معمولی) — ۲۷ چک
+npm run test:retention    # نگهداشت بکاپ (retention)
+```
+
+> `test:logs` و `test:retention` کاملاً خودکفا هستند (سرور temp خودشان را بالا می‌آورند و پاک می‌کنند)؛ `test:smoke` و `test:smoke:full` به سرور در حال اجرا وصل می‌شوند (پیش‌فرض `BASE=http://localhost:4000` — با `BASE=...` روی هر نصبی اجرا کنید).
+
+پیش از هر ریلیز هر چهار سبز باشند؛ چک‌لیست بسته‌بندی در [PACKAGING.md](PACKAGING.md).
+
+### ۹) یادآور همگام‌سازی مستندات و نسخه‌ها
 
 ورژن و مستندات نباید از هم جا بمانند؛ سه لایه‌ی چک خودکار وجود دارد:
 

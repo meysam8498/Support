@@ -15,7 +15,11 @@
     "dev:client": "npm run dev -w client",
     "install:all": "npm install",
     "db:reset": "npm run db:reset -w server",
-    "build": "npm run build -w server && npm run build -w client"
+    "build": "npm run build -w server && npm run build -w client",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test:smoke:full": "node scripts/smoke-test.mjs --issue",
+    "test:logs": "node scripts/logs-test.mjs",
+    "test:retention": "npx tsx scripts/retention-test.mjs"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
