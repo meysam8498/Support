@@ -100,7 +100,7 @@ export default function ReplacementsListPage() {
             <button
               type="button"
               onClick={() => setParams({}, { replace: true })}
-              className="btn-ghost !min-h-[34px] text-xs"
+              className="btn-ghost min-h-[34px] text-xs"
             >
               ✕ حذف فیلتر
             </button>
@@ -108,12 +108,12 @@ export default function ReplacementsListPage() {
           <button
             type="button"
             onClick={() => setPeriodicOpen(true)}
-            className="btn-secondary !min-h-[34px] text-xs"
+            className="btn-secondary min-h-[34px] text-xs"
           >
             🗓️ گزارش دوره‌ای
           </button>
           {canReplace && (
-            <Link to="/warranty/replace" className="btn-primary !min-h-[34px] text-xs">
+            <Link to="/warranty/replace" className="btn-primary min-h-[34px] text-xs">
               + ثبت تعویض جدید
             </Link>
           )}
@@ -132,13 +132,13 @@ export default function ReplacementsListPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="جست‌وجو در پروژه، سریال دستگاه/قطعه، کارشناس، دلیل خرابی…"
-          className="input !pr-10"
+          className="input pr-10"
           dir="auto"
         />
       </div>
 
       {/* ---------- فهرست ---------- */}
-      <div className="card !p-0 overflow-hidden">
+      <div className="card p-0 overflow-hidden">
         {loading ? (
           <p className="p-8 text-center text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
         ) : filtered.length === 0 ? (

@@ -117,7 +117,7 @@ export default function TrendChart({ months, pngTitle, pngFileName }: Props) {
       </div>
       {pngTitle && (
         <div className="flex justify-end">
-          <button type="button" onClick={downloadPng} className="btn-ghost !min-h-[28px] text-[11px]" title="دانلود نمودار به‌صورت تصویر PNG برای گزارش">
+          <button type="button" onClick={downloadPng} className="btn-ghost min-h-[28px] text-[11px]" title="دانلود نمودار به‌صورت تصویر PNG برای گزارش">
             🖼️ خروجی PNG
           </button>
         </div>

@@ -76,7 +76,7 @@ export default function PeriodicReportDialog({ open, onClose }: { open: boolean;
           <p className="text-[11px] font-bold text-stone-600 dark:text-stone-300">روش ۱ — ماه شروع دوره (بازه خودکار):</p>
           <div className="flex items-center gap-2">
             <input
-              className="input !min-h-0 !py-1.5 !text-xs fa-nums"
+              className="input min-h-0 py-1.5 text-xs fa-nums"
               dir="ltr"
               placeholder="1404/07"
               value={periodStart}
@@ -86,10 +86,10 @@ export default function PeriodicReportDialog({ open, onClose }: { open: boolean;
               {period === 'monthly' ? '۱ ماه از این ماه' : '۳ ماه از این ماه'}
             </span>
             <div className="flex gap-1.5 shrink-0">
-              <button type="button" onClick={() => { const r = jalaliRangePreset('this-month'); if (r) { setFrom(r[0]); setTo(r[1]); setPeriodStart(''); } }} className="chip chip-default cursor-pointer !text-[11px]">این ماه</button>
-              <button type="button" onClick={() => { const r = jalaliRangePreset('last-month'); if (r) { setFrom(r[0]); setTo(r[1]); setPeriodStart(''); } }} className="chip chip-default cursor-pointer !text-[11px]">ماه قبل</button>
-              <button type="button" onClick={() => { const r = jalaliRangePreset('last-3'); if (r) { setFrom(r[0]); setTo(r[1]); setPeriodStart(''); } }} className="chip chip-default cursor-pointer !text-[11px]">۳ ماه اخیر</button>
-              <button type="button" onClick={() => { const r = jalaliRangePreset('this-year'); if (r) { setFrom(r[0]); setTo(r[1]); setPeriodStart(''); } }} className="chip chip-default cursor-pointer !text-[11px]">امسال</button>
+              <button type="button" onClick={() => { const r = jalaliRangePreset('this-month'); if (r) { setFrom(r[0]); setTo(r[1]); setPeriodStart(''); } }} className="chip chip-default cursor-pointer text-[11px]">این ماه</button>
+              <button type="button" onClick={() => { const r = jalaliRangePreset('last-month'); if (r) { setFrom(r[0]); setTo(r[1]); setPeriodStart(''); } }} className="chip chip-default cursor-pointer text-[11px]">ماه قبل</button>
+              <button type="button" onClick={() => { const r = jalaliRangePreset('last-3'); if (r) { setFrom(r[0]); setTo(r[1]); setPeriodStart(''); } }} className="chip chip-default cursor-pointer text-[11px]">۳ ماه اخیر</button>
+              <button type="button" onClick={() => { const r = jalaliRangePreset('this-year'); if (r) { setFrom(r[0]); setTo(r[1]); setPeriodStart(''); } }} className="chip chip-default cursor-pointer text-[11px]">امسال</button>
             </div>
           </div>
         </div>
@@ -113,21 +113,21 @@ export default function PeriodicReportDialog({ open, onClose }: { open: boolean;
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <select className="input !min-h-0 !py-1.5 !text-xs" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <select className="input min-h-0 py-1.5 text-xs" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
               <option value="">همه‌ی پروژه‌ها</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
             <input
-              className="input !min-h-0 !py-1.5 !text-xs"
+              className="input min-h-0 py-1.5 text-xs"
               placeholder="عنوان قطعه (دقیق)…"
               value={partTitle}
               onChange={(e) => setPartTitle(e.target.value)}
               dir="auto"
             />
             <input
-              className="input !min-h-0 !py-1.5 !text-xs fa-nums"
+              className="input min-h-0 py-1.5 text-xs fa-nums"
               placeholder="پارت‌نامبر (اختیاری)…"
               value={partNumber}
               onChange={(e) => setPartNumber(e.target.value)}

@@ -85,6 +85,11 @@ body {
   .btn-danger {
     @apply btn bg-error text-white hover:bg-coral-dark active:scale-[0.98];
   }
+  /* Ghost با رنگ خطر — برای کنش مخرب سبک (بازیابی بکاپ)؛ به‌جای آورراید !text روی btn-ghost
+     که به‌دلیل ترتیب رنگ‌ها در utilities همیشه می‌بازد */
+  .btn-ghost-danger {
+    @apply btn bg-transparent text-coral-dark hover:bg-surface-raised dark:text-coral-light;
+  }
 
   /* ---------- ورودی‌ها: ۳۸px، فوکوس ایندیگو + رینگ ---------- */
   .input {

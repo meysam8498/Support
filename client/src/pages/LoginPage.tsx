@@ -98,7 +98,8 @@ export default function LoginPage() {
         </div>
 
         {/* کارت ورود — در تاریک روی گرادیان */}
-        <div className={dark ? 'card !p-6 !bg-stone-900/85 !border-indigo-500/30 backdrop-blur-md shadow-2xl shadow-indigo-950/50' : 'card !p-6'}>
+        {/* dark: واریانت لازم است — @applyهای dark داخل .card با :is(.dark *) بالاتر از utility ساده می‌برند */}
+        <div className={dark ? 'card p-6 dark:bg-stone-900/85 dark:border-indigo-500/30 backdrop-blur-md shadow-2xl shadow-indigo-950/50' : 'card p-6'}>
           <h2 className="heading-display text-lg font-semibold text-stone-800 dark:text-stone-100 mb-4">
             {t.loginTitle}
           </h2>

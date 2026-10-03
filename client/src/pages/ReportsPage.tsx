@@ -217,14 +217,14 @@ export default function ReportsPage() {
           <button
             type="button"
             onClick={() => setPeriodicOpen(true)}
-            className="btn-secondary !min-h-[34px] text-xs"
+            className="btn-secondary min-h-[34px] text-xs"
           >
             🗓️ گزارش دوره‌ای
           </button>
           <button
             type="button"
             onClick={() => setExportOpen(true)}
-            className="btn-secondary !min-h-[34px] text-xs"
+            className="btn-secondary min-h-[34px] text-xs"
           >
             ⬇ خروجی اکسل تعویض‌ها
           </button>
@@ -232,12 +232,12 @@ export default function ReportsPage() {
       </div>
 
       {/* ---------- نوار جست‌وجو + بازه‌ی تاریخ ---------- */}
-      <div className="card !p-3">
+      <div className="card p-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[220px]">
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none">🔍</span>
             <input
-              className="input !pr-10"
+              className="input pr-10"
               placeholder="جست‌وجو در نتایج: قطعه، سریال، پروژه، کارشناس، دلیل…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -247,7 +247,7 @@ export default function ReportsPage() {
           <div className="flex items-center gap-1.5">
             <label className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">از تاریخ</label>
             <input
-              className="input !min-h-[36px] !w-[110px] fa-nums text-center"
+              className="input min-h-[36px] w-[110px] fa-nums text-center"
               placeholder="1404/01/01"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -255,7 +255,7 @@ export default function ReportsPage() {
             />
             <label className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap">تا</label>
             <input
-              className="input !min-h-[36px] !w-[110px] fa-nums text-center"
+              className="input min-h-[36px] w-[110px] fa-nums text-center"
               placeholder="1404/12/29"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
@@ -265,7 +265,7 @@ export default function ReportsPage() {
               <button
                 type="button"
                 onClick={() => { setQ(''); setDateFrom(''); setDateTo(''); }}
-                className="btn-ghost !min-h-[36px] text-xs"
+                className="btn-ghost min-h-[36px] text-xs"
                 title="پاک کردن همه‌ی فیلترها"
               >
                 ✕
@@ -274,7 +274,7 @@ export default function ReportsPage() {
             <button
               type="button"
               onClick={() => setShowDateHelp((s) => !s)}
-              className="btn-ghost !min-h-[36px] text-xs"
+              className="btn-ghost min-h-[36px] text-xs"
               title="راهنما"
             >
               ؟
@@ -309,7 +309,7 @@ export default function ReportsPage() {
                 key={preset}
                 type="button"
                 onClick={() => { const r = jalaliRangePreset(preset); if (r) { setTrendFrom(r[0]); setTrendTo(r[1]); } }}
-                className="chip chip-default cursor-pointer !text-[11px]"
+                className="chip chip-default cursor-pointer text-[11px]"
               >
                 {label}
               </button>
@@ -321,15 +321,15 @@ export default function ReportsPage() {
                 onClick={() => { setTrendMonths(n); setTrendFrom(''); setTrendTo(''); }}
                 className={
                   !trendFrom && !trendTo && trendMonths === n
-                    ? 'chip chip-active cursor-pointer !text-[11px] fa-nums'
-                    : 'chip chip-default cursor-pointer !text-[11px] fa-nums'
+                    ? 'chip chip-active cursor-pointer text-[11px] fa-nums'
+                    : 'chip chip-default cursor-pointer text-[11px] fa-nums'
                 }
               >
                 {toFa(n)} ماه
               </button>
             ))}
             <select
-              className="input !min-h-0 !py-1 !text-[11px] max-w-[160px]"
+              className="input min-h-0 py-1 text-[11px] max-w-[160px]"
               value={trendProjectId}
               onChange={(e) => setTrendProjectId(e.target.value)}
               title="فیلتر پروژه"
@@ -344,14 +344,14 @@ export default function ReportsPage() {
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <span className="text-[11px] text-stone-400 dark:text-stone-500">بازه‌ی صریح:</span>
           <input
-            className="input !min-h-[30px] !w-[110px] fa-nums text-center !text-xs"
+            className="input min-h-[30px] w-[110px] fa-nums text-center text-xs"
             placeholder="از 1404/01/01"
             value={trendFrom}
             onChange={(e) => setTrendFrom(e.target.value)}
             dir="ltr"
           />
           <input
-            className="input !min-h-[30px] !w-[110px] fa-nums text-center !text-xs"
+            className="input min-h-[30px] w-[110px] fa-nums text-center text-xs"
             placeholder="تا 1404/12/29"
             value={trendTo}
             onChange={(e) => setTrendTo(e.target.value)}
@@ -361,7 +361,7 @@ export default function ReportsPage() {
             <button
               type="button"
               onClick={() => { setTrendFrom(''); setTrendTo(''); setTrendProjectId(''); }}
-              className="btn-ghost !min-h-[30px] text-[11px]"
+              className="btn-ghost min-h-[30px] text-[11px]"
             >
               ✕ پاک کردن
             </button>

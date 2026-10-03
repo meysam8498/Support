@@ -1,9 +1,10 @@
 import jalaali from 'jalaali-js';
 
-/** اعتبارسنجی تاریخ شمسی و نرمال‌سازی به YYYY/MM/DD */
-export function normalizeJalali(input: string): string | null {
-  if (!input) return null;
-  const cleaned = input.replace(/[۰-۹]/g, (d) =>
+/** اعتبارسنجی تاریخ شمسی و نرمال‌سازی به YYYY/MM/DD
+ * (نام پارامتر v است — پرهیز از توکن «علامت‌تعجب + input» که استخراج‌کننده‌ی Tailwind قانون مرده می‌سازد) */
+export function normalizeJalali(v: string): string | null {
+  if (!v) return null;
+  const cleaned = v.replace(/[۰-۹]/g, (d) =>
     String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
   );
   const m = cleaned.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);

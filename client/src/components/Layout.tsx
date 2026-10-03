@@ -113,7 +113,7 @@ export default function Layout() {
           {/* همبرگر — موبایل/تبلت */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden btn-ghost !min-h-[36px] !px-2.5 shrink-0"
+            className="lg:hidden btn-ghost min-h-[36px] px-2.5 shrink-0"
             aria-label="منو"
           >
             {mobileOpen ? '✕' : '☰'}
@@ -132,7 +132,7 @@ export default function Layout() {
           {/* تم */}
           <button
             onClick={toggleTheme}
-            className="btn-ghost !min-h-[36px] !px-2.5 text-base shrink-0"
+            className="btn-ghost min-h-[36px] px-2.5 text-base shrink-0"
             title={t.toggleTheme}
             aria-label={t.toggleTheme}
           >
@@ -178,7 +178,7 @@ export default function Layout() {
                     key={item.to}
                     to={item.to}
                     onClick={() => setMenuOpen(false)}
-                    className="list-item !border-b-0 !h-10 text-stone-700 dark:text-stone-200"
+                    className="list-item border-b-0 h-10 text-stone-700 dark:text-stone-200"
                   >
                     <span className="text-base leading-none">{item.icon}</span>
                     <span>{item.label}</span>
@@ -187,7 +187,7 @@ export default function Layout() {
                 <div className="border-t border-stone-100 dark:border-white/10 mt-1 pt-1">
                   <button
                     onClick={doLogout}
-                    className="list-item !border-b-0 !h-10 w-full text-coral dark:text-coral-light"
+                    className="list-item border-b-0 h-10 w-full text-coral dark:text-coral-light"
                   >
                     <span className="text-base leading-none">↩</span>
                     <span>{t.logout}</span>

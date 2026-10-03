@@ -27,7 +27,7 @@ function AboutCard() {
     api.get<{ limit: number | null; used: number; remaining: number | null; is_trial: boolean; enforce: boolean }>('/license/device-limit').then(setDeviceLimit).catch(() => setDeviceLimit(null));
   }, []);
   return (
-    <section className="card !py-4">
+    <section className="card py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <span className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-900/40 flex items-center justify-center text-lg shrink-0">ℹ️</span>
@@ -71,7 +71,7 @@ function AboutCard() {
           {isAdmin && (
             <Link
               to="/license"
-              className="btn-primary !min-h-[32px] text-xs"
+              className="btn-primary min-h-[32px] text-xs"
               title="ورود کد لایسنس، ارتقای طرح و تمدید — صفحه‌ی لایسنس"
             >
               🔑 ورود کد لایسنس
@@ -81,7 +81,7 @@ function AboutCard() {
             href="https://hub.docker.com/r/meysam8498/support-equipment-management"
             target="_blank"
             rel="noreferrer"
-            className="btn-ghost !min-h-[32px] text-xs"
+            className="btn-ghost min-h-[32px] text-xs"
             title="مشاهده‌ی image و راهنمای اجرا در Docker Hub"
           >
             🐳 Docker Hub
@@ -90,7 +90,7 @@ function AboutCard() {
             href="https://github.com/meysam8498/Support"
             target="_blank"
             rel="noreferrer"
-            className="btn-ghost !min-h-[32px] text-xs"
+            className="btn-ghost min-h-[32px] text-xs"
             title="سورس کد در گیت‌هاب"
           >
             🐙 GitHub
@@ -229,7 +229,7 @@ export default function DashboardPage() {
       {/* ---------- کارت‌های آمار PipelinePro: نوار رنگی + اعداد بزرگ Outfit ---------- */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {cards.map((c) => (
-          <div key={c.label} className="relative card !p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md">
+          <div key={c.label} className="relative card p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md">
             <span className={`absolute inset-y-0 right-0 w-1.5 ${c.accent}`} />
             <div className="flex items-start justify-between mb-3">
               <span className={`text-lg w-9 h-9 rounded-lg flex items-center justify-center ${c.soft}`}>
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <Link to="/reports" className="btn-ghost !min-h-[32px] text-xs">گزارش کامل</Link>
+            <Link to="/reports" className="btn-ghost min-h-[32px] text-xs">گزارش کامل</Link>
           </div>
           {trend.every((m) => m.count === 0) ? (
             <p className="text-stone-400 dark:text-stone-500 text-sm">در ۱۲ ماه اخیر تعویضی ثبت نشده است.</p>
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                 <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">بیشترین تعویض‌شده در کل سامانه</p>
               </div>
             </div>
-            <Link to="/reports" className="btn-ghost !min-h-[32px] text-xs">گزارش کامل</Link>
+            <Link to="/reports" className="btn-ghost min-h-[32px] text-xs">گزارش کامل</Link>
           </div>
           {topFailed.length === 0 ? (
             <p className="text-stone-400 dark:text-stone-500 text-sm">هنوز تعویضی ثبت نشده است.</p>
@@ -343,7 +343,7 @@ export default function DashboardPage() {
               گزارش سریع — پرخرابی‌ترین قطعات
             </h2>
           </div>
-          <Link to="/reports" className="btn-ghost !min-h-[32px] text-xs">
+          <Link to="/reports" className="btn-ghost min-h-[32px] text-xs">
             گزارش کامل
           </Link>
         </div>
@@ -417,7 +417,7 @@ export default function DashboardPage() {
             <h2 className="heading-serif text-lg font-bold text-stone-900 dark:text-stone-50">
               آخرین تعویض‌های گارانتی
             </h2>
-            <Link to="/warranty" className="btn-ghost !min-h-[32px] text-xs">
+            <Link to="/warranty" className="btn-ghost min-h-[32px] text-xs">
               مشاهده همه
             </Link>
           </div>
@@ -452,7 +452,7 @@ export default function DashboardPage() {
               پروژه‌ها (مشتریان)
             </h2>
             {canWrite && (
-              <Link to="/lists" className="btn-ghost !min-h-[32px] text-xs">
+              <Link to="/lists" className="btn-ghost min-h-[32px] text-xs">
                 مدیریت
               </Link>
             )}

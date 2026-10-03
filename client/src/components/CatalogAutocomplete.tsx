@@ -158,7 +158,7 @@ export default function CatalogAutocomplete({
                   </span>
                 </span>
                 {typeof h.installed_count === 'number' && h.installed_count > 0 && (
-                  <span className="chip chip-default !px-1.5 !py-0 text-[10px] shrink-0 fa-nums">{h.installed_count} نصب</span>
+                  <span className="chip chip-default px-1.5 py-0 text-[10px] shrink-0 fa-nums">{h.installed_count} نصب</span>
                 )}
               </span>
             </button>

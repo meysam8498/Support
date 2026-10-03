@@ -183,14 +183,14 @@ export default function AboutPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mt-5">
-          <a href={`mailto:${VENDOR_EMAIL}`} className="btn-primary !min-h-[34px] text-xs">
+          <a href={`mailto:${VENDOR_EMAIL}`} className="btn-primary min-h-[34px] text-xs">
             ✉️ تماس برای خرید/پشتیبانی
           </a>
           <a
             href="https://hub.docker.com/r/meysam8498/support-equipment-management"
             target="_blank"
             rel="noreferrer"
-            className="btn-secondary !min-h-[34px] text-xs"
+            className="btn-secondary min-h-[34px] text-xs"
           >
             🐳 Docker Hub
           </a>
@@ -198,16 +198,16 @@ export default function AboutPage() {
             href="https://github.com/meysam8498/Support"
             target="_blank"
             rel="noreferrer"
-            className="btn-ghost !min-h-[34px] text-xs"
+            className="btn-ghost min-h-[34px] text-xs"
           >
             🐙 گیت‌هاب
           </a>
           {isAdmin && (
             <>
-              <Link to="/issue" className="btn-secondary !min-h-[34px] text-xs">
+              <Link to="/issue" className="btn-secondary min-h-[34px] text-xs">
                 🧾 پنل ساخت لایسنس
               </Link>
-              <Link to="/license" className="btn-ghost !min-h-[34px] text-xs">
+              <Link to="/license" className="btn-ghost min-h-[34px] text-xs">
                 🔑 ورود کد لایسنس
               </Link>
             </>

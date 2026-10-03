@@ -200,7 +200,7 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
           onFocus={() => { if (data) setOpen(true); }}
           onKeyDown={onKeyDown}
           placeholder={compact ? 'جست‌وجو… (Ctrl+K)' : 'جست‌وجو در سریال، پارت‌نامبر، پروژه، کارشناس و…'}
-          className={`input !pr-10 ${compact ? '!min-h-[36px] !py-1.5' : ''}`}
+          className={`input pr-10 ${compact ? 'min-h-[36px] py-1.5' : ''}`}
           dir="auto"
         />
         {busy && (
@@ -220,7 +220,7 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
             <button
               type="button"
               onClick={() => setTypeFilter('')}
-              className={`chip !px-2 !py-0.5 text-[11px] ${!typeFilter ? 'chip-active' : 'chip-default opacity-70 hover:opacity-100'}`}
+              className={`chip px-2 py-0.5 text-[11px] ${!typeFilter ? 'chip-active' : 'chip-default opacity-70 hover:opacity-100'}`}
             >
               همه{data.type_counts ? ` (${toFa(Object.values(data.type_counts).reduce((a: number, b) => a + (b || 0), 0))})` : ''}
             </button>
@@ -232,7 +232,7 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
                   key={tp}
                   type="button"
                   onClick={() => setTypeFilter(typeFilter === tp ? '' : tp)}
-                  className={`chip !px-2 !py-0.5 text-[11px] ${typeFilter === tp ? 'chip-active' : 'chip-default opacity-70 hover:opacity-100'} ${cnt === 0 ? 'opacity-40' : ''}`}
+                  className={`chip px-2 py-0.5 text-[11px] ${typeFilter === tp ? 'chip-active' : 'chip-default opacity-70 hover:opacity-100'} ${cnt === 0 ? 'opacity-40' : ''}`}
                   title={`فقط ${TYPE_LABELS[tp]}`}
                 >
                   {TYPE_ICONS[tp]} {TYPE_LABELS[tp]} ({toFa(cnt)})
@@ -251,7 +251,7 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
                   <p className="px-3 pt-2 pb-1 text-[11px] font-bold text-stone-500 dark:text-stone-400 flex items-center gap-2">
                     <span>{TYPE_ICONS[g.type]}</span>
                     {g.title}
-                    <span className="chip chip-default !px-2 !py-0 text-[10px]">{toFa(g.count)}</span>
+                    <span className="chip chip-default px-2 py-0 text-[10px]">{toFa(g.count)}</span>
                   </p>
                   {data.hits.filter((h) => h.type === g.type).map((h) => {
                     const idx = data.hits.indexOf(h);

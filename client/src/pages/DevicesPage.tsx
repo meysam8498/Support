@@ -163,7 +163,7 @@ export default function DevicesPage() {
       {filtered.length === 0 ? (
         <p className="text-stone-400 text-center py-12 dark:text-stone-500">{t.noData}</p>
       ) : (
-        <div className="card !p-0 overflow-hidden">
+        <div className="card p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

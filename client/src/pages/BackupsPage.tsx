@@ -186,8 +186,8 @@ export default function BackupsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={load} className="btn-ghost !min-h-[34px] text-xs" title="به‌روزرسانی فهرست">⟳</button>
-          <button type="button" onClick={runNow} disabled={busy} className="btn-primary !min-h-[34px] text-xs">
+          <button type="button" onClick={load} className="btn-ghost min-h-[34px] text-xs" title="به‌روزرسانی فهرست">⟳</button>
+          <button type="button" onClick={runNow} disabled={busy} className="btn-primary min-h-[34px] text-xs">
             {busy ? '...' : '🗄️ بکاپ دستی الان'}
           </button>
         </div>
@@ -240,7 +240,7 @@ export default function BackupsPage() {
       </div>
 
       {/* ---------- فهرست بکاپ‌ها ---------- */}
-      <div className="card !p-0 overflow-hidden">
+      <div className="card p-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 bg-surface-raised dark:bg-stone-800/80">
           <h2 className="text-sm font-bold text-stone-700 dark:text-stone-200">فهرست بکاپ‌ها</h2>
           <span className="chip chip-default fa-nums text-xs">{toFa(items.length)} فایل</span>
@@ -266,14 +266,14 @@ export default function BackupsPage() {
                     <td className="px-4 py-2.5 text-stone-600 dark:text-stone-300">{fmtSize(b.sizeBytes)}</td>
                     <td className="px-4 py-2.5 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button type="button" onClick={() => download(b.file)} className="btn-ghost !min-h-[26px] !px-2 text-[11px]" title="دانلود فایل بکاپ">
+                        <button type="button" onClick={() => download(b.file)} className="btn-ghost min-h-[26px] px-2 text-[11px]" title="دانلود فایل بکاپ">
                           ⬇ دانلود
                         </button>
                         <button
                           type="button"
                           onClick={() => openRestore(b)}
                           disabled={busy}
-                          className="btn-ghost !min-h-[26px] !px-2 text-[11px] !text-coral-dark dark:!text-coral-light"
+                          className="btn-ghost-danger min-h-[26px] px-2 text-[11px]"
                           title="بازیابی این بکاپ (دو مرحله‌ای با تأیید)"
                         >
                           ♻️ بازیابی
@@ -315,7 +315,7 @@ export default function BackupsPage() {
               type="button"
               onClick={confirmRestoreFinal}
               disabled={restoreBusy || restoreTyped.trim() !== 'بازیابی'}
-              className="btn-primary !bg-coral hover:!opacity-90"
+              className="btn-primary bg-coral hover:opacity-90"
             >
               {restoreBusy ? '...' : '♻️ تأیید و ری‌استارت سرور'}
             </button>

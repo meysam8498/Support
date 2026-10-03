@@ -83,7 +83,7 @@ export default function InlineEditCell({
       <textarea
         ref={areaRef}
         rows={2}
-        className={`input !py-1 !px-2 !text-xs ${widthClass} resize-y min-h-[2.2rem]`}
+        className={`input py-1 px-2 text-xs ${widthClass} resize-y min-h-[2.2rem]`}
         {...common}
         onChange={(e) => setDraft(e.target.value)}
       />
@@ -91,7 +91,7 @@ export default function InlineEditCell({
       <input
         ref={inputRef}
         type="text"
-        className={`input !py-1 !px-2 !text-sm ${widthClass}`}
+        className={`input py-1 px-2 text-sm ${widthClass}`}
         dir={numeric ? 'ltr' : undefined}
         {...common}
         onChange={(e) => setDraft(e.target.value)}

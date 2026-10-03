@@ -132,14 +132,14 @@ function ImportEditableList({
                 <button
                   type="button"
                   onClick={() => onResolve(it.pn, { mergeInto: it.similarTo!.id })}
-                  className={reso && typeof reso === 'object' ? 'chip chip-active cursor-pointer !text-[11px]' : 'chip chip-default cursor-pointer !text-[11px]'}
+                  className={reso && typeof reso === 'object' ? 'chip chip-active cursor-pointer text-[11px]' : 'chip chip-default cursor-pointer text-[11px]'}
                 >
                   ⧉ ادغام در {it.similarTo!.part_number_1}
                 </button>
                 <button
                   type="button"
                   onClick={() => onResolve(it.pn, 'new')}
-                  className={reso === 'new' ? 'chip chip-active cursor-pointer !text-[11px]' : 'chip chip-default cursor-pointer !text-[11px]'}
+                  className={reso === 'new' ? 'chip chip-active cursor-pointer text-[11px]' : 'chip chip-default cursor-pointer text-[11px]'}
                 >
                   ＋ مرجع جدید است
                 </button>
@@ -153,7 +153,7 @@ function ImportEditableList({
             {editable && (it.status !== 'skipped' || decided) ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                 <input
-                  className="input !min-h-0 !py-1 !text-[11px]"
+                  className="input min-h-0 py-1 text-[11px]"
                   value={edit.title ?? it.title}
                   onChange={(e) => onChange(it.pn, 'title', e.target.value)}
                   placeholder="عنوان…"
@@ -161,7 +161,7 @@ function ImportEditableList({
                   title="عنوان مرجع — قابل ویرایش"
                 />
                 <input
-                  className="input !min-h-0 !py-1 !text-[11px]"
+                  className="input min-h-0 py-1 text-[11px]"
                   value={edit.specs ?? it.specs}
                   onChange={(e) => onChange(it.pn, 'specs', e.target.value)}
                   placeholder="مشخصات…"
@@ -169,7 +169,7 @@ function ImportEditableList({
                   title="مشخصات فنی — قابل ویرایش"
                 />
                 <input
-                  className="input !min-h-0 !py-1 !text-[11px]"
+                  className="input min-h-0 py-1 text-[11px]"
                   value={edit.pn2 ?? it.pn2}
                   onChange={(e) => onChange(it.pn, 'pn2', e.target.value)}
                   placeholder="پارت‌نامبر ۲…"
@@ -529,7 +529,7 @@ export default function CatalogManager() {
         <div className="relative flex-1 min-w-[220px]">
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none">🔍</span>
           <input
-            className="input !pr-10"
+            className="input pr-10"
             placeholder="جست‌وجو در عنوان، پارت‌نامبر ۱ و ۲…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -541,13 +541,13 @@ export default function CatalogManager() {
           <>
             <button
               onClick={() => setShowAdd(true)}
-              className="btn-primary text-xs !min-h-[34px]"
+              className="btn-primary text-xs min-h-[34px]"
             >
               ＋ مرجع جدید
             </button>
             <button
               onClick={() => { setShowImport(true); setImportResult(null); setImportResolutions({}); setImportError(''); setImportEdits({}); }}
-              className="btn-secondary text-xs !min-h-[34px]"
+              className="btn-secondary text-xs min-h-[34px]"
               title="آپدیت گروهی کاتالوگ از فایل اکسل یا چسباندن لیست — بدون حذف هیچ رکوردی"
             >
               📥 آپدیت از اکسل / Paste
@@ -555,7 +555,7 @@ export default function CatalogManager() {
             <button
               onClick={openExportDialog}
               disabled={exportBusy}
-              className="btn-secondary text-xs !min-h-[34px]"
+              className="btn-secondary text-xs min-h-[34px]"
               title="صادرکردن مراجع (همه یا فیلترشده با جست‌وجو/پروژه) با همان قالب import — ویرایش در اکسل و بازبارگذاری مستقیم"
             >
               {exportBusy ? '...' : '📤 خروجی اکسل کاتالوگ'}
@@ -565,7 +565,7 @@ export default function CatalogManager() {
         <button
           onClick={merge}
           disabled={selected.size < 2 || busy}
-          className="btn-secondary text-xs !min-h-[34px]"
+          className="btn-secondary text-xs min-h-[34px]"
           title="ادغام مراجع انتخاب‌شده — قطعات همه به مرجع پرنصب‌تر منتقل می‌شوند"
         >
           ⧉ ادغام ({toFa(selected.size)})
@@ -579,7 +579,7 @@ export default function CatalogManager() {
       )}
 
       {/* جدول مراجع */}
-      <div className="card !p-0 overflow-hidden">
+      <div className="card p-0 overflow-hidden">
         {loading ? (
           <p className="p-8 text-center text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
         ) : rows.length === 0 ? (
@@ -848,14 +848,14 @@ export default function CatalogManager() {
           <div className="space-y-2 rounded-xl border border-stone-200 dark:border-stone-700 p-3">
             <p className="text-[11px] font-bold text-stone-600 dark:text-stone-300">فیلتر اختیاری:</p>
             <input
-              className="input !min-h-0 !py-1.5 !text-xs"
+              className="input min-h-0 py-1.5 text-xs"
               placeholder="جست‌وجو در عنوان و پارت‌نامبر‌ها…"
               value={exportQ}
               onChange={(e) => setExportQ(e.target.value)}
               dir="auto"
             />
             <select
-              className="input !min-h-0 !py-1.5 !text-xs"
+              className="input min-h-0 py-1.5 text-xs"
               value={exportProjectId}
               onChange={(e) => setExportProjectId(e.target.value)}
             >

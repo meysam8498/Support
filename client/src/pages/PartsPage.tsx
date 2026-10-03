@@ -201,7 +201,7 @@ export default function PartsPage() {
           <button
             type="button"
             onClick={() => setSearchParams({}, { replace: true })}
-            className="btn-ghost !min-h-[30px] text-xs"
+            className="btn-ghost min-h-[30px] text-xs"
           >
             ✕ حذف فیلتر
           </button>
@@ -219,7 +219,7 @@ export default function PartsPage() {
         <div className="relative">
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none">#</span>
           <input
-            className="input !pr-9 !w-[240px] fa-nums"
+            className="input pr-9 w-[240px] fa-nums"
             placeholder="جست‌وجوی فوری سریال…"
             value={serialSearch}
             onChange={(e) => setSerialSearch(e.target.value)}
@@ -298,7 +298,7 @@ export default function PartsPage() {
       {filtered.length === 0 && !(serialSearch.trim()) ? (
         <p className="text-stone-400 dark:text-stone-500 text-center py-12">{t.noData}</p>
       ) : !serialSearch.trim() ? (
-        <div className="overflow-x-auto card !p-0">
+        <div className="overflow-x-auto card p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-brand-50 dark:bg-brand-900/50 text-brand-800 dark:text-brand-200 border-b-2 border-dashed border-brand-100 dark:border-brand-800">
@@ -419,7 +419,7 @@ export default function PartsPage() {
                         {isDup && (
                           <button
                             onClick={() => setDescDialog({ pn, group: pnGroups.get(pn)! })}
-                            className="btn-secondary !min-h-[32px] !px-3 text-xs"
+                            className="btn-secondary min-h-[32px] px-3 text-xs"
                           >
                             انتخاب توضیح
                           </button>
@@ -626,7 +626,7 @@ function DescDialog({
               />
               <span className="text-brand-800 dark:text-brand-100 shrink-0">متن جدید:</span>
               <input
-                className="input !min-h-[32px] !py-1 text-sm flex-1"
+                className="input min-h-[32px] py-1 text-sm flex-1"
                 value={customMode ? customSpecs : ''}
                 onFocus={() => setCustomMode(true)}
                 onChange={(e) => setCustomSpecs(e.target.value)}

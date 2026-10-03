@@ -184,7 +184,8 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
     );
   }
 
-  const cellCls = 'w-full bg-transparent px-2 py-2 text-sm outline-none focus:bg-brand-50/70 dark:focus:bg-brand-900/25 rounded-md min-w-0';
+  // بدون bg پایه — رنگ خطای سلول (bg-red-50/bg-red-900) باید بتواند مستقیم اعمال شود
+  const cellCls = 'w-full px-2 py-2 text-sm outline-none focus:bg-brand-50/70 dark:focus:bg-brand-900/25 rounded-md min-w-0';
   const isLast = (i: number) => i === rows.length - 1;
   const isEmptyRow = (r: GridPartRow) => !r.title.trim() && !r.part_number_1.trim() && !r.part_number_2.trim() && !r.part_serial_number.trim() && !r.tech_specs.trim();
 
@@ -214,7 +215,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
         </div>
         <div className="flex items-center gap-2">
           <span className="chip chip-default fa-nums">{toFa(rows.length)} ردیف</span>
-          <button type="button" onClick={addRow} className="btn-ghost !min-h-[34px] text-xs">
+          <button type="button" onClick={addRow} className="btn-ghost min-h-[34px] text-xs">
             + ردیف (Ctrl+Enter)
           </button>
         </div>
@@ -228,7 +229,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
       )}
 
       {/* ---------- گرید ---------- */}
-      <div className="card !p-0 overflow-hidden">
+      <div className="card p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -294,7 +295,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
                   <td className="px-1 py-1">
                     <input
                       data-grid-cell
-                      className={`${cellCls} fa-nums ${isSerialDupe(r.part_serial_number) ? '!border-red-500 dark:!border-red-400 !bg-red-50 dark:!bg-red-900/20' : ''}`}
+                      className={`${cellCls} fa-nums ${isSerialDupe(r.part_serial_number) ? 'border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/20' : ''}`}
                       value={r.part_serial_number}
                       dir="ltr"
                       title={isSerialDupe(r.part_serial_number) ? 'این سریال تکراری است — هر سریال فقط یک بار در کل سامانه ثبت می‌شود' : ''}
@@ -426,7 +427,7 @@ function PastePreviewDialog({
               <div key={i} className="flex items-center gap-1.5 rounded-lg border border-brand-100 dark:border-brand-800 px-2 py-1">
                 <span className="text-[11px] text-stone-400 fa-nums">ستون {toFa(i + 1)}:</span>
                 <select
-                  className="input !min-h-[28px] !py-0.5 !px-1.5 text-xs w-auto"
+                  className="input min-h-[28px] py-0.5 px-1.5 text-xs w-auto"
                   value={f}
                   onChange={(e) => setMapping((m) => m.map((x, j) => (j === i ? e.target.value as ClipField : x)))}
                 >

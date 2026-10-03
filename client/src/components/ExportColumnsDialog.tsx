@@ -126,8 +126,8 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
             {toFa(selected.size)} از {toFa(COLUMNS.length)} ستون
           </span>
           <div className="flex gap-1.5">
-            <button type="button" onClick={selectAll} className="btn-ghost !min-h-[28px] !px-2.5 text-[11px]">همه</button>
-            <button type="button" onClick={selectNone} className="btn-ghost !min-h-[28px] !px-2.5 text-[11px]">هیچ‌کدام</button>
+            <button type="button" onClick={selectAll} className="btn-ghost min-h-[28px] px-2.5 text-[11px]">همه</button>
+            <button type="button" onClick={selectNone} className="btn-ghost min-h-[28px] px-2.5 text-[11px]">هیچ‌کدام</button>
           </div>
         </div>
 
@@ -177,8 +177,8 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
                   const r = jalaliRangePreset(preset);
                   if (r) { setDateFrom(r[0]); setDateTo(r[1]); }
                 }}
-                className="chip chip-default cursor-pointer !text-[11px]"
-                title={`تنظیم خودکار بازه: ${label}`}
+                className="chip chip-default cursor-pointer text-[11px]"
+              title={`تنظیم خودکار بازه: ${label}`}
               >
                 {label}
               </button>
@@ -187,7 +187,7 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
               <button
                 type="button"
                 onClick={() => { setDateFrom(''); setDateTo(''); }}
-                className="chip chip-default cursor-pointer !text-[11px] !text-coral-dark dark:!text-coral-light"
+                className="chip cursor-pointer text-[11px] border border-transparent bg-transparent text-coral-dark hover:bg-surface-raised dark:text-coral-light"
                 title="پاک کردن بازه"
               >
                 ✕ پاک کردن

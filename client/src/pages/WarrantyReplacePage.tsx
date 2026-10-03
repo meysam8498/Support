@@ -238,7 +238,7 @@ export default function WarrantyReplacePage() {
                       <span className="font-medium text-stone-900 dark:text-stone-100">
                         {d.device_type_name || '—'} · {d.brand_name || ''} {d.device_model_name || ''}
                       </span>
-                      <span className={`chip ${active ? 'chip-active' : 'chip-default'} !px-2.5 !py-0.5 text-[11px]`}>
+                      <span className={`chip ${active ? 'chip-active' : 'chip-default'} px-2.5 py-0.5 text-[11px]`}>
                         {t.partsOfDevice}: {toFa(d.parts_count || 0)}
                       </span>
                     </div>

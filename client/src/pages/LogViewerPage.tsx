@@ -204,7 +204,7 @@ export default function LogViewerPage() {
               <input
                 id="log-token"
                 type={showToken ? 'text' : 'password'}
-                className="input !pl-10 font-mono"
+                className="input pl-10 font-mono"
                 dir="ltr"
                 autoComplete="off"
                 placeholder="X-Support-Token"
@@ -287,13 +287,13 @@ export default function LogViewerPage() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => fetchLogs()} className="btn-secondary !min-h-[32px] text-xs" disabled={loading}>
+              <button type="button" onClick={() => fetchLogs()} className="btn-secondary min-h-[32px] text-xs" disabled={loading}>
                 ↻ تازه‌سازی
               </button>
-              <button type="button" onClick={copyAll} className="btn-ghost !min-h-[32px] text-xs">
+              <button type="button" onClick={copyAll} className="btn-ghost min-h-[32px] text-xs">
                 {copied ? '✓ کپی شد' : '📋 کپی'}
               </button>
-              <button type="button" onClick={saveTxt} className="btn-ghost !min-h-[32px] text-xs">
+              <button type="button" onClick={saveTxt} className="btn-ghost min-h-[32px] text-xs">
                 💾 ذخیره‌ی فایل
               </button>
             </div>
@@ -325,7 +325,7 @@ export default function LogViewerPage() {
                 <input
                   id="log-search"
                   type="text"
-                  className="input !py-1.5 !pl-9 text-xs"
+                  className="input py-1.5 pl-9 text-xs"
                   placeholder="جست‌وجو در پیام‌ها…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -344,7 +344,7 @@ export default function LogViewerPage() {
                     setLevelFilter('all');
                     setQuery('');
                   }}
-                  className="btn-ghost !min-h-[30px] text-xs"
+                  className="btn-ghost min-h-[30px] text-xs"
                 >
                   ✕ پاک‌کردن فیلترها
                 </button>
