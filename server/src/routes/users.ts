@@ -35,7 +35,9 @@ const updateSchema = z.object({
   active: z.number().int().min(0).max(1).optional(),
 });
 
-const resetPasswordSchema = z.object({ password: passwordSchema });
+// فیلد new_password — هم‌نام با بدنه‌ای که کلاینت (UsersPage) می‌فرستد؛ نام قبلی «password»
+// باعث ۴۰۰ همیشگی («رمز عبور الزامی است.») روی بازنشانی رمز از UI بود
+const resetPasswordSchema = z.object({ new_password: passwordSchema });
 
 /** GET /api/users — فهرست همه‌ی کاربران (بدون هش رمز) */
 router.get('/', (_req, res) => {
@@ -110,7 +112,7 @@ router.post('/:id/reset-password', (req, res) => {
   const id = Number(req.params.id);
   const exists = getDb().prepare(`SELECT id FROM users WHERE id = ?`).get(id);
   if (!exists) return res.status(404).json({ error: 'کاربر یافت نشد.' });
-  getDb().prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(hashPassword(parsed.data.password), id);
+  getDb().prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(hashPassword(parsed.data.new_password), id);
   res.json({ ok: true });
 });
 
