@@ -175,7 +175,7 @@ export default function DashboardPage() {
   if (loading)
     return (
       <div className="max-w-[1200px] mx-auto">
-        <div className="h-40 rounded-xl bg-surface-card border border-stone-300 dark:border-stone-700 animate-pulse" />
+        <div className="h-40 rounded-xl bg-surface-card border border-stone-300 dark:bg-indigo-950/40 dark:border-indigo-500/20 animate-pulse" />
       </div>
     );
 
