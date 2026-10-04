@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 import { t } from '../i18n/fa';
 import GlobalSearchBox from './GlobalSearchBox';
 import LicenseBadge from './LicenseBadge';
+import Alert from './Alert';
 import { api } from '../api/api';
 
 interface NavItem {
@@ -271,14 +272,15 @@ export default function Layout() {
         )}
       </header>
 
-      {/* بنر ثابت سرور پشتیبانی — در همه‌ی صفحات (۱.۲۵) */}
+      {/* بنر ثابت سرور پشتیبانی — پیام خنثی/راهنما → variant info (بدون رنگ فوریت) */}
       {supportOnly && (
         <div
-          role="status"
-          className="shrink-0 z-10 bg-gold/15 border-b border-gold/40 px-4 py-1.5 text-center text-xs font-semibold text-gold-dark dark:text-gold-light"
+          className="shrink-0 z-10 px-4 pt-2"
           title="این استقرار با SUPPORT_ONLY=1 اجرا شده — داده‌ی مشتری اینجا نگه‌داری نمی‌شود"
         >
-          🛟 سرور پشتیبانی — این سامانه فقط برای بررسی ایرادها و ساخت کد لایسنس است؛ داده‌ی مشتری اینجا نگه‌داری نمی‌شود.
+          <Alert variant="info">
+            سرور پشتیبانی — این سامانه فقط برای بررسی ایرادها و ساخت کد لایسنس است؛ داده‌ی مشتری اینجا نگه‌داری نمی‌شود.
+          </Alert>
         </div>
       )}
 

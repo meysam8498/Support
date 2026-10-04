@@ -225,7 +225,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
         <Alert variant="danger">{error}</Alert>
       )}
       {okMsg && (
-        <Alert variant="success">{okMsg} — در حال بازگشت به تجهیز…</Alert>
+        <Alert variant="pending">{okMsg} — در حال بازگشت به تجهیز…</Alert>
       )}
 
       {/* ---------- گرید ---------- */}

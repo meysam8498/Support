@@ -538,7 +538,7 @@ export default function SerialImportPage() {
 
           {/* توضیحات چندگانه — برای انتخاب توضیح درست */}
           {(result!.descConflicts?.length ?? 0) > 0 && (
-            <Alert variant="warning">
+            <Alert variant="info">
               توضیحات متفاوت برای یک پارت‌نامبر ({toFa(result!.descConflicts!.length)}): همگی در
               فیلد «مشخصات فنی» ذخیره شدند — در فهرست قطعات توضیح درست را انتخاب کنید.
               <ul className="space-y-1 text-xs mt-2">
@@ -635,7 +635,7 @@ function PreviewPanel({ p }: { p: ImportPreview }) {
 
       {/* پیشنهاد مرجع کاتالوگ — پارت‌نامبرهای ناشناس با اطلاعات فایل */}
       {p.catalogSuggestions.length > 0 && (
-        <Alert variant="warning">
+        <Alert variant="info">
           🧩 پیشنهاد مرجع کاتالوگ ({toFa(p.catalogSuggestions.length)} پارت‌نامبر ناشناس):
           {' '}با ثبت این فایل، مراجع زیر ساخته می‌شوند تا اطلاعات همه‌ی قطعات هم‌پارت‌نامبر یکسان بماند.
           <ul className="space-y-1.5 mt-2">
@@ -658,7 +658,7 @@ function PreviewPanel({ p }: { p: ImportPreview }) {
       )}
 
       {p.warnings.length > 0 && (
-        <Alert variant="warning">
+        <Alert variant="info">
           <ul className="space-y-1">
             {p.warnings.map((w) => (
               <li key={w}>⚠ {w}</li>

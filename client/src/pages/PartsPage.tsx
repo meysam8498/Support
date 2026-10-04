@@ -269,7 +269,7 @@ export default function PartsPage() {
       {pageError && <Alert variant="danger" className="mb-3">{pageError}</Alert>}
 
       {dupPns.size > 0 && !dupOnly && (
-        <Alert variant="warning">
+        <Alert variant="info">
           {toFa(dupPns.size)} پارت‌نامبر با بیش از یک رکورد یافت شد — با فیلتر «فقط تکراری‌ها» بررسی و
           توضیح درست را انتخاب کنید.
         </Alert>
