@@ -4,8 +4,8 @@
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
 // ----------------------------------------------------------------
 // استفاده:
-//   node scripts/smoke-test.mjs                          # localhost:4000
-//   BASE=http://localhost:4000 node scripts/smoke-test.mjs
+//   node scripts/smoke-test.mjs                          # localhost:4000؛ اگر سروری نبود خودش سرور temp بالا می‌آورد
+//   BASE=http://localhost:4000 node scripts/smoke-test.mjs   # روی سرور در حال اجرا
 //   # چرخه‌ی کامل کد لایسنس: صدور خودکار + بررسی/فعال‌سازی/replay/جعلی (مناسب پیش از release):
 //   node scripts/smoke-test.mjs --issue [--plan year] [--code-days 1] [--grouped]
 //   # با کد لایسنس آماده (تست فعال‌سازی — پایان تست، وضعیت برمی‌گردد):
@@ -26,18 +26,66 @@
 // خروجی: ✓/✗ گام‌به‌گام + کد خروج 0/1 (مناسب CI و اجرای پیش از publish)
 // ============================================================
 
-import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync, spawn } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 
-const BASE = (process.env.BASE || 'http://localhost:4000').replace(/\/$/, '');
+let BASE = (process.env.BASE || 'http://localhost:4000').replace(/\/$/, '');
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 const argv = process.argv.slice(2);
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** متن ثابت ۴۰۲ — عیناً UPGRADE_402_FALLBACK در client/src/lib/upgrade.ts؛ هر تغییری باید هم‌زمان در هر دو سمت انجام شود */
-const UPGRADE_402_FALLBACK = 'سقف نسخه‌ی آزمایشی پر شده است — برای ادامه، سامانه را ارتقا دهید.';
+/** متن ۴۰۲ از منبع واحد مشترک (shared/app-strings.json) — سرور و کلاینت هر دو از همین می‌خوانند */
+const SHARED_STRINGS = JSON.parse(readFileSync(join(ROOT, 'shared', 'app-strings.json'), 'utf8'));
+const UPGRADE_402_FALLBACK = SHARED_STRINGS.license.upgrade402;
+
+// ─────────── سرور موقت — اگر سروری در BASE نبود، مثل logs-test خودش بالا می‌آید ───────────
+let tempServer = null;
+const TSX = join(ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+const SERVER_ENTRY = join(ROOT, 'server', 'src', 'index.ts');
+const TEMP_PORT = 4139;
+
+async function tryHealth(base, timeoutMs = 1500) {
+  try {
+    const r = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    return r.ok;
+  } catch { return false; }
+}
+
+if (!(await tryHealth(BASE))) {
+  console.log(`  ℹ سروری در ${BASE} نیست — سرور موقت روی پورت ${TEMP_PORT} بالا می‌آید (در پایان خاموش و پاک می‌شود).`);
+  const dir = mkdtempSync(join(tmpdir(), 'smoke-test-'));
+  const proc = spawn(process.execPath, [TSX, SERVER_ENTRY], {
+    env: { ...process.env, DB_PATH: join(dir, 'app.db'), BACKUP_DIR: join(dir, 'bk'), PORT: String(TEMP_PORT) },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const out = [];
+  proc.stdout.on('data', (d) => out.push(d));
+  proc.stderr.on('data', (d) => out.push(d));
+  process.on('exit', () => { try { proc.kill(); } catch { /* بی‌صدا */ } });
+  const deadline = Date.now() + 60_000;
+  let up = false;
+  while (Date.now() < deadline) {
+    if (proc.exitCode !== null) {
+      console.error(`✗ سرور موقت زود بسته شد:\n${out.join('').slice(-600)}`);
+      rmSync(dir, { recursive: true, force: true });
+      process.exit(1);
+    }
+    if (await tryHealth(`http://localhost:${TEMP_PORT}`, 1200)) { up = true; break; }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  if (!up) {
+    console.error('✗ سرور موقت ظرف ۶۰ ثانیه بالا نیامد.');
+    try { proc.kill(); } catch { /* بی‌صدا */ }
+    rmSync(dir, { recursive: true, force: true });
+    process.exit(1);
+  }
+  BASE = `http://localhost:${TEMP_PORT}`;
+  tempServer = { proc, dir };
+}
 
 // کد لایسنس برای گام فعال‌سازی — --issue (صدور خودکار) / فایل / ENV
 let LICENSE_CODE = process.env.LICENSE_CODE || '';
@@ -280,6 +328,40 @@ if (LICENSE_CODE) {
   console.log('  ℹ بدون --code-file/«LICENSE_CODE» — تست فعال‌سازی کد skip شد.');
 }
 
+// ─────────── ۴ب) ساخت کاربر + بازنشانی رمز — هم‌نامی فیلد سرور/کلاینت (رگرسیون db9afcf) ───────────
+// بدنه‌ها عیناً همان فیلدهایی که کلاینت (UsersPage) می‌فرستد: create {username,password,full_name,email,role}
+// و بازنشانی {new_password} — رگرسیون ناهم‌نامی (سرور «password» می‌خواست) دیگر بی‌صدا تکرار نمی‌شود.
+console.log('\n— ساخت کاربر و بازنشانی رمز (هم‌نامی سرور/کلاینت)');
+const newUsername = 'smoke-user';
+const createdUser = await api('POST', '/api/users', {
+  token: TOKEN,
+  body: { username: newUsername, password: 'smoke-pass-1', full_name: 'کاربر آزمون smoke', email: '', role: 'viewer' },
+});
+ok('POST /api/users → 201 (بدنه‌ی عین کلاینت)', createdUser.status === 201 && typeof createdUser.data?.id === 'number', `status=${createdUser.status} ${JSON.stringify(createdUser.data).slice(0, 120)}`);
+const uid = createdUser.data?.id;
+
+const shortPass = await api('POST', '/api/users', {
+  token: TOKEN,
+  body: { username: 'smoke-short', password: 'abc', full_name: 'کوتاه', role: 'viewer' },
+});
+ok('رمز کوتاه → 400 با پیام منبع واحد', shortPass.status === 400 && shortPass.data?.error === SHARED_STRINGS.credentials.msgPasswordShort, `status=${shortPass.status} ${JSON.stringify(shortPass.data).slice(0, 120)}`);
+
+if (uid) {
+  const loginNew = await api('POST', '/api/auth/login', { body: { username: newUsername, password: 'smoke-pass-1' } });
+  ok('ورود کاربر تازه → 200', loginNew.status === 200 && !!loginNew.data?.token, `status=${loginNew.status}`);
+
+  const reset = await api('POST', `/api/users/${uid}/reset-password`, { token: TOKEN, body: { new_password: 'smoke-pass-2' } });
+  ok('بازنشانی رمز با new_password → 200', reset.status === 200, `status=${reset.status} ${JSON.stringify(reset.data).slice(0, 120)}`);
+
+  const loginReset = await api('POST', '/api/auth/login', { body: { username: newUsername, password: 'smoke-pass-2' } });
+  ok('ورود با رمز جدید → 200', loginReset.status === 200 && !!loginReset.data?.token, `status=${loginReset.status}`);
+  const loginOld = await api('POST', '/api/auth/login', { body: { username: newUsername, password: 'smoke-pass-1' } });
+  ok('رمز قدیمی → 401', loginOld.status === 401, `status=${loginOld.status}`);
+
+  const delUser = await api('DELETE', `/api/users/${uid}`, { token: TOKEN });
+  ok('حذف کاربر آزمون', delUser.status === 200 || delUser.status === 404, `status=${delUser.status}`);
+}
+
 // ─────────── ۵) برگشت وضعیت اولیه ───────────
 console.log('\n— پاک‌سازی و برگشت وضعیت');
 if (prevPlan === 'trial') {
@@ -305,4 +387,10 @@ ok(`حذف تجهیزات تست (${created.length} عدد)`, delFail === 0, `${
 // ─────────── جمع‌بندی ───────────
 console.log('\n' + '─'.repeat(60));
 console.log(`${fail === 0 ? '✅' : '❌'} نتیجه: ${pass} موفق، ${fail} ناموفق\n`);
+// خاموشی و پاک‌سازی سرور موقت (اگر خودمان بالا آورده باشیم)
+if (tempServer) {
+  try { tempServer.proc.kill(); } catch { /* بی‌صدا */ }
+  try { rmSync(tempServer.dir, { recursive: true, force: true }); } catch { /* بی‌صدا */ }
+  console.log('ℹ سرور موقت خاموش و پاک شد.');
+}
 process.exit(fail === 0 ? 0 : 1);
