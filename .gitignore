@@ -6,11 +6,8 @@ server/dist/
 client/dist/
 
 # Database (local data, must not be committed)
-server/data/*.db
-server/data/*.db-journal
-server/data/*.db-shm
-server/data/*.db-wal
-server/data/*.sqlite
+# کل پوشه‌ی داده‌ی محلی — شامل DB واقعی و پشتیبان‌ها؛ هیچ‌چیز از server/data کامیت نمی‌شود
+server/data/
 
 # Logs
 *.log
