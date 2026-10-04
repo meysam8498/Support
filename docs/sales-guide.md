@@ -30,6 +30,12 @@
 node scripts/make-license-code.mjs --plan <plan> --to "نام دارنده" --email admin@customer.ir --note "فاکتور ..." [--code-days 180] [--grouped] [--out file.txt]
 ```
 
+معادل npm (پایدار در همه‌ی سیستم‌عامل‌ها — اجرای مستقیم فایل با دکمه‌ی Run در افزونه‌هایی مثل Code Runner روی ویندوز سطر shebang `#!/usr/bin/env` را می‌شکند و «The system cannot find the path specified» می‌دهد؛ از ترمینال یا npm استفاده کنید):
+
+```bash
+npm run license:issue -- --plan <plan> --to "نام دارنده" --email admin@customer.ir --note "فاکتور ..." [--code-days 180] [--grouped] [--out file.txt]
+```
+
 | فلگ | کاربرد | پیش‌فرض |
 |------|--------|---------|
 | `--plan` | `month` \| `quarter` \| `half-year` \| `year` \| `lifetime` | `year` |
