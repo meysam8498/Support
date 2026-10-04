@@ -6,6 +6,7 @@
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
 // ============================================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import { getWithHeaders } from '../api/api';
 import { gregorianToJalali, stripLeadingZeros, toFa } from '../lib/date';
@@ -45,6 +46,37 @@ function formatLogTime(iso: string): string {
   return `${toFa(jalali)} ${toFa(`${hh}:${mm}:${ss}`)}`;
 }
 
+/** یکسان‌سازی ارقام فارسی/عربی → لاتین — جست‌وجو به قالب ارقام حساس نباشد */
+const toEnDigits = (s: string) =>
+  s
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+const normSearch = (s: string) => toEnDigits(s.toLowerCase());
+
+/** هایلایت بخش منطبق با عبارت جست‌وجو در پیام — پس‌زمینه‌ی زرد در هر دو تم */
+function Highlight({ text, q }: { text: string; q: string }) {
+  const query = q.trim();
+  if (!query) return <>{text}</>;
+  const lower = text.toLowerCase();
+  const ql = query.toLowerCase();
+  const parts: React.ReactNode[] = [];
+  let i = 0;
+  let idx = lower.indexOf(ql);
+  let k = 0;
+  while (idx !== -1 && k < 100) {
+    if (idx > i) parts.push(text.slice(i, idx));
+    parts.push(
+      <mark key={k++} className="bg-yellow-200 text-stone-900 dark:bg-yellow-400/30 dark:text-yellow-50 rounded-sm px-0.5">
+        {text.slice(idx, idx + ql.length)}
+      </mark>,
+    );
+    i = idx + ql.length;
+    idx = lower.indexOf(ql, i);
+  }
+  if (i < text.length) parts.push(text.slice(i));
+  return <>{parts}</>;
+}
+
 /** خطا → پیام فارسی روشن بر اساس کد وضعیت */
 function describeError(status: number | undefined, raw: string): string {
   if (status === 401) {
@@ -69,8 +101,13 @@ export default function LogViewerPage() {
   const [lastAt, setLastAt] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   // فیلترهای نمایشی — فقط سمت کلاینت روی entries اعمال می‌شوند (درخواست سرور تغییری نمی‌کند)
-  const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
-  const [query, setQuery] = useState('');
+  // نگه‌داری در query string — لینک قابل اشتراک + حفظ با بازگشت/رفرش صفحه
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlLevel = searchParams.get('level') as LevelFilter | null;
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>(
+    urlLevel && LEVEL_FILTERS.some((f) => f.value === urlLevel) ? urlLevel : 'all',
+  );
+  const [query, setQuery] = useState(searchParams.get('q') ?? '');
 
   // مقادیر جاری در ref — تا interval تازه‌سازی خودکار همیشه آخرین مقدارها را ببیند
   const tokenRef = useRef(token);
@@ -124,6 +161,17 @@ export default function LogViewerPage() {
     return () => clearInterval(id);
   }, [auto, fetchLogs]);
 
+  /** نوشتن فیلترها در URL — پارامتر خالی حذف می‌شود؛ replace تا history شلوغ نشود */
+  const syncFilters = useCallback(
+    (level: LevelFilter, q: string) => {
+      const p: Record<string, string> = {};
+      if (level !== 'all') p.level = level;
+      if (q.trim()) p.q = q.trim();
+      setSearchParams(p, { replace: true });
+    },
+    [setSearchParams],
+  );
+
   const onTokenChange = (v: string) => {
     setToken(v);
     const trimmed = v.trim();
@@ -131,10 +179,34 @@ export default function LogViewerPage() {
     else localStorage.removeItem(TOKEN_KEY);
   };
 
+  const entries = data?.entries ?? [];
+
+  // فیلتر نمایشی: سطح + جست‌وجو در پیام، زمان نمایشی شمسی و سطح (بی‌حساس به بزرگی حروف و قالب ارقام)
+  const trimmedQuery = query.trim();
+  const nq = normSearch(trimmedQuery);
+  const levelLabel = (l: LogEntry['level']) => (l === 'error' ? 'خطا' : 'اطلاع');
+  const visible = entries.filter((e) => {
+    if (levelFilter !== 'all' && e.level !== levelFilter) return false;
+    if (!nq) return true;
+    return (
+      normSearch(e.msg).includes(nq) ||
+      normSearch(formatLogTime(e.t)).includes(nq) ||
+      normSearch(levelLabel(e.level)).includes(nq) ||
+      normSearch(e.level).includes(nq)
+    );
+  });
+  const filtersActive = levelFilter !== 'all' || trimmedQuery !== '';
+
+  // کپی/ذخیره فقط سطرهای فیلترشده — نه کل لاگ
   const toText = () =>
-    (data?.entries ?? [])
+    visible
       .map((e) => `[${formatLogTime(e.t)}] [${e.level}] ${e.msg}`)
       .join('\n');
+
+  // شمارش هر سطح روی کل لاگ‌های خوانده‌شده — برای چیپ‌های فیلتر
+  const infoCount = entries.filter((e) => e.level === 'info').length;
+  const errorCount = entries.filter((e) => e.level === 'error').length;
+  const countOf = (v: LevelFilter) => (v === 'all' ? entries.length : v === 'info' ? infoCount : errorCount);
 
   const copyAll = async () => {
     if (!data) return;
@@ -157,17 +229,6 @@ export default function LogViewerPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const entries = data?.entries ?? [];
-
-  // فیلتر نمایشی: سطح (اطلاع/خطا) + جست‌وجوی متنی در پیام‌ها (بدون حساسیت به بزرگی حروف)
-  const trimmedQuery = query.trim().toLowerCase();
-  const visible = entries.filter(
-    (e) =>
-      (levelFilter === 'all' || e.level === levelFilter) &&
-      (!trimmedQuery || e.msg.toLowerCase().includes(trimmedQuery)),
-  );
-  const filtersActive = levelFilter !== 'all' || trimmedQuery !== '';
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -307,7 +368,7 @@ export default function LogViewerPage() {
                   <button
                     key={f.value}
                     type="button"
-                    onClick={() => setLevelFilter(f.value)}
+                    onClick={() => { setLevelFilter(f.value); syncFilters(f.value, query); }}
                     aria-pressed={levelFilter === f.value}
                     className={`chip ${
                       levelFilter === f.value
@@ -317,7 +378,7 @@ export default function LogViewerPage() {
                         : 'chip-default'
                     }`}
                   >
-                    {f.label}
+                    {f.label} <span className="fa-nums opacity-80">({toFa(countOf(f.value))})</span>
                   </button>
                 ))}
               </div>
@@ -326,9 +387,9 @@ export default function LogViewerPage() {
                   id="log-search"
                   type="text"
                   className="input py-1.5 pl-9 text-xs"
-                  placeholder="جست‌وجو در پیام‌ها…"
+                  placeholder="جست‌وجو در پیام، زمان یا سطح…"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => { setQuery(e.target.value); syncFilters(levelFilter, e.target.value); }}
                 />
                 <span
                   aria-hidden
@@ -343,6 +404,7 @@ export default function LogViewerPage() {
                   onClick={() => {
                     setLevelFilter('all');
                     setQuery('');
+                    syncFilters('all', '');
                   }}
                   className="btn-ghost min-h-[30px] text-xs"
                 >
@@ -377,7 +439,7 @@ export default function LogViewerPage() {
                     {e.level === 'error' ? 'خطا' : 'اطلاع'}
                   </span>
                   <span className="min-w-0 break-all text-stone-700 dark:text-stone-200" dir="auto">
-                    {e.msg}
+                    <Highlight text={e.msg} q={trimmedQuery} />
                   </span>
                 </li>
               ))}
