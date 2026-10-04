@@ -82,7 +82,7 @@ export default function Layout() {
   };
 
   const linkCls = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
+    `flex items-center gap-1.5 px-2.5 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
       isActive
         ? 'bg-brand-500 text-white font-semibold shadow-glow'
         : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-white/5'
@@ -104,8 +104,8 @@ export default function Layout() {
             </span>
           </NavLink>
 
-          {/* لینک‌های اصلی — دسکتاپ */}
-          <nav className="hidden lg:flex items-center gap-1 flex-1">
+          {/* لینک‌های اصلی — فقط نمایشگر پهن (xl+)؛ در عرض‌های ۱۰۲۴–۱۲۸۰ منوی ۷گانه جا نمی‌شود و سرریز می‌کرد */}
+          <nav className="hidden xl:flex items-center gap-1 flex-1">
             {mainItems.map((item) => (
               <NavLink key={item.to} to={item.to} end={item.to === '/'} className={linkCls} title={item.label}>
                 <span className="text-base leading-none">{item.icon}</span>
@@ -114,10 +114,10 @@ export default function Layout() {
             ))}
           </nav>
 
-          {/* همبرگر — موبایل/تبلت */}
+          {/* همبرگر — موبایل/تبلت/لپ‌تاپ متوسط (تا زیر xl) */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden btn-ghost min-h-[36px] px-2.5 shrink-0"
+            className="xl:hidden btn-ghost min-h-[36px] px-2.5 shrink-0"
             aria-label="منو"
           >
             {mobileOpen ? '✕' : '☰'}
@@ -238,7 +238,7 @@ export default function Layout() {
 
         {/* منوی موبایل — کشویی زیر هدر */}
         {mobileOpen && (
-          <nav className="lg:hidden border-t border-stone-200 dark:border-indigo-500/20 px-3 py-2 grid grid-cols-2 gap-1">
+          <nav className="xl:hidden border-t border-stone-200 dark:border-indigo-500/20 px-3 py-2 grid grid-cols-2 sm:grid-cols-3 gap-1">
             {mainItems.map((item) => (
               <NavLink
                 key={item.to}
