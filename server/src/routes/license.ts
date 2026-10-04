@@ -18,7 +18,8 @@ import { todayGregorian, todayJalali, addMonthsToJalali, jalaliToGregorianISO, g
 import { verifyLicenseCode } from '../lib/licenseCode.js';
 import { createSign, randomUUID } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const router = Router();
 
@@ -292,14 +293,27 @@ router.put('/', requireRole('admin'), (req: Request, res: Response) => {
 
 // ============================================================
 // صدور کد لایسنس در پنل (۱.۲۱) — ساخت کد از داخل سامانه و تحویل به مشتری
-// مسیر کلید: ENV LICENSE_ISSUE_KEY → keys/license_private.pem کنار محل اجرا.
+// مسیر کلید (به‌ترتیب): ENV LICENSE_ISSUE_KEY (محتوای PEM یا مسیر فایل)
+//   → keys/license_private.pem کنار محل اجرا (CWD) → keys/ ریشه‌ی پروژه
+//   (نسبت به خود ماژول — تا اجرای سرویس/میان‌بر/داکر/«cd server» کلیدِ موجود را گم نکند).
 // کلید خصوصی نزد صادرکننده است؛ اگر نبود، صدور از پنل خطای راهنمادار می‌دهد
 // (مسیر scripts/make-license-code.mjs همچنان مستقل کار می‌کند).
 // ============================================================
+function issueKeyCandidates(): string[] {
+  const here = dirname(fileURLToPath(import.meta.url)); // server/src/routes یا server/dist/routes
+  return [
+    join(process.cwd(), 'keys', 'license_private.pem'),
+    join(here, '..', '..', '..', 'keys', 'license_private.pem'), // ریشه‌ی پروژه — در src و dist یکسان
+  ];
+}
+
 function loadIssuePrivateKey(): string | null {
-  const env = process.env.LICENSE_ISSUE_KEY;
-  if (env && env.includes('PRIVATE KEY')) return env.replace(/\\n/g, '\n');
-  for (const p of [join(process.cwd(), 'keys', 'license_private.pem')]) {
+  const env = process.env.LICENSE_ISSUE_KEY?.trim();
+  if (env) {
+    if (env.includes('PRIVATE KEY')) return env.replace(/\\n/g, '\n');
+    try { if (existsSync(env)) return readFileSync(env, 'utf8'); } catch { /* مسیر نامعتبر — برو سراغ فایل‌ها */ }
+  }
+  for (const p of issueKeyCandidates()) {
     try { if (existsSync(p)) return readFileSync(p, 'utf8'); } catch { /* */ }
   }
   return null;
@@ -328,8 +342,10 @@ router.post('/issue', requireRole('admin'), (req: Request, res: Response) => {
   const b = parsed.data;
   const priv = loadIssuePrivateKey();
   if (!priv) {
+    const tried = issueKeyCandidates().join(' و ');
+    console.warn(`⚠ صدور لایسنس: کلید خصوصی پیدا نشد — جست‌وجو: ${tried} + ENV LICENSE_ISSUE_KEY (CWD=${process.cwd()})`);
     return res.status(503).json({
-      error: 'کلید خصوصی صدور روی این سرور نصب نیست — کد را با scripts/make-license-code.mjs صادر کنید یا فایل keys/license_private.pem را کنار محل اجرا بگذارید (LICENSE_ISSUE_KEY هم پذیرفته است).',
+      error: `کلید خصوصی صدور پیدا نشد — این مسیرها بررسی شد: ${tried} و متغیر LICENSE_ISSUE_KEY. فایل keys/license_private.pem را در ریشه‌ی پروژه یا کنار محل اجرا بگذارید، یا مسیر کامل فایل کلید را در LICENSE_ISSUE_KEY تنظیم کنید (صدور خط فرمان با scripts/make-license-code.mjs هم برقرار است).`,
       missing_key: true,
     });
   }

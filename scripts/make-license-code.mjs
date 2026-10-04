@@ -21,8 +21,9 @@
 //   • کلید خصوصی: keys/license_private.pem (در .gitignore — هرگز کامیت/توزیع نشود)
 // ============================================================
 import { generateKeyPairSync, createSign, createVerify, createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const argv = process.argv.slice(2);
 const opt = (name) => {
@@ -31,8 +32,12 @@ const opt = (name) => {
 };
 const has = (name) => argv.includes(name);
 
-const PRIV = join(process.cwd(), 'keys', 'license_private.pem');
-const PUB = join(process.cwd(), 'keys', 'license_public.pem');
+// keys/ کنار محل اجرا؛ اگر نبود keys/ ریشه‌ی پروژه (کنار خود اسکریپت) — تا اجرا از پوشه‌ی دیگر کلید موجود را گم نکند
+const ROOT = dirname(fileURLToPath(import.meta.url)); // <ریشه>/scripts
+const keysAt = (name) =>
+  existsSync(join(process.cwd(), 'keys', name)) ? join(process.cwd(), 'keys', name) : join(ROOT, '..', 'keys', name);
+const PRIV = keysAt('license_private.pem');
+const PUB = keysAt('license_public.pem');
 
 // ---------- gen-keys ----------
 if (has('--gen-keys')) {
@@ -45,6 +50,7 @@ if (has('--gen-keys')) {
     publicKeyEncoding: { type: 'spki', format: 'pem' },
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
   });
+  mkdirSync(dirname(PRIV), { recursive: true });
   writeFileSync(PRIV, privateKey);
   writeFileSync(PUB, publicKey);
   console.log('✓ کلیدها ساخته شدند:');
@@ -71,7 +77,7 @@ if (has('--verify')) {
 }
 
 // ---------- ledger: رجیستری محلی کدهای صادرشده (کنار کلید) ----------
-const LEDGER = join(process.cwd(), 'keys', 'license_ledger.jsonl');
+const LEDGER = join(dirname(PRIV), 'license_ledger.jsonl');
 function ledgerLoad() {
   if (!existsSync(LEDGER)) return [];
   return readFileSync(LEDGER, 'utf8').split('\n').filter(Boolean).map((l) => {
