@@ -1,0 +1,12 @@
+{
+  "_readme": "منبع واحد رشته‌ها و قوانین مشترک سرور/کلاینت — هر تغییری فقط همین‌جا؛ هر دو سمت از همین فایل می‌خوانند (سرور: server/src/lib/sharedStrings.ts — کلاینت: import مستقیم JSON در vite).",
+  "credentials": {
+    "minUsername": 2,
+    "minPassword": 4,
+    "msgUsernameShort": "نام کاربری حداقل ۲ نویسه است.",
+    "msgPasswordShort": "رمز عبور حداقل ۴ نویسه است."
+  },
+  "license": {
+    "upgrade402": "سقف نسخه‌ی آزمایشی پر شده است — برای ادامه، سامانه را ارتقا دهید."
+  }
+}

@@ -16,6 +16,7 @@ import { getDb } from '../db/db.js';
 import { requireRole } from '../middleware/auth.js';
 import { todayGregorian, todayJalali, addMonthsToJalali, jalaliToGregorianISO, gregorianToJalali } from '../lib/date.js';
 import { verifyLicenseCode } from '../lib/licenseCode.js';
+import { SHARED_STRINGS } from '../lib/sharedStrings.js';
 import { createSign, randomUUID } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -215,8 +216,8 @@ export function deviceLimitInfo(deviceCount?: number): DeviceLimitInfo {
   const limit_reached = enforceLimit && limit !== null && used >= limit;
   const message = is_trial && limit !== null
     ? (limit_reached
-      // عیناً UPGRADE_402_FALLBACK در client/src/lib/upgrade.ts — متن ثابت ارتقا، هم‌واژه با کلاینت
-      ? 'سقف نسخه‌ی آزمایشی پر شده است — برای ادامه، سامانه را ارتقا دهید.'
+      // منبع واحد مشترک — کلاینت (client/src/lib/upgrade.ts) از همان shared/app-strings.json می‌خواند
+      ? SHARED_STRINGS.license.upgrade402
       : null)
     : null;
   void licenseEnforce;

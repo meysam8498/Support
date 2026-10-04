@@ -5,9 +5,10 @@ import { t } from '../i18n/fa';
 import Modal from '../components/Modal';
 import Alert from '../components/Alert';
 import { useAuth } from '../context/AuthContext';
-// پیام‌ها/حداقل‌ها همگام با سرور (server/src/lib/validation.ts) — رشته‌های فارسی عیناً همان‌جا
-const MSG_USERNAME_SHORT = 'نام کاربری حداقل ۲ نویسه است.';
-const MSG_PASSWORD_SHORT = 'رمز عبور حداقل ۴ نویسه است.';
+// پیام‌ها/حداقل‌ها از منبع واحد مشترک با سرور (shared/app-strings.json)
+import appStrings from '../../../shared/app-strings.json';
+const MSG_USERNAME_SHORT = appStrings.credentials.msgUsernameShort;
+const MSG_PASSWORD_SHORT = appStrings.credentials.msgPasswordShort;
 
 /** رنگ بج هر نقش */
 const ROLE_CLS: Record<Role, string> = {

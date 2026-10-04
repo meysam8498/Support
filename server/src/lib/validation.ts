@@ -1,24 +1,24 @@
 // ============================================================
 // قوانین اعتبارسنجی مشترک سرور — منبع واحد قوانین اعتبارنامه‌ها
 // طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com
-// ⚠️ همگامی: این اعداد و پیام‌ها باید با گیت UX سمت کلاینت یکی بمانند
-// (client/src/pages/LoginPage.tsx — حداقل ۲ نویسه نام کاربری، ۴ نویسه رمز).
+// مقادیر و پیام‌ها از منبع واحد مشترک (shared/app-strings.json) می‌آیند که
+// کلاینت (LoginPage/UsersPage) هم از همان می‌خواند — همگامی دستی حذف شد.
 // نکته: لاگین عمداً فقط min(1) چک می‌کند (routes/auth.ts) — اعمال حداقل طول
 // روی «ورود» حساب‌های قدیمی با رمز کوتاه را قفل می‌کرد؛ قانون طول اینجا فقط
 // روی «ساخت/تغییر» اعتبارنامه اعمال می‌شود (ساخت کاربر، بازنشانی رمز).
 // ============================================================
 import { z } from 'zod';
+import { SHARED_STRINGS } from './sharedStrings.js';
 
-/** حداقل طول نام کاربری — همگام با LoginPage سمت کلاینت */
-export const MIN_USERNAME_LENGTH = 2;
-/** حداقل طول رمز عبور — همگام با LoginPage سمت کلاینت */
-export const MIN_PASSWORD_LENGTH = 4;
+const C = SHARED_STRINGS.credentials;
 
-// پیام‌ها عیناً همان رشته‌های LoginPage هستند (با ارقام فارسی) تا کاربر
-// در UI و از سرور همیشه یک پیام واحد ببیند. اگر ثابت بالا را تغییر دادید،
-// این دو رشته را هم هماهنگ کنید.
-export const MSG_USERNAME_SHORT = 'نام کاربری حداقل ۲ نویسه است.';
-export const MSG_PASSWORD_SHORT = 'رمز عبور حداقل ۴ نویسه است.';
+/** حداقل طول نام کاربری — از منبع واحد مشترک با کلاینت */
+export const MIN_USERNAME_LENGTH = C.minUsername;
+/** حداقل طول رمز عبور — از منبع واحد مشترک با کلاینت */
+export const MIN_PASSWORD_LENGTH = C.minPassword;
+
+export const MSG_USERNAME_SHORT = C.msgUsernameShort;
+export const MSG_PASSWORD_SHORT = C.msgPasswordShort;
 
 /** نام کاربری — فاصله‌های ابتدا/انتها حذف می‌شود؛ حداقل طول همگام با کلاینت */
 export const usernameSchema = z

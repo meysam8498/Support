@@ -25,6 +25,7 @@ RUN npm ci --workspaces --include-workspace-root
 # کپی کد منبع و بیلد
 COPY server ./server
 COPY client ./client
+COPY shared ./shared
 RUN npm run build -w server \
  && npm run build -w client
 
@@ -42,6 +43,8 @@ WORKDIR /app
 # artifact های بیلدشده (شامل dist/db/schema.sql که توسط copy-assets کپی می‌شود)
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/client/dist ./client/dist
+# منبع واحد رشته‌های مشترک سرور/کلاینت (server در اجرا می‌خواند)
+COPY shared ./shared
 
 # مسیر دیتای SQLite (به‌صورت volume نگه‌داری می‌شود تا داده‌ها ماندگار باشند)
 RUN mkdir -p /app/server/data

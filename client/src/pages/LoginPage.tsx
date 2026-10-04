@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { t } from '../i18n/fa';
 import Alert from '../components/Alert';
+import appStrings from '../../../shared/app-strings.json';
 
 interface FieldErrors {
   username?: string;
@@ -31,11 +32,12 @@ export default function LoginPage() {
     setError('');
 
     // ── اعتبارسنجی سمت کلاینت — پیام فارسی زیر هر فیلد، قبل از تماس با سرور ──
+    // حداقل طول‌ها و پیام‌ها از منبع واحد مشترک با سرور (shared/app-strings.json)
     const fe: FieldErrors = {};
     if (!username.trim()) fe.username = 'نام کاربری را وارد کنید.';
-    else if (username.trim().length < 2) fe.username = 'نام کاربری حداقل ۲ نویسه است.';
+    else if (username.trim().length < appStrings.credentials.minUsername) fe.username = appStrings.credentials.msgUsernameShort;
     if (!password) fe.password = 'رمز عبور را وارد کنید.';
-    else if (password.length < 4) fe.password = 'رمز عبور حداقل ۴ نویسه است.';
+    else if (password.length < appStrings.credentials.minPassword) fe.password = appStrings.credentials.msgPasswordShort;
     setFieldErrors(fe);
     if (Object.keys(fe).length > 0) return;
 
