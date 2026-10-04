@@ -179,6 +179,44 @@ export function migrateSchema(db: DatabaseSync): void {
     }
   }
 
+  // مهاجرت ۱.۲۷: بازسازی جدول users برای دیتابیس‌های قدیمی که CHECK نقش فقط
+  // ('admin', 'user') دارد — SQLite نمی‌تواند CHECK را ویرایش کند؛ بدون بازسازی،
+  // مهاجرت 'user'→'viewer' و ساخت کاربر با نقش warehouse/tech/viewer همیشه شکست می‌خورد.
+  try {
+    const usersSql = (db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='users'`).get() as { sql?: string } | undefined)?.sql;
+    if (usersSql && !usersSql.includes("'viewer'")) {
+      const target = ['id', 'username', 'password_hash', 'full_name', 'email', 'role', 'active', 'created_at'];
+      const cols = target.filter((c) => tableColumns(db, 'users').includes(c));
+      const selectList = cols.map((c) => (c === 'role' ? `CASE WHEN role = 'admin' THEN 'admin' ELSE 'viewer' END` : c)).join(', ');
+      const indexes = (db.prepare(`SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='users' AND sql IS NOT NULL`).all() as { sql: string }[]).map((r) => r.sql);
+      db.exec('PRAGMA foreign_keys = OFF');
+      try {
+        db.exec('BEGIN');
+        db.exec(`CREATE TABLE users_rebuild (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          username      TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          full_name     TEXT NOT NULL,
+          email         TEXT,
+          role          TEXT NOT NULL CHECK (role IN ('admin', 'warehouse', 'sales', 'tech', 'viewer')) DEFAULT 'viewer',
+          active        INTEGER NOT NULL DEFAULT 1,
+          created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        )`);
+        db.exec(`INSERT INTO users_rebuild (${cols.join(', ')}) SELECT ${selectList} FROM users`);
+        db.exec('DROP TABLE users');
+        db.exec('ALTER TABLE users_rebuild RENAME TO users');
+        for (const s of indexes) db.exec(s);
+        db.exec('COMMIT');
+      } finally {
+        db.exec('PRAGMA foreign_keys = ON');
+      }
+      console.log('→ مهاجرت: جدول users بازسازی شد (CHECK نقش قدیمی به نقش‌های جدید گسترش یافت).');
+    }
+  } catch (err) {
+    try { db.exec('ROLLBACK'); } catch { /* تراکنشی باز نیست */ }
+    console.error('⚠ مهاجرت ناموفق (users-rebuild):', (err as Error).message);
+  }
+
   // مهاجرت نقش‌ها: 'user' قدیمی → 'viewer' (فقط‌مشاهده) — یک‌بار و idempotent
   try {
     const legacy = db.prepare(`SELECT COUNT(*) AS c FROM users WHERE role NOT IN ('admin','warehouse','sales','tech','viewer')`).get() as { c: number };

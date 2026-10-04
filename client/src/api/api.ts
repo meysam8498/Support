@@ -50,7 +50,11 @@ async function request<T>(
       throw err;
     }
     // بدنه‌ی خطا (مثل conflict در 409) به Error می‌چسبد تا فراخوان‌ها بتوانند تصمیم بگیرند
-    const err = new Error(data.error || `خطای ${res.status}`) as Error & { payload?: unknown; status?: number };
+    // 500 بدون بدنه معمولاً یعنی پروکسی/dev-server به سرورِ پایین رسیده — راهنما نشان بده
+    const fallback = res.status === 500 && !data.error
+      ? 'خطای ۵۰۰ از سرور — اگر سرور بالا نیست یا ری‌استارت می‌شود، پس از آماده شدن دوباره تلاش کنید؛ جزئیات در کنسول سرور.'
+      : `خطای ${res.status}`;
+    const err = new Error(data.error || fallback) as Error & { payload?: unknown; status?: number };
     err.payload = data;
     err.status = res.status;
     throw err;
