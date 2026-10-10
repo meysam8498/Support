@@ -6,6 +6,8 @@
 // ============================================================
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { config } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,8 +88,51 @@ if (SUPPORT_ONLY) {
 
 const app = express();
 
-app.use(cors());
+// ─────────────────────────────────────────────────────────────
+// سخت‌سازی HTTP (۱.۲۸.۰):
+//   helmet — هدرهای امنیتی استاندارد؛ CSP برای فرانت‌اند بیلد‌شده بسیار سخت‌گیرانه نمی‌شود
+//   تا اگر اسکریپت inline در HTML تولیدی باشد، اولویت را نسوزانیم.
+//   CORS — روی نصب مشتری، فرانت روی همان پورت سرور می‌آید؛ پس origin پیش‌فرض محدود است.
+//     CORS_ALLOWED_ORIGINS برای dev کلاینت جدا (مثلاً http://localhost:5173).
+// ─────────────────────────────────────────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // tailwind inline style که در بیلد فرانت تولید می‌شود
+      fontSrc: ["'self'", 'data:'],
+      imgSrc: ["'self'", 'data:'],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // vite build با chunk inline کار می‌کند
+      connectSrc: ["'self'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: 'same-site' },
+}));
+
+const CORS_ALLOWED = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+if (CORS_ALLOWED.length > 0) {
+  app.use(cors({ origin: CORS_ALLOWED, credentials: true }));
+  console.log(`🔒 CORS محدود شد به ${CORS_ALLOWED.join(', ')}`);
+} else {
+  // روی نصب مشتری فرانت و API هم‌پورت‌اند؛ بدون CORS هم کار می‌کند. برای dev کلاینت جدا،
+  // CORS_ALLOWED_ORIGINS را در ENV بگذارید (http://localhost:5173).
+  app.use(cors({ origin: false, credentials: true }));
+  console.log('🔒 CORS محدود به خود سرور (origin: false) — CORS_ALLOWED_ORIGINS برای dev جدا تنظیم کنید (لینک ۱.۲۸.۰).');
+}
+
 app.use(express.json({ limit: '5mb' }));
+
+// ─────────────────────────────────────────────────────────────
+// rate limit (۱.۲۸.۰) — auto (مسیر login و بررسی/فعال‌سازی لایسنس)
+// ─────────────────────────────────────────────────────────────
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'تلاش زیاد برای ورود — ۱۵ دقیقه صبر کنید.' } });
+const licenseLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'درخواست زیاد روی لایسنس — یک دقیقه صبر کنید.' } });
+app.use('/api/auth/login', authLimiter);
+app.use('/api/license', licenseLimiter);
 
 // --- سلامت و ورژن سرور ---
 // APP_VERSION در Dockerfile/runtime ست می‌شود؛ fallback برای اجرای dev محلی
