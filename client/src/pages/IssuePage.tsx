@@ -32,6 +32,8 @@ interface LedgerRow {
   issued_at: string | null;
   issued_by_name: string | null;
   activated: number;
+  /** در لیست ابطال فروشنده است؟ — نمایش «ابطال‌شده» در رجیستری */
+  revoked?: boolean;
 }
 
 const PLANS = [
@@ -67,6 +69,8 @@ export default function IssuePage() {
   const [copied, setCopied] = useState<'code' | 'letter' | null>(null);
   // ---------- ledger ----------
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
+  const [rowMsg, setRowMsg] = useState<string | null>(null);
+  const [rowBusy, setRowBusy] = useState(false);
   // ---------- عمومی ----------
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -82,6 +86,26 @@ export default function IssuePage() {
   }, []);
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin, load]);
+
+  // ابطال/لغو ابطال — فقط از پنل فروشنده (در پنل خریدار حذف شد)
+  const revokeRow = async (jti: string, undo: boolean) => {
+    setRowBusy(true); setError(''); setRowMsg(null);
+    try {
+      const r = await api.post<{ ok: boolean; jti: string; license_stripped?: boolean }>(
+        undo ? '/license/unrevoke' : '/license/revoke',
+        { jti }
+      );
+      setRowMsg(undo
+        ? `↩ ابطال «${r.jti}» لغو شد — کد دوباره معتبر است.`
+        : `⛔ کد «${r.jti}» باطل شد${r.license_stripped ? ' و از لایسنس فعال این سامانه حذف شد' : ''}.`);
+      await load();
+    } catch (e) {
+      const err = e as Error & { payload?: { error?: string } };
+      setError(err.payload?.error || err.message);
+    } finally {
+      setRowBusy(false);
+    }
+  };
 
   const issue = async () => {
     if (!to.trim() || to.trim().length < 2) { setError('نام دارنده‌ی لایسنس را وارد کنید.'); return; }
@@ -268,6 +292,7 @@ export default function IssuePage() {
                   <th className="text-right py-2 px-2">فاکتور/یادداشت</th>
                   <th className="text-right py-2 px-2">شناسه</th>
                   <th className="text-right py-2 px-2">وضعیت</th>
+                  <th className="text-right py-2 px-2">عملیات</th>
                 </tr>
               </thead>
               <tbody>
@@ -279,9 +304,16 @@ export default function IssuePage() {
                     <td className="py-2 px-2 text-xs">{r.note || '—'}</td>
                     <td className="py-2 px-2 font-mono text-xs" dir="ltr">{r.jti}</td>
                     <td className="py-2 px-2">
-                      {r.activated
-                        ? <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 text-[10px]">فعال‌شده</span>
-                        : <span className="badge bg-stone-100 text-stone-500 dark:bg-stone-700 dark:text-stone-300 text-[10px]">صادرشده</span>}
+                      {r.revoked
+                        ? <span className="badge bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/40 text-[10px]">ابطال‌شده</span>
+                        : r.activated
+                          ? <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 text-[10px]">فعال‌شده</span>
+                          : <span className="badge bg-stone-100 text-stone-500 dark:bg-stone-700 dark:text-stone-300 text-[10px]">صادرشده</span>}
+                    </td>
+                    <td className="py-2 px-2 whitespace-nowrap">
+                      {r.revoked
+                        ? <button type="button" onClick={() => revokeRow(r.jti, true)} disabled={rowBusy} className="btn-ghost text-xs">↩ لغو ابطال</button>
+                        : <button type="button" onClick={() => revokeRow(r.jti, false)} disabled={rowBusy} className="btn-ghost text-xs text-coral hover:underline">⛔ ابطال</button>}
                     </td>
                   </tr>
                 ))}
@@ -289,6 +321,7 @@ export default function IssuePage() {
             </table>
           </div>
         )}
+        {rowMsg && <Alert variant="success" className="mt-3">{rowMsg}</Alert>}
       </section>
     </div>
   );

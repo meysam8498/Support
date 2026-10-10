@@ -265,13 +265,31 @@ router.put('/', requireRole('admin'), (req: Request, res: Response) => {
       license_required: true,
     });
   }
-  const startsJ = b.starts_at || todayJalali();
-  const startsG = jalaliToGregorianISO(startsJ);
-  if (!startsG) return res.status(400).json({ error: `تاریخ شروع نامعتبر است: ${startsJ}` });
+  // تاریخ‌ها: شمسی (1405/07/01) یا میلادی ISO (2026-10-04) — هر دو پذیرفته می‌شوند
+  // (پاک‌سازی/بازگردانی خودکار مقادیر خوانده‌شده از GET را بدون تبدیل دستی برمی‌گرداند)
+  // starts_at=null صریح = «بدون تاریخ شروع» (مثل trial تازه)؛ نبودِ فیلد = امروز
+  let startsJ = todayJalali();
+  let startsG: string | null = null;
+  if (b.starts_at === null) {
+    startsG = null;
+  } else if (b.starts_at) {
+    if (/^\d{4}-\d{2}-\d{2}/.test(b.starts_at)) {
+      startsG = b.starts_at.slice(0, 10);
+      startsJ = gregorianToJalali(startsG) ?? startsJ;
+    } else {
+      startsG = jalaliToGregorianISO(b.starts_at);
+      if (startsG) startsJ = b.starts_at;
+    }
+    if (!startsG) return res.status(400).json({ error: `تاریخ شروع نامعتبر است: ${b.starts_at}` });
+  } else {
+    startsG = jalaliToGregorianISO(startsJ);
+  }
   // تاریخ پایان: صریح، یا خودکار از طول طرح (ماه → از شروع) — lifetime/trial بدون پایان
   let expiresG: string | null = null;
   if (b.expires_at) {
-    expiresG = jalaliToGregorianISO(b.expires_at);
+    expiresG = /^\d{4}-\d{2}-\d{2}/.test(b.expires_at)
+      ? b.expires_at.slice(0, 10)
+      : jalaliToGregorianISO(b.expires_at);
     if (!expiresG) return res.status(400).json({ error: `تاریخ پایان نامعتبر است: ${b.expires_at}` });
   } else {
     const pm = PLAN_MONTHS[b.plan];
@@ -426,8 +444,23 @@ router.post('/revoke', requireRole('admin'), (req: Request, res: Response) => {
   // jti ناشناخته هم پذیرفته می‌شود (سناریوی سرقت کدِ فعال‌نشده — هنوز در سوابق نیست)
   // اما known:false در پاسخ برمی‌گردد تا UI هشدار تایپ بدهد؛ خطای تایپ بی‌ضرر است.
   const known = isKnownJti(db, jti);
-  const revoked = addRevokedJti(db, jti, (req as unknown as { user?: { id?: number } }).user?.id ?? null);
-  res.json({ ok: true, jti, known, revoked_count: revoked.length, revoked: true });
+  // شناسه‌ی کاربر در payload توکن sub است (نه id) — revoked_by برای ستون «توسط» در CSV
+  const revoked = addRevokedJti(db, jti, (req as unknown as { user?: { sub?: number } }).user?.sub ?? null);
+  // اگر همین کد، پشتوانه‌ی لایسنس فعلی این سامانه باشد، لایسنس فعلی حذف (به trial) می‌شود
+  // (فعلاً فقط آخرین فعال‌سازی می‌تواند پشتوانه‌ی طرح فعلی باشد — فعال‌سازی، license_info را بازنویسی می‌کند)
+  let license_stripped = false;
+  try {
+    const latest = db.prepare(`SELECT jti FROM license_activations ORDER BY id DESC LIMIT 1`).get() as { jti?: string } | undefined;
+    if (latest?.jti === jti) {
+      db.prepare(
+        `UPDATE license_info SET plan = 'trial', starts_at = NULL, expires_at = NULL,
+         licensed_to = 'ارزیابی', notes = 'لایسنس ابطال شد — برای ادامه با فروشنده تماس بگیرید',
+         updated_at = datetime('now') WHERE id = 1`
+      ).run();
+      license_stripped = true;
+    }
+  } catch { /* جدول فعال‌سازی نیست — فقط خودِ ابطال ثبت شد */ }
+  res.json({ ok: true, jti, known, revoked_count: revoked.length, revoked: true, license_stripped });
 });
 
 router.post('/unrevoke', requireRole('admin'), (req: Request, res: Response) => {
@@ -444,7 +477,26 @@ router.post('/unrevoke', requireRole('admin'), (req: Request, res: Response) => 
   if (!jti) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
   const db = getDb();
   const revoked = removeRevokedJti(db, jti);
-  res.json({ ok: true, jti, revoked_count: revoked.length, revoked: false });
+  // اگر لایسنس فعلی در اثر همین ابطال حذف شده بود، از همان فعال‌سازی برگردد (برگشت‌پذیری فقط برای فروشنده)
+  let license_restored = false;
+  try {
+    const row = getLicenseRow();
+    const latest = db.prepare(`SELECT jti, plan, licensed_to, note, activated_at FROM license_activations ORDER BY id DESC LIMIT 1`).get() as
+      | { jti?: string; plan?: string; licensed_to?: string | null; note?: string | null; activated_at?: string | null }
+      | undefined;
+    const startG = (latest?.activated_at ?? '').slice(0, 10);
+    const startJ = startG ? gregorianToJalali(startG) : null;
+    if (latest?.jti === jti && row.plan === 'trial' && startJ && latest.plan) {
+      const pm = PLAN_MONTHS[latest.plan as LicensePlan] ?? null;
+      const endJ = pm ? addMonthsToJalali(startJ, pm) : null;
+      const endG = endJ ? jalaliToGregorianISO(endJ) : null;
+      db.prepare(
+        `UPDATE license_info SET plan = ?, starts_at = ?, expires_at = ?, licensed_to = ?, notes = ?, updated_at = datetime('now') WHERE id = 1`
+      ).run(latest.plan, startG, endG, latest.licensed_to ?? null, latest.note ?? null);
+      license_restored = true;
+    }
+  } catch { /* برگشت اختیاری — خطا مانع لغو ابطال نمی‌شود */ }
+  res.json({ ok: true, jti, revoked_count: revoked.length, revoked: false, license_restored });
 });
 
 router.get('/revoked', requireRole('admin'), (_req: Request, res: Response) => {
@@ -475,13 +527,16 @@ router.get('/sales-export.csv', requireRole('admin'), (_req: Request, res: Respo
   const lines: string[] = [
     ['نوع رکورد', 'شناسه (jti)', 'طرح', 'دارنده', 'ایمیل', 'فاکتور/یادداشت', 'تاریخ', 'توسط', 'وضعیت'].map(csvEscape).join(','),
   ];
+  const revoked = getRevokedJtis(db);
+  const revokedSet = new Set(revoked);
   const issued = db.prepare(`
     SELECT i.*, u.full_name AS by_name,
       (SELECT COUNT(*) FROM license_activations a WHERE a.jti = i.jti) AS activated
     FROM license_issued i LEFT JOIN users u ON u.id = i.issued_by ORDER BY i.id DESC
   `).all() as Array<Record<string, unknown>>;
   for (const r of issued) {
-    lines.push(['صدور', r.jti, r.plan, r.licensed_to, r.email, r.note, r.issued_at, r.by_name, r.activated ? 'فعال‌شده' : 'صادرشده'].map(csvEscape).join(','));
+    const st = revokedSet.has(String(r.jti)) ? 'باطل' : (r.activated ? 'فعال‌شده' : 'صادرشده');
+    lines.push(['صدور', r.jti, r.plan, r.licensed_to, r.email, r.note, r.issued_at, r.by_name, st].map(csvEscape).join(','));
   }
   const acts = db.prepare(`
     SELECT a.*, u.full_name AS by_name FROM license_activations a
@@ -490,7 +545,6 @@ router.get('/sales-export.csv', requireRole('admin'), (_req: Request, res: Respo
   for (const r of acts) {
     lines.push(['فعال‌سازی', r.jti, r.plan, r.licensed_to, r.email, r.note, r.activated_at, r.by_name, '—'].map(csvEscape).join(','));
   }
-  const revoked = getRevokedJtis(db);
   if (revoked.length > 0) {
     const st = licenseStatus();
     for (const jti of revoked) {
@@ -526,8 +580,10 @@ router.get('/issued', requireRole('admin'), (_req: Request, res: Response) => {
            (SELECT COUNT(*) FROM license_activations a WHERE a.jti = i.jti) AS activated
     FROM license_issued i LEFT JOIN users u ON u.id = i.issued_by
     ORDER BY i.id DESC LIMIT 200
-  `).all();
-  res.json(rows);
+  `).all() as Array<Record<string, unknown>>;
+  // پرچم ابطال برای نمایش «ابطال‌شده» در رجیستری پنل فروشنده
+  const revokedSet = new Set(getRevokedJtis(db));
+  res.json(rows.map((r) => ({ ...r, revoked: revokedSet.has(String(r.jti)) })));
 });
 
 router.post('/extend', requireRole('admin'), (req: Request, res: Response) => {

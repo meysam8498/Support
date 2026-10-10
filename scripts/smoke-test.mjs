@@ -312,6 +312,9 @@ if (LICENSE_CODE) {
   // ابطال (۱.۱۹): jti ناشناخته هم پذیرفته می‌شود (سناریوی سرقت کدِ فعال‌نشده)
   const bogus = await api('POST', '/api/license/revoke', { token: TOKEN, body: { jti: 'NOPE-1234' } });
   ok('revoke jti نامعلوم → 200 با known:false', bogus.status === 200 && bogus.data?.known === false, `status=${bogus.status} ${JSON.stringify(bogus.data).slice(0, 80)}`);
+  // پاک‌سازی: jti ساختگی نباید در لیست ابطالِ سرور واقعی بماند (آلودگی CSV/رجیستری فروشنده)
+  const bogusUndo = await api('POST', '/api/license/unrevoke', { token: TOKEN, body: { jti: 'NOPE-1234' } });
+  ok('پاک‌سازی: jti ساختگی از ابطال حذف شد', bogusUndo.status === 200 && bogusUndo.data?.revoked === false, `status=${bogusUndo.status}`);
   const empty = await api('POST', '/api/license/revoke', { token: TOKEN, body: {} });
   ok('revoke بدون ورودی → 400', empty.status === 400, `status=${empty.status}`);
   // چرخه‌ی کامل ابطال/لغو ابطال روی jti کد واقعی
@@ -321,8 +324,45 @@ if (LICENSE_CODE) {
     ok('revoke → ok:true', rev.status === 200 && rev.data?.ok === true && rev.data?.known === true, `status=${rev.status} ${JSON.stringify(rev.data).slice(0, 80)}`);
     const list = await api('GET', '/api/license/revoked', { token: TOKEN });
     ok('GET /revoked شامل jti', list.status === 200 && Array.isArray(list.data?.jtis) && list.data.jtis.includes(csJti), JSON.stringify(list.data).slice(0, 80));
+    // رگرسیون (۱.۲۸): ابطال کدِ پشتوانه → لایسنس فعلی حذف (trial) + ثبت ابطال در رجیستری فروشنده
+    if (rev.data?.license_stripped) {
+      const afterStrip = await api('GET', '/api/license', { token: TOKEN });
+      ok('ابطال: لایسنس فعلی به trial برگشت', afterStrip.data?.plan === 'trial', `plan=${afterStrip.data?.plan}`);
+    } else {
+      console.log('  ℹ license_stripped:false (کد فعالِ لایسنس فعلی نبود) — چک حذف لایسنس skip شد.');
+    }
+    const issuedList = await api('GET', '/api/license/issued', { token: TOKEN });
+    const issuedRow = Array.isArray(issuedList.data) ? issuedList.data.find((r) => r.jti === csJti) : undefined;
+    if (issuedRow) {
+      ok('رجیستری فروشنده: revoked:true بعد از ابطال', issuedRow.revoked === true, JSON.stringify({ activated: issuedRow.activated, revoked: issuedRow.revoked }));
+    } else if (tempServer) {
+      // کد از CLI آمده و در license_issued نیست — روی سرور موقت، یک صدورِ پنلی می‌سازیم
+      // تا پرچم «ابطال‌شده» در رجیستری فروشنده پوشش داشته باشد (بدون ردیف اضافه روی BASE)
+      const p = await api('POST', '/api/license/issue', { token: TOKEN, body: { plan: 'month', to: 'smoke-registry', grouped: false } });
+      if (p.status === 201 && p.data?.jti) {
+        await api('POST', '/api/license/revoke', { token: TOKEN, body: { jti: p.data.jti } });
+        const lst = await api('GET', '/api/license/issued', { token: TOKEN });
+        const row = Array.isArray(lst.data) ? lst.data.find((r) => r.jti === p.data.jti) : undefined;
+        ok('رجیستری فروشنده: revoked:true بعد از ابطال', row?.revoked === true, JSON.stringify(row).slice(0, 140));
+        const un = await api('POST', '/api/license/unrevoke', { token: TOKEN, body: { jti: p.data.jti } });
+        const lst2 = await api('GET', '/api/license/issued', { token: TOKEN });
+        const row2 = Array.isArray(lst2.data) ? lst2.data.find((r) => r.jti === p.data.jti) : undefined;
+        ok('رجیستری: revoked:false بعد از لغو ابطال', un.status === 200 && row2?.revoked === false, JSON.stringify(row2).slice(0, 140));
+      } else {
+        ok('صدور پنلی برای چک رجیستری → 201', false, `status=${p.status}`);
+      }
+    } else {
+      console.log('  ℹ کد در license_issued نیست و سرور موقت نیست (--code-file روی BASE) — چک رجیستری skip شد.');
+    }
     const unrevoke = await api('POST', '/api/license/unrevoke', { token: TOKEN, body: { jti: csJti } });
     ok('unrevoke → revoked:false', unrevoke.status === 200 && unrevoke.data?.revoked === false, `status=${unrevoke.status}`);
+    if (rev.data?.license_stripped) {
+      const afterUndo = await api('GET', '/api/license', { token: TOKEN });
+      ok('لغو ابطال: لایسنس برگشت', afterUndo.data?.plan === cs.data?.plan, `plan=${afterUndo.data?.plan} انتظار=${cs.data?.plan}`);
+      const issuedList2 = await api('GET', '/api/license/issued', { token: TOKEN });
+      const row2 = Array.isArray(issuedList2.data) ? issuedList2.data.find((r) => r.jti === csJti) : undefined;
+      if (row2) ok('رجیستری: revoked:false بعد از لغو ابطال', row2.revoked === false, JSON.stringify({ revoked: row2.revoked }));
+    }
   }
 } else {
   console.log('  ℹ بدون --code-file/«LICENSE_CODE» — تست فعال‌سازی کد skip شد.');
@@ -364,18 +404,41 @@ if (uid) {
 
 // ─────────── ۵) برگشت وضعیت اولیه ───────────
 console.log('\n— پاک‌سازی و برگشت وضعیت');
-if (prevPlan === 'trial') {
-  const back = await api('PUT', '/api/license', {
-    token: TOKEN,
-    body: { plan: 'trial', starts_at: prevStarts ?? undefined, expires_at: prevExpires ?? null, licensed_to: prevLicensedTo, notes: prevNotes },
-  });
-  ok('برگشت طرح به trial', back.status === 200 && back.data?.plan === 'trial', `status=${back.status}`);
-} else if (prevPlan && prevPlan !== lic.data?.plan) {
-  const back = await api('PUT', '/api/license', {
-    token: TOKEN,
-    body: { plan: prevPlan, starts_at: prevStarts ?? undefined, expires_at: prevExpires ?? null, licensed_to: prevLicensedTo, notes: prevNotes },
-  });
-  ok(`برگشت طرح به ${prevPlan}`, back.status === 200, `status=${back.status}`);
+{
+  // بازخوانی وضعیت فعلی و مقایسه‌ی همه‌ی فیلدها — شرط قبلی (مقایسه‌ی مقدار ثبت‌شده با خودش)
+  // هرگز صدق نمی‌کرد و برگشت، وقتی طرح غیر از trial بود اصلاً انجام نمی‌شد (رگرسیون ۱.۲۸)
+  const cur = await api('GET', '/api/license', { token: TOKEN });
+  const c = cur.data ?? {};
+  const norm = (v) => (v ?? null) || null;
+  const same = c.plan === prevPlan
+    && norm(c.starts_at) === norm(prevStarts)
+    && norm(c.expires_at) === norm(prevExpires)
+    && norm(c.licensed_to) === norm(prevLicensedTo)
+    && norm(c.notes) === norm(prevNotes);
+  if (same) {
+    ok('وضعیت لایسنس اولیه دست‌نخورده ماند', true);
+  } else {
+    const back = await api('PUT', '/api/license', {
+      token: TOKEN,
+      body: {
+        plan: prevPlan,
+        // null صریح = «بدون تاریخ شروع» — اگر فیلد نیاید، سرور امروز را می‌گذارد
+        starts_at: prevStarts ?? null,
+        expires_at: prevExpires ?? null,
+        licensed_to: prevLicensedTo,
+        notes: prevNotes,
+        // بازگردانی طرح پرداختی، دروازه‌ی «فقط با کد» را دور می‌زند — فقط برای همین بازگردانی تست
+        force_downgrade: prevPlan !== 'trial' ? true : undefined,
+      },
+    });
+    const after = await api('GET', '/api/license', { token: TOKEN });
+    const a = after.data ?? {};
+    ok(`برگشت کامل وضعیت لایسنس به ${prevPlan}`,
+      back.status === 200 && a.plan === prevPlan && norm(a.starts_at) === norm(prevStarts)
+        && norm(a.expires_at) === norm(prevExpires) && norm(a.licensed_to) === norm(prevLicensedTo)
+        && norm(a.notes) === norm(prevNotes),
+      `status=${back.status} plan=${a.plan} starts=${a.starts_at} expires=${a.expires_at} to=${a.licensed_to}`);
+  }
 }
 let delOk = 0, delFail = 0;
 for (const id of created) {

@@ -1,6 +1,6 @@
 [package]
 name = "support-desktop"
-version = "1.27.0"
+version = "1.27.1"
 description = "پوسته‌ی دسکتاپ ویندوز — سامانه‌ی مدیریت تجهیزات و قطعات یدکی"
 authors = ["Meysam Ijadi <M.Ijadi@Hotmail.com>"]
 edition = "2021"
