@@ -31,8 +31,10 @@ export async function startTempServer(env: Record<string, string> = {}): Promise
   const TSX = join(ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs');
   const ENTRY = join(ROOT, 'server', 'src', 'index.ts');
   const proc = spawn(process.execPath, [TSX, ENTRY], {
+    cwd: ROOT, // در ریشه — keys/ و مسیرهای نسبی مثل اجرای واقعی
     env: {
       ...process.env,
+      ...env, // ENV تزریق‌شده (کلیدهای لایسنس آزمایشی و...) اولویت دارد
       PORT: String(port),
       DB_PATH: join(dir, 'app.db'),
       BACKUP_DIR: join(dir, 'bk'),

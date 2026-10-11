@@ -14,6 +14,9 @@
 //   # طرح دائمی + قالب کد گروه‌بندی‌شده برای تایپ آسان (جداکننده: +)
 //   node scripts/make-license-code.mjs --plan lifetime --to "شرکت نمونه" --grouped
 //
+//   # چرخش کلید امضا (کدهای قبلی معتبر می‌مانند):
+//   node scripts/make-license-code.mjs --rotate-keys
+//
 //   # نکات:
 //   • --code-days N   اعتبار خودِ کد برای ورود (پیش‌فرض ۱۸۰ روز؛ جدا از اعتبار طرح)
 //   • --out file      ذخیره‌ی کد در فایل + نمایش
@@ -21,7 +24,7 @@
 //   • کلید خصوصی: keys/license_private.pem (در .gitignore — هرگز کامیت/توزیع نشود)
 // ============================================================
 import { generateKeyPairSync, createSign, createVerify, createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,6 +41,50 @@ const keysAt = (name) =>
   existsSync(join(process.cwd(), 'keys', name)) ? join(process.cwd(), 'keys', name) : join(ROOT, '..', 'keys', name);
 const PRIV = keysAt('license_private.pem');
 const PUB = keysAt('license_public.pem');
+
+// ---------- rotate-keys: چرخش کلید امضا بدون باطل‌کردن کدهای قبلی (۱.۲۹) ----------
+// مراحل:
+//   ۱) کلیدهای فعلی به license_public_<kid>.pem (عمومی، پذیرفته‌شده) و license_private_<kid>.pem (خصوصی، بایگانی) منتقل می‌شوند
+//   ۲) جفت‌کلید جدید ساخته و جایگزین license_private.pem / license_public.pem می‌شود
+//   ۳) رجیستری keys/rotations.jsonl ثبت می‌شود
+//   ۴) راهنمای به‌روزرسانی مشتری‌ها چاپ می‌شود (کلید عمومی به‌همراه kid)
+if (has('--rotate-keys')) {
+  if (!existsSync(PRIV) || !existsSync(PUB)) {
+    console.error('برای چرخش، اول کلید فعلی باید موجود باشد (--gen-keys).');
+    process.exit(1);
+  }
+  const oldPub = readFileSync(PUB, 'utf8');
+  const oldKid = createHash('sha256').update(oldPub.replace(/\r/g, '').trim()).digest('hex').slice(0, 8);
+  // ۱) بایگانی کلیدهای قدیمی با kid در نام — پذیرفته‌شده‌ی سرور (public) و بایگانی (private)
+  const archivedPub = join(dirname(PUB), 'accepted_license_public_keys', `license_public_${oldKid}.pem`);
+  const archivedPriv = join(dirname(PRIV), `license_private_${oldKid}.pem`);
+  mkdirSync(dirname(archivedPub), { recursive: true });
+  renameSync(PUB, archivedPub);
+  // کپی خصوصی بایگانی (اصل PRIV جایگزین می‌شود — کپی نگه می‌داریم)
+  writeFileSync(archivedPriv, readFileSync(PRIV, 'utf8'));
+  // ۲) جفت‌کلید جدید
+  const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+  const newKid = createHash('sha256').update(publicKey.replace(/\r/g, '').trim()).digest('hex').slice(0, 8);
+  writeFileSync(PRIV, privateKey);
+  writeFileSync(PUB, publicKey);
+  // ۳) رجیستری چرخش
+  const rotFile = join(dirname(PRIV), 'rotations.jsonl');
+  appendFileSync(rotFile, JSON.stringify({ rotated_at: new Date().toISOString(), old_kid: oldKid, new_kid: newKid, archived_pub: archivedPub }) + '\n', 'utf8');
+  console.log('✓ چرخش کلید انجام شد:');
+  console.log(`  کلید قدیمی (kid=${oldKid}) → بایگانی: ${archivedPub}`);
+  console.log(`  کلید جدید  (kid=${newKid}) → ${PUB}`);
+  console.log('  رجیستری چرخش: ' + rotFile);
+  console.log('\n→ برای سرور مشتری/تیاری (یکی از سه):');
+  console.log('  (الف) فایل بایگانی عمومی قدیمی را کنار کلید جدید در keys/ سرور بگذارید (نامش license_public_' + oldKid + '.pem ماننَد).');
+  console.log('  (ب) یا مقدار LICENSE_PUBLIC_KEYS سرور را با فرمت ' + oldKid + ':<PEM قدیمی> بروزرسانی کنید.');
+  console.log('  (ج) یا فایل server/src/lib/license_public_key.pem را با کلید جدید جایگزین و سرور را دوباره بسازید.');
+  console.log('\nⓘ کدهای صدورشده‌ی قبلی تا پایان exp خود با کلید قدیمی معتبر می‌مانند (تأیید چندکلیدی سرور).');
+  process.exit(0);
+}
 
 // ---------- gen-keys ----------
 if (has('--gen-keys')) {
@@ -176,7 +223,9 @@ const jti = (has('--jti') ? opt('--jti') : undefined) ||
 
 const now = Math.floor(Date.now() / 1000);
 const exp = now + codeDays * 86400;
-const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+// kid در هدر — fingerprint کلید امضاکننده (سرور با آن مستقیم کلید درست را امتحان می‌کند)
+const kid = createHash('sha256').update(readFileSync(PUB, 'utf8').replace(/\r/g, '').trim()).digest('hex').slice(0, 8);
+const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid })).toString('base64url');
 const payload = Buffer.from(JSON.stringify({ jti, plan, to, email, note, iat: now, exp }))
   .toString('base64url');
 const signer = createSign('RSA-SHA256');
