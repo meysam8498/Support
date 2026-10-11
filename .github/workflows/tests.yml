@@ -1,0 +1,37 @@
+# ============================================================
+# تست‌های خودکار سرور در CI — vitest + سرور موقت ایزوله
+# سامانه‌ی مدیریت تجهیزات و قطعات یدکی — طراح: میثم ایجادی / Meysam Ijadi
+# ----------------------------------------------------------------
+# روی هر push، PR و اجرای دستی اجرا می‌شود. هر فایل تست سرور موقت خودش را
+# با DB در tmpdir بالا می‌آورد (بدون هیچ اثری روی دیتابیس واقعی).
+# ============================================================
+name: Tests (server)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vitest:
+    name: Server — vitest (auth/license/ابطال)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run server tests
+        run: npm test -w server
