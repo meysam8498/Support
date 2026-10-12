@@ -117,6 +117,22 @@ const ACCENT_SOFT = [
   'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300',
 ];
 
+/** وضعیت بکاپ برای کارت ادمین (۱.۲۸) — از GET /api/backups */
+interface DashboardBackupStatus {
+  keep: number;
+  atHour: number;
+  lastRun: string | null;
+  count: number;
+  lastResult: { ok: boolean; sizeBytes?: number; integrity?: string; error?: string; push?: { ok: boolean; target: string; error?: string } } | null;
+  items: { file: string; sizeBytes: number; mtime: string }[];
+}
+
+/** حجم خوانا — KB/MB (هم‌سان BackupsPage) */
+function backupSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${toFa(Math.max(1, Math.round(bytes / 1024)))} کیلوبایت`;
+  return `${toFa((bytes / (1024 * 1024)).toFixed(1))} مگابایت`;
+}
+
 /** یک سطر از گزارش پرخرابی‌ترین قطعات */
 interface FailedPartRow {
   part_title: string;
@@ -144,12 +160,21 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   // سقف تجهیزات آزمایشی — برای بنر هشدار ارتقا
   const [deviceLimit, setDeviceLimit] = useState<{ limit: number | null; used: number; remaining: number | null; is_trial: boolean; enforce: boolean } | null>(null);
+  // وضعیت بکاپ — فقط برای ادمین (GET /api/backups سطح ادمین است)
+  const [backup, setBackup] = useState<DashboardBackupStatus | null>(null);
 
   useEffect(() => {
     api.get<{ limit: number | null; used: number; remaining: number | null; is_trial: boolean; enforce: boolean }>('/license/device-limit')
       .then(setDeviceLimit)
       .catch(() => setDeviceLimit(null));
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    api.get<DashboardBackupStatus>('/backups')
+      .then(setBackup)
+      .catch(() => setBackup(null)); // کارت بکاپ اختیاری است — خطا داشبورد را نمی‌شکند
+  }, [user?.role]);
 
   useEffect(() => {
     (async () => {
@@ -211,6 +236,40 @@ export default function DashboardPage() {
             <VendorContact />
           )}
         </Alert>
+      )}
+
+      {/* ---------- کارت وضعیت آخرین بکاپ — فقط ادمین ---------- */}
+      {user?.role === 'admin' && backup && (
+        <section className="card card-accent p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="w-9 h-9 rounded-xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-lg shrink-0">🗄️</span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">آخرین پشتیبان‌گیری</p>
+                {backup.lastRun ? (
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 fa-nums">
+                    {new Date(backup.lastRun).toLocaleString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' })}
+                    {backup.lastResult?.ok === false && <span className="text-coral"> · آخرین تلاش ناموفق</span>}
+                    {backup.lastResult?.ok && backup.lastResult.sizeBytes != null && <> · حجم {backupSize(backup.lastResult.sizeBytes)}</>}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">هنوز پشتیبان‌گیری ثبت نشده — زمانبندی روزانه ساعت {toFa(backup.atHour)}:۰۰</p>
+                )}
+              </div>
+              <span className="badge bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300 text-[10px] fa-nums shrink-0" title="تعداد نسخه‌های موجود در دیسک (سقف نگهداری)">
+                {toFa(backup.count)} نسخه ذخیره‌شده · سقف {toFa(backup.keep)}
+              </span>
+              {backup.lastResult?.push?.target && (
+                <span className={`badge text-[10px] shrink-0 ${backup.lastResult.push.ok ? 'bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800' : 'bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40'}`} title={`مقصد خارجی: ${backup.lastResult.push.target}`}>
+                  {backup.lastResult.push.ok ? '↥ ذخیره‌ی خارجی فعال' : '↥ push خارجی ناموفق'}
+                </span>
+              )}
+            </div>
+            <Link to="/backups" className="btn-ghost min-h-[32px] text-xs shrink-0" title="مدیریت بکاپ‌ها: فهرست، بکاپ دستی، بازیابی">
+              مدیریت بکاپ‌ها ←
+            </Link>
+          </div>
+        </section>
       )}
 
       {/* ---------- هدر خوش‌آمد: سِری نمایشی + Overline ---------- */}
