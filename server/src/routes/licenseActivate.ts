@@ -152,6 +152,7 @@ router.post('/code-status', requireRole('admin'), (req: Request, res: Response) 
     const v = verifyLicenseCode(code);
     return res.json({
       valid: true,
+      kid: v.kid ?? null, // شناسه‌ی کلید امضاکننده — پس از چرخش، کد قبلی با kid قدیمی می‌آید
       jti: v.payload.jti,
       plan: v.payload.plan,
       to: v.payload.to ?? null,

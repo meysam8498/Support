@@ -56,9 +56,11 @@ function loadAcceptedKeys(): Map<string, string> {
   }
 
   // ۳) کلیدهای قبلی از فایل‌ها — keys/license_public_*.pem و keys/accepted_license_public_keys/*.pem
+  // LICENSE_KEYS_DIR (تست/نصب سفارشی) اولویت دارد؛ در نبودش CWD
+  const keysBase = process.env.LICENSE_KEYS_DIR?.trim() || join(process.cwd(), 'keys');
   const dirs = [
-    join(process.cwd(), 'keys'),
-    join(process.cwd(), 'keys', 'accepted_license_public_keys'),
+    keysBase,
+    join(keysBase, 'accepted_license_public_keys'),
   ];
   for (const dir of dirs) {
     try {
@@ -88,6 +90,7 @@ function loadCurrentPublicKey(): string {
     if (trimmed.includes('BEGIN PUBLIC KEY')) return trimmed;
   }
   const candidates = [
+    join(process.env.LICENSE_KEYS_DIR?.trim() || join(process.cwd(), 'keys'), 'license_public.pem'),
     join(process.cwd(), 'keys', 'license_public.pem'),
     join(__dirname, 'license_public_key.pem'),
   ];
@@ -97,9 +100,21 @@ function loadCurrentPublicKey(): string {
   throw new Error('کلید عمومی لایسنس یافت نشد (LICENSE_PUBLIC_KEY یا license_public_key.pem).');
 }
 
-const ACCEPTED_KEYS = loadAcceptedKeys();
-const CURRENT_PEM = loadCurrentPublicKey();
-const CURRENT_KID = publicKid(CURRENT_PEM);
+let ACCEPTED_KEYS = loadAcceptedKeys();
+let CURRENT_PEM = loadCurrentPublicKey();
+let CURRENT_KID = publicKid(CURRENT_PEM);
+
+/**
+ * نوسازی حافظه‌ی کلیدها — پس از چرخش درون‌سروری (keyRotation.ts) صدا زده می‌شود؛
+ * بدون ری‌استارت سرور، تأیید با کلید جدید فعال و کلید قبلی پذیرفته‌شده می‌ماند.
+ * خروجی: اطلاعات جدید برای پاسخ اندپوینت.
+ */
+export function reloadAcceptedKeys(): { current_kid: string; accepted_kids: string[] } {
+  ACCEPTED_KEYS = loadAcceptedKeys();
+  CURRENT_PEM = loadCurrentPublicKey();
+  CURRENT_KID = publicKid(CURRENT_PEM);
+  return acceptedKeysInfo();
+}
 
 /** خروجی تشخیصی برای ابزارها/تست — kid جاری و تعداد کلیدهای پذیرفته‌شده */
 export function acceptedKeysInfo(): { current_kid: string; accepted_kids: string[] } {

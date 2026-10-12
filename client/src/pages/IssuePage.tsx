@@ -53,6 +53,23 @@ const PLAN_PRICES: Record<string, string> = {
   lifetime: '۹۹٫۰۰۰٫۰۰۰',
 };
 
+interface KeysStatus {
+  current_kid: string;
+  accepted_kids: string[];
+  accepted_count: number;
+  has_issue_key: boolean;
+}
+
+interface RotationResult {
+  ok: boolean;
+  old_kid: string;
+  new_kid: string;
+  accepted_kids: string[];
+  current_kid: string;
+  rotated_at: string;
+  guide: string[];
+}
+
 const PLAN_LABELS: Record<string, string> = {
   month: 'یک‌ماهه', quarter: 'سه‌ماهه', 'half-year': 'شش‌ماهه', year: 'یک‌ساله', lifetime: 'دائمی',
 };
@@ -71,6 +88,11 @@ export default function IssuePage() {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [rowMsg, setRowMsg] = useState<string | null>(null);
   const [rowBusy, setRowBusy] = useState(false);
+  // ---------- چرخش کلید امضا (۱.۲۹) ----------
+  const [keys, setKeys] = useState<KeysStatus | null>(null);
+  const [rotResult, setRotResult] = useState<RotationResult | null>(null);
+  const [rotBusy, setRotBusy] = useState(false);
+  const [rotError, setRotError] = useState('');
   // ---------- عمومی ----------
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -86,6 +108,28 @@ export default function IssuePage() {
   }, []);
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin, load]);
+
+  // ---------- چرخش کلید: وضعیت + عملیات ----------
+  const loadKeys = useCallback(async () => {
+    try { setKeys(await api.get<KeysStatus>('/license/keys/status')); } catch { /* پنل چرخش اطلاع محور نیست */ }
+  }, []);
+
+  useEffect(() => { if (isAdmin) loadKeys(); }, [isAdmin, loadKeys]);
+
+  const rotateKeys = async () => {
+    if (!window.confirm('چرخش کلید امضای لایسنس؟\n\n\u2022 جفت‌کلید جدید جای کلید فعلی می‌شود (صدور آینده با کلید جدید).\n\u2022 کلید قبلی بایگانی و همچنان برای تأیید کدهای صادرشده‌ی قبلی پذیرفته می‌ماند.\n\u2022 کدهای قبلی هیچ‌وقت باطل نمی‌شوند.\n\u2022 اگر بیش از یک سرور دارید باید فایل‌ها را همگام کنید (راهنما بعد از چرخش نمایش داده می‌شود).\n\nادامه می‌دهید؟')) return;
+    setRotBusy(true); setRotError(''); setRotResult(null);
+    try {
+      const r = await api.post<RotationResult>('/license/keys/rotate');
+      setRotResult(r);
+      await loadKeys();
+    } catch (e) {
+      const err = e as Error & { payload?: { error?: string } };
+      setRotError(err.payload?.error || err.message);
+    } finally {
+      setRotBusy(false);
+    }
+  };
 
   // ابطال/لغو ابطال — فقط از پنل فروشنده (در پنل خریدار حذف شد)
   const revokeRow = async (jti: string, undo: boolean) => {
@@ -272,6 +316,47 @@ export default function IssuePage() {
           </details>
         </section>
       )}
+
+      {/* ─────────── چرخش کلید امضا (فقط ادمین) ─────────── */}
+      <section className="card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h2 className="heading-display text-base font-bold text-stone-900 dark:text-stone-50">🔐 کلید امضای لایسنس</h2>
+          {keys && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="badge bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300 text-[10px]" title="شناسه‌ی کلید جاری (fingerprint)">
+                kid جاری: <span className="font-mono" dir="ltr">{keys.current_kid}</span>
+              </span>
+              <span className="badge bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300 text-[10px]" title="تعداد کلیدهای عمومی پذیرفته‌شده برای تأیید">
+                پذیرفته‌شده: <span className="fa-nums">{toFa(keys.accepted_count || keys.accepted_kids.length)}</span>
+              </span>
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-stone-400 mb-3 leading-6">
+          اگر کلید خصوصی امضا لو رفته باشد یا برای شیفت دوره‌ای امنیتی، از همین پنل بدون SSH چرخش کنید:
+          کلید جدید جایگزین و کلید قبلی بایگانی می‌شود؛ <b className="text-stone-500 dark:text-stone-300">کدهای قبلی تا پایان اعتبارشان معتبر می‌مانند</b>
+          و صدور از این پنل بلافاصله با کلید جدید ادامه می‌یابد.
+        </p>
+        {rotError && <Alert variant="danger" className="mb-3">{rotError}</Alert>}
+        <button type="button" onClick={rotateKeys} disabled={rotBusy} className="btn-danger text-sm">
+          {rotBusy ? '…' : '🔄 چرخش کلید امضا'}
+        </button>
+        {rotResult && (
+          <div className="mt-4 rounded-lg border border-green-200 dark:border-green-800 bg-success/5 dark:bg-green-900/20 p-4 text-sm space-y-2">
+            <p className="font-bold text-green-700 dark:text-green-300">✔ چرخش انجام شد — {new Date(rotResult.rotated_at).toLocaleString('fa-IR')}</p>
+            <div className="grid grid-cols-2 gap-2 text-stone-700 dark:text-stone-200 text-xs">
+              <p>کلید قبلی (بایگانی/پذیرفته‌شده): <span className="font-mono" dir="ltr">{rotResult.old_kid}</span></p>
+              <p>کلید جدید (صدور جاری): <span className="font-mono" dir="ltr">{rotResult.new_kid}</span></p>
+            </div>
+            <details className="text-xs text-stone-500 dark:text-stone-300">
+              <summary className="cursor-pointer font-semibold">راهنمای همگام‌سازی سرورها / مستندات</summary>
+              <ul className="list-disc pr-5 mt-1 space-y-1 leading-6">
+                {rotResult.guide.map((g, i) => <li key={i}>{g}</li>)}
+              </ul>
+            </details>
+          </div>
+        )}
+      </section>
 
       {/* ─────────── رجیستری کدهای صادرشده ─────────── */}
       <section className="card p-5">

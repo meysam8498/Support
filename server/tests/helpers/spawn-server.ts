@@ -27,6 +27,19 @@ let nextPort = (Number(process.env.TEST_PORT_BASE) || 4311) + Math.floor(Math.ra
 
 export async function startTempServer(env: Record<string, string> = {}): Promise<TempServer> {
   const port = nextPort++;
+  // تداخل EADDRINUSE: تا ۵ بار با پورت بعدی تلاش می‌کنیم (parallel suiteها ممکن است همزماننده شوند)
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try { return await spawnAt(port + attempt * 10, env); } catch (e) {
+      const msg = String((e as Error).message);
+      if (!msg.includes('EADDRINUSE')) throw e;
+      if (attempt === 4) throw e;
+      // پورت بعدی
+    }
+  }
+  throw new Error('unreachable');
+}
+
+async function spawnAt(port: number, env: Record<string, string> = {}): Promise<TempServer> {
   const dir = mkdtempSync(join(tmpdir(), 'sem-test-'));
   const TSX = join(ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs');
   const ENTRY = join(ROOT, 'server', 'src', 'index.ts');

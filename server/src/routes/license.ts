@@ -17,7 +17,8 @@ import { requireRole } from '../middleware/auth.js';
 import { todayGregorian, todayJalali, addMonthsToJalali, jalaliToGregorianISO, gregorianToJalali } from '../lib/date.js';
 import { verifyLicenseCode } from '../lib/licenseCode.js';
 import { SHARED_STRINGS } from '../lib/sharedStrings.js';
-import { createSign, randomUUID } from 'node:crypto';
+import { createSign, randomUUID, createHash } from 'node:crypto';
+import { publicKid } from '../lib/licenseCode.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -338,6 +339,32 @@ function loadIssuePrivateKey(): string | null {
   return null;
 }
 
+/**
+ * کلید عمومی متناظر با کلید خصوصیِ صدور (برای ثبت kid در هدر کد).
+ * به‌ترتیب: LICENSE_ISSUE_PUB ENV → keys/license_public.pem (در همان پوشه‌ی کلید
+ * خصوصی یافت‌شده) → keys/accepted_license_public_keys/. اگر پیدا نشد null —
+ * کد بدون kid صادر می‌شود (تأیید fallback با کلید جاری همچنان کار می‌کند).
+ */
+function loadIssuePublicPem(privPem: string): string | null {
+  const env = process.env.LICENSE_ISSUE_PUB?.trim();
+  if (env?.includes('BEGIN PUBLIC KEY')) return env.replace(/\\n/g, '\n');
+  const tryPaths: string[] = [];
+  if (env) tryPaths.push(env);
+  // پوشه‌ی همان کلید خصوصی یافت‌شده (CWD یا ENV مسیر فایل یا ریشه)
+  const envKey = process.env.LICENSE_ISSUE_KEY?.trim();
+  if (envKey && !(envKey.includes('PRIVATE KEY'))) tryPaths.push(join(dirname(envKey), 'license_public.pem'));
+  tryPaths.push(
+    join(process.cwd(), 'keys', 'license_public.pem'),
+  );
+  const keysDirEnv = process.env.LICENSE_KEYS_DIR?.trim();
+  if (keysDirEnv) tryPaths.push(join(keysDirEnv, 'license_public.pem'));
+  for (const p of tryPaths) {
+    try { if (existsSync(p)) { const pem = readFileSync(p, 'utf8'); if (pem.includes('BEGIN PUBLIC KEY')) return pem; } } catch { /* */ }
+  }
+  // تناظر رمزنگاری صحت‌سنجی می‌شود — اگر عمومی متناظر نبود (ناموفق verify)، null برگردان تا kid دروغ ثبت نشود
+  return null;
+}
+
 const ISSUE_PLANS: Record<string, { label: string; months: number | null }> = {
   month: { label: 'یک‌ماهه', months: 1 },
   quarter: { label: 'سه‌ماهه', months: 3 },
@@ -371,7 +398,10 @@ router.post('/issue', requireRole('admin'), (req: Request, res: Response) => {
   const jti = [...Array(4)].map(() => randomUUID().replace(/-/g, '').slice(0, 4).toUpperCase()).join('-');
   const now = Math.floor(Date.now() / 1000);
   const codeDays = b.code_days ?? 180;
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  // kid در هدر — fingerprint کلید امضاکننده؛ پس از چرخش، کدهای قبلی با kid قدیمی متمایز می‌مانند
+  const pubPem = loadIssuePublicPem(priv);
+  const kid = pubPem ? publicKid(pubPem) : undefined;
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT', ...(kid ? { kid } : {}) })).toString('base64url');
   const payload = Buffer.from(JSON.stringify({
     jti, plan: b.plan, to: b.to.trim(),
     email: b.email?.trim() || null,
@@ -604,6 +634,46 @@ router.post('/extend', requireRole('admin'), (req: Request, res: Response) => {
   const db = getDb();
   db.prepare(`UPDATE license_info SET expires_at = ?, updated_at = datetime('now') WHERE id = 1`).run(newEndG);
   res.json(licenseStatus());
+});
+
+// ============================================================
+// چرخش کلید امضای لایسنس از پنل ادمین (۱.۲۹) — بدون SSH
+//   GET  /api/license/keys/status — وضعیت کلیدها (kid جاری/پذیرفته‌شده‌ها)
+//   POST /api/license/keys/rotate — چرخش: کلید قبلی بایگانی+پذیرفته‌شده می‌ماند،
+//        جفت‌کلید جدید جایگزین می‌شود و حافظه‌ی تأیید نوسازی می‌گردد.
+//        کدهای صادرشده با کلید قبلی تا پایان exp معتبر می‌مانند (تأیید چندکلیدی).
+// هماهنگ با scripts/make-license-code.mjs --rotate-keys (همان مسیرها/رجیستری).
+// ============================================================
+import { keyStatus, rotateSigningKeys, KeyRotationError } from '../lib/keyRotation.js';
+
+router.get('/keys/status', requireRole('admin'), (_req: Request, res: Response) => {
+  try {
+    res.json(keyStatus());
+  } catch (e) {
+    const status = e instanceof KeyRotationError ? e.status : 500;
+    res.status(status).json({ error: (e as Error).message });
+  }
+});
+
+router.post('/keys/rotate', requireRole('admin'), (_req: Request, res: Response) => {
+  try {
+    const result = rotateSigningKeys();
+    console.warn(`🔑 چرخش کلید امضای لایسنس از پنل ادمین: ${result.old_kid} → ${result.new_kid}`);
+    res.json({
+      ...result,
+      ok: true,
+      guide: [
+        `کلید قدیمی (kid=${result.old_kid}) بایگانی شد: keys/accepted_license_public_keys/license_public_${result.old_kid}.pem`,
+        `کلید جدید (kid=${result.new_kid}) جایگزین شد؛ صدور کد از پنل/CLI از این پس با کلید جدید است.`,
+        'کدهای صادرشده با کلید قبلی تا پایان اعتبار خود معتبر می‌مانند (تأیید چندکلیدی با kid).',
+        'اگر بیش از یک سرور نصب دارید، فایل بایگانی عمومی قدیمی را به keys/accepted_license_public_keys/ سرورهای دیگر هم منتقل کنید و کلید عمومی جدید (keys/license_public.pem) را در آن‌ها جایگزین کنید.',
+      ],
+    });
+  } catch (e) {
+    const status = e instanceof KeyRotationError ? e.status : 500;
+    console.error('⚠ چرخش کلید از پنل ناموفق:', (e as Error).message);
+    res.status(status).json({ error: (e as Error).message });
+  }
 });
 
 export default router;
