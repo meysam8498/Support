@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+/* Tailwind v4 — config JS قدیمی با @config حفظ شد (تم PipelinePro + keyframes) */
+@config '../tailwind.config.js';
 
 /* ============================================================
    سیستم طراحی PipelinePro — ایندیگو/فیروزه‌ای/نارنجی (RTL فارسی)
@@ -74,21 +74,21 @@ body {
   }
   /* Primary — ایندیگو؛ hover تیره‌تر، active با scale 0.98 */
   .btn-primary {
-    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 active:scale-[0.98] hover:shadow-glow;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[38px] text-sm font-semibold transition-all duration-150 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 active:scale-[0.98] hover:shadow-glow;
   }
   .btn-secondary {
-    @apply btn bg-transparent text-brand-600 border border-brand-500 hover:bg-brand-50 dark:text-brand-300 dark:border-brand-500/70 dark:hover:bg-brand-900/30;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[38px] text-sm font-semibold transition-all duration-150 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed bg-transparent text-brand-600 border border-brand-500 hover:bg-brand-50 dark:text-brand-300 dark:border-brand-500/70 dark:hover:bg-brand-900/30;
   }
   .btn-ghost {
-    @apply btn bg-transparent text-stone-500 hover:bg-surface-raised hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[38px] text-sm font-semibold transition-all duration-150 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed bg-transparent text-stone-500 hover:bg-surface-raised hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100;
   }
   .btn-danger {
-    @apply btn bg-error text-white hover:bg-coral-dark active:scale-[0.98];
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[38px] text-sm font-semibold transition-all duration-150 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed bg-error text-white hover:bg-coral-dark active:scale-[0.98];
   }
   /* Ghost با رنگ خطر — برای کنش مخرب سبک (بازیابی بکاپ)؛ به‌جای آورراید !text روی btn-ghost
      که به‌دلیل ترتیب رنگ‌ها در utilities همیشه می‌بازد */
   .btn-ghost-danger {
-    @apply btn bg-transparent text-coral-dark hover:bg-surface-raised dark:text-coral-light;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[38px] text-sm font-semibold transition-all duration-150 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed bg-transparent text-coral-dark hover:bg-surface-raised dark:text-coral-light;
   }
 
   /* ---------- ورودی‌ها: ۳۸px، فوکوس ایندیگو + رینگ ---------- */
@@ -130,10 +130,10 @@ body {
     @apply inline-flex items-center rounded-full px-3.5 py-1 text-xs font-medium;
   }
   .chip-default {
-    @apply chip bg-stone-100 text-stone-600 border border-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:border-stone-600;
+    @apply inline-flex items-center rounded-full px-3.5 py-1 text-xs font-medium bg-stone-100 text-stone-600 border border-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:border-stone-600;
   }
   .chip-active {
-    @apply chip bg-brand-500 text-white border border-transparent;
+    @apply inline-flex items-center rounded-full px-3.5 py-1 text-xs font-medium bg-brand-500 text-white border border-transparent;
   }
 
   /* ---------- نوار پیشرفت ۴px ---------- */
