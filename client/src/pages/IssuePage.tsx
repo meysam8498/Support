@@ -91,6 +91,18 @@ interface RotationHistory {
   rotations: RotationHistoryEntry[];
 }
 
+/** پاسخ POST /license/issue-test — کد آزمایشی با کلید جاری (بدون ثبت فروش) */
+interface TestIssueResult {
+  ok: boolean;
+  code: string;
+  jti: string;
+  /** kid کلید امضاکننده در هدر کد */
+  kid: string | null;
+  verified: boolean;
+  expires_in_min: number;
+  note?: string;
+}
+
 const PLAN_LABELS: Record<string, string> = {
   month: 'یک‌ماهه', quarter: 'سه‌ماهه', 'half-year': 'شش‌ماهه', year: 'یک‌ساله', lifetime: 'دائمی',
 };
@@ -116,6 +128,10 @@ export default function IssuePage() {
   const [rotError, setRotError] = useState('');
   /** تاریخچه چرخش‌ها از رجیستری rotations.jsonl */
   const [rotHistory, setRotHistory] = useState<RotationHistory | null>(null);
+  /** کد آزمایشی با کلید جاری/جدید — تست صدور بلافاصله بعد از چرخش */
+  const [testIssue, setTestIssue] = useState<TestIssueResult | null>(null);
+  const [testBusy, setTestBusy] = useState(false);
+  const [testError, setTestError] = useState('');
   // ---------- عمومی ----------
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -157,6 +173,19 @@ export default function IssuePage() {
       setRotError(err.payload?.error || err.message);
     } finally {
       setRotBusy(false);
+    }
+  };
+
+  /** کد آزمایشی با کلید جاری — بعد از چرخش، تأییدِ زنده‌ی این است که صدور با کلید جدید انجام می‌شود */
+  const issueTestCode = async () => {
+    setTestBusy(true); setTestError(''); setTestIssue(null);
+    try {
+      setTestIssue(await api.post<TestIssueResult>('/license/issue-test'));
+    } catch (e) {
+      const err = e as Error & { payload?: { error?: string } };
+      setTestError(err.payload?.error || err.message);
+    } finally {
+      setTestBusy(false);
     }
   };
 
@@ -253,6 +282,10 @@ export default function IssuePage() {
   if (!isAdmin) {
     return <p className="p-8 text-center text-coral text-sm">این صفحه فقط برای مدیر سامانه است.</p>;
   }
+
+  // kid مورد انتظارِ کد آزمایشی: کلیدِ چرخش اخیر (new_kid) وگرنه کلید جاری
+  const expectedKid = rotResult?.new_kid ?? keys?.current_kid ?? null;
+  const kidMatches = !!testIssue && testIssue.verified && !!testIssue.kid && testIssue.kid === expectedKid;
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
@@ -383,6 +416,48 @@ export default function IssuePage() {
                 {rotResult.guide.map((g, i) => <li key={i}>{g}</li>)}
               </ul>
             </details>
+          </div>
+        )}
+
+        {/* ─────────── تست صدور با کلید جدید (بلافاصله بعد از چرخش) ─────────── */}
+        <div className="mt-4">
+          <button type="button" onClick={issueTestCode} disabled={testBusy} className="btn-secondary text-sm">
+            {testBusy ? '… در حال صدور' : '🧪 صدور کد آزمایشی با کلید جدید'}
+          </button>
+          {rotResult && !testIssue && (
+            <span className="block mt-1.5 text-[11px] text-stone-400 leading-5">
+              چرخش انجام شد — برای اطمینان از اینکه صدور با کلید جدید (kid={rotResult.new_kid}) انجام می‌شود، این دکمه را بزنید.
+            </span>
+          )}
+        </div>
+        {testError && <Alert variant="danger" className="mt-3">{testError}</Alert>}
+        {testIssue && (
+          <div className="mt-3 rounded-lg border border-brand-200 dark:border-brand-700/40 bg-brand-50/60 dark:bg-brand-900/20 p-4 text-sm space-y-2">
+            <p className={`font-bold ${kidMatches ? 'text-green-700 dark:text-green-300' : 'text-gold-dark dark:text-gold-light'}`}>
+              {kidMatches
+                ? '✔ کد آزمایشی با کلید جدید صادر و تأیید شد'
+                : testIssue.verified
+                  ? '⚠ کد صادر و تأیید شد ولی kid با کلید مورد انتظار نمی‌خواند'
+                  : '❌ تأیید امضا ناموفق'}
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs text-stone-700 dark:text-stone-200">
+              <p>kid هدر کد: <span className="font-mono" dir="ltr">{testIssue.kid ?? '—'}</span></p>
+              <p>کلید مورد انتظار ({rotResult ? 'کلید جدید چرخش' : 'کلید جاری'}): <span className="font-mono" dir="ltr">{expectedKid ?? '—'}</span></p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600 dark:text-stone-300">
+              {kidMatches ? (
+                <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 text-[10px]">تطبیق kid ✓</span>
+              ) : (
+                <span className="badge bg-gold/10 text-gold-dark dark:text-gold-light border border-gold/40 text-[10px]">عدم تطابق kid</span>
+              )}
+              <span>شناسه: <code className="font-mono" dir="ltr">{testIssue.jti}</code></span>
+              <span>· انقضای کد: <b className="fa-nums">{toFa(testIssue.expires_in_min)} دقیقه</b></span>
+            </div>
+            <textarea readOnly value={testIssue.code} rows={4} dir="ltr" className="input w-full font-mono text-xs leading-5 bg-white/60 dark:bg-black/20" />
+            <button type="button" onClick={() => copyText(testIssue.code, 'code')} className="btn-ghost text-xs">
+              {copied === 'code' ? '✓ کپی شد' : '📋 کپی کد آزمایشی'}
+            </button>
+            {testIssue.note && <p className="text-[11px] text-stone-400 leading-5">{testIssue.note}</p>}
           </div>
         )}
 

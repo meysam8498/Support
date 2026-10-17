@@ -155,6 +155,39 @@ describe('چرخش کلید امضای لایسنس از اندپوینت ادم
     expect(forbidden.status).toBe(403);
   });
 
+  it('POST license/issue-test — کد آزمایشی با کلید جدیدِ پس از چرخش: kid تطابق + تأیید زنده + بدون ثبت فروش', async () => {
+    const issuedBefore = await s.api<Array<unknown>>('GET', '/api/license/issued', { token });
+    expect(issuedBefore.status).toBe(200);
+
+    const newKid = kidOf(readFileSync(join(tmpKeys, 'license_public.pem'), 'utf8')); // کلید جدید پس از چرخش
+    const r = await s.api<{ ok?: boolean; code?: string; jti?: string; kid?: string | null; verified?: boolean; expires_in_min?: number }>(
+      'POST', '/api/license/issue-test', { token }
+    );
+    expect(r.status).toBe(200);
+    expect(r.data.ok).toBe(true);
+    expect(r.data.verified).toBe(true);
+    expect(r.data.kid).toBe(newKid); // با کلید جدید امضا شد (کلید جاری == new_kidِ چرخش)
+    expect(r.data.jti).toMatch(/^TEST-/);
+    expect(r.data.expires_in_min).toBe(15);
+
+    // تأیید زنده توسط سرور (code-status بدون اثر جانبی)
+    const st = await s.api<{ valid?: boolean; kid?: string | null; jti?: string }>('POST', '/api/license/code-status', { token, body: { code: r.data.code! } });
+    expect(st.status).toBe(200);
+    expect(st.data.valid).toBe(true);
+    expect(st.data.kid).toBe(newKid);
+    expect(st.data.jti).toBe(r.data.jti);
+
+    // بدون اثر جانبی روی رجیستری فروش
+    const issuedAfter = await s.api<Array<unknown>>('GET', '/api/license/issued', { token });
+    expect(issuedAfter.status).toBe(200);
+    expect(issuedAfter.data.length).toBe(issuedBefore.data.length);
+
+    // غیرادمین → ۴۰۳
+    const vToken = await s.login('rotviewer', 'v1ewer-pass-1');
+    const forbidden = await s.api('POST', '/api/license/issue-test', { token: vToken });
+    expect(forbidden.status).toBe(403);
+  });
+
   it('کدِ صادرشده پیش‌ازچرخش (kid قدیمی) پس از چرخش هنوز تأیید می‌شود (code-status ۲۰۰)', async () => {
     const r = await s.api<{ jti?: string; kid?: string }>('POST', '/api/license/code-status', { token, body: { code: preCode } });
     expect(r.status).toBe(200);

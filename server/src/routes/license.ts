@@ -355,6 +355,9 @@ function loadIssuePublicPem(privPem: string): string | null {
   if (envKey && !(envKey.includes('PRIVATE KEY'))) tryPaths.push(join(dirname(envKey), 'license_public.pem'));
   tryPaths.push(
     join(process.cwd(), 'keys', 'license_public.pem'),
+    // ریشه‌ی پروژه — در dev کلید خصوصی از این‌جا خوانده می‌شود (issueKeyCandidates)؛
+    // بدون این ردیف، عمومیِ متناظر پیدا نمی‌شد و kid در هدر کد نمی‌نشست
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'keys', 'license_public.pem'),
   );
   const keysDirEnv = process.env.LICENSE_KEYS_DIR?.trim();
   if (keysDirEnv) tryPaths.push(join(keysDirEnv, 'license_public.pem'));
@@ -445,6 +448,52 @@ router.post('/issue', requireRole('admin'), (req: Request, res: Response) => {
     code: token,
     code_days: codeDays,
     grouped: !!b.grouped,
+  });
+});
+
+// ============================================================
+// کد آزمایشی با کلید جاری — تست «صدور بلافاصله بعد از چرخش» از UI (۱.۲۹)
+//   POST /license/issue-test (ادمین) — بدون body
+// • همان مسیر امضای /issue ولی بدون هیچ ثبتی در license_issued / رجیستری
+//   فروش — آزمایش نباید در گزارش/CSV اثر بگذارد.
+// • اعتبار کوتاه (۱۵ دقیقه) تا کد آزمایشی هرگز به‌عنوان لایسنس معتبر
+//   نماند؛ بلافاصله پس از صدور، خودِ سرور با verifyLicenseCode امضا را
+//   راستی‌آزمایی و kid هدر را برمی‌گرداند تا UI تطبیق با کلید جدیدِ
+//   چرخش (new_kid) را نشان دهد.
+// ============================================================
+router.post('/issue-test', requireRole('admin'), (_req: Request, res: Response) => {
+  const priv = loadIssuePrivateKey();
+  if (!priv) {
+    const tried = issueKeyCandidates().join(' و ');
+    return res.status(503).json({ error: `کلید خصوصی صدور پیدا نشد — برای کد آزمایشی هم لازم است (مسیرها: ${tried} و ENV LICENSE_ISSUE_KEY).`, missing_key: true });
+  }
+  const jti = `TEST-${[...Array(2)].map(() => randomUUID().replace(/-/g, '').slice(0, 4).toUpperCase()).join('-')}`;
+  const now = Math.floor(Date.now() / 1000);
+  const EXP_MIN = 15;
+  const pubPem = loadIssuePublicPem(priv);
+  const kid = pubPem ? publicKid(pubPem) : undefined;
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT', ...(kid ? { kid } : {}) })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    jti, plan: 'month', to: 'کد آزمایشی چرخش کلید',
+    note: 'TEST-ROTATION-KEY', iat: now, exp: now + EXP_MIN * 60,
+  })).toString('base64url');
+  const signer = createSign('RSA-SHA256');
+  signer.update(`${header}.${payload}`);
+  const token = `${header}.${payload}.${signer.sign(priv, 'base64url')}`;
+  // راستی‌آزمایی زنده با همان مسیر تأیید سرور — صدورِ معیوب همین‌جا گیر می‌افتد
+  let verified = false;
+  try { verifyLicenseCode(token); verified = true; } catch { /* در پاسخ گزارش می‌شود */ }
+  if (!verified) {
+    return res.status(500).json({ ok: false, verified: false, error: 'کد صادرشد اما تأیید امضا نشد — کلید خصوصی/عمومی صدور ناسازگار است.' });
+  }
+  res.json({
+    ok: true,
+    code: token,
+    jti,
+    kid: kid ?? null, // kid کلید امضاکننده در هدر کد — باید new_kidِ چرخش اخیر باشد
+    verified: true,
+    expires_in_min: EXP_MIN,
+    note: 'کد آزمایشی بدون ثبت در رجیستری فروش؛ فقط برای تأیید صدور با کلید جاری (انقضای ۱۵ دقیقه).',
   });
 });
 

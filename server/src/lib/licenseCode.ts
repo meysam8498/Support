@@ -28,6 +28,12 @@ import jwt from 'jsonwebtoken';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/** keys/ ریشه‌ی پروژه — نسبت به همین ماژول (src/lib یا dist/lib → ../../../keys)
+ * در dev ممکن است cwd=server/ باشد (npm -w server) پس بدون این fallback،
+ * کپیِ قدیمیِ license_public_key.pem کنار کد (آخرین گزینه) انتخاب می‌شود و
+ * پس از چرخش کلید، تأیید کدهای نو با کلید بایگانیِ stale می‌شکند. */
+const ROOT_KEYS_DIR = join(__dirname, '..', '..', '..', 'keys');
+
 /** kid = fingerprint ثابت کلید عمومی (۸ کاراکتر hex از SHA-256) */
 export function publicKid(pem: string): string {
   return createHash('sha256').update(pem.replace(/\r/g, '').trim()).digest('hex').slice(0, 8);
@@ -59,8 +65,13 @@ function loadAcceptedKeys(): Map<string, string> {
   // LICENSE_KEYS_DIR (تست/نصب سفارشی) اولویت دارد؛ در نبودش CWD
   const keysBase = process.env.LICENSE_KEYS_DIR?.trim() || join(process.cwd(), 'keys');
   const dirs = [
-    keysBase,
-    join(keysBase, 'accepted_license_public_keys'),
+    ...new Set([
+      keysBase,
+      join(keysBase, 'accepted_license_public_keys'),
+      // ریشه‌ی پروژه — کلیدهای بایگانی‌شده در dev با cwd غیر از ریشه (نگاه کن به ROOT_KEYS_DIR)
+      ROOT_KEYS_DIR,
+      join(ROOT_KEYS_DIR, 'accepted_license_public_keys'),
+    ]),
   ];
   for (const dir of dirs) {
     try {
@@ -92,6 +103,7 @@ function loadCurrentPublicKey(): string {
   const candidates = [
     join(process.env.LICENSE_KEYS_DIR?.trim() || join(process.cwd(), 'keys'), 'license_public.pem'),
     join(process.cwd(), 'keys', 'license_public.pem'),
+    join(ROOT_KEYS_DIR, 'license_public.pem'), // ریشه‌ی پروژه — dev با cwd=server/
     join(__dirname, 'license_public_key.pem'),
   ];
   for (const p of candidates) {
