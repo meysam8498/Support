@@ -23,16 +23,20 @@ import LicensePage from './pages/LicensePage';
 import IssuePage from './pages/IssuePage';
 import AboutPage from './pages/AboutPage';
 import LogViewerPage from './pages/LogViewerPage';
+import { api, type Device } from './api/api';
 
 /** روتر کمکی گرید قطعات: داده‌ی تجهیز را می‌گیرد و PartsGridEditor را رندر می‌کند */
 function PartsGridRouter() {
   const { id } = useParams();
-  const [device, setDevice] = React.useState<import('./api/api').Device | null>(null);
+  const [device, setDevice] = React.useState<Device | null>(null);
   const [error, setError] = React.useState('');
   React.useEffect(() => {
     (async () => {
       try {
-        const d = await import('./api/api').then((m) => m.api.get<{ device: import('./api/api').Device }>(`/devices/${id}`));
+        // import ایستا: import پویای قبلی بی‌اثر بود (api.ts از ۲۷ جا ایستا وارد می‌شود)
+        // و Vite هشدار INEFFECTIVE_DYNAMIC_IMPORT می‌داد — هیچ چانک جدا نمی‌شد.
+        // چانک‌بندی واقعی api.ts حالا با manualChunks در vite.config انجام می‌شود.
+        const d = await api.get<{ device: Device }>(`/devices/${id}`);
         setDevice(d.device);
       } catch (e) {
         setError((e as Error).message);

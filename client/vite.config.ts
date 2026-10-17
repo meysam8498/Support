@@ -13,4 +13,27 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // چانک‌بندی دستی — بهینه‌سازی کش بلندمدت سمت کلاینت:
+        //   • vendor → react/react-dom/react-router — با هر deploy کد عوض نمی‌شود
+        //   • api    → لایه‌ی API — فقط با تغییر خودش از نو دانلود می‌شود
+        //   • index  → کد صفحات/کامپوننت‌ها (پرحجم‌ترین و متغیرترین بخش)
+        manualChunks(id: string) {
+          const p = id.replace(/\\/g, '/');
+          if (p.includes('/src/api/')) return 'api';
+          if (
+            p.includes('/node_modules/react-dom/') ||
+            p.includes('/node_modules/react/') ||
+            p.includes('/node_modules/react-router') ||
+            p.includes('/node_modules/@remix-run/') ||
+            p.includes('/node_modules/scheduler/')
+          ) {
+            return 'vendor';
+          }
+        },
+      },
+    },
+  },
 });
