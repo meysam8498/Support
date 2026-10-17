@@ -1,11 +1,23 @@
 # ============================================================
 # تایپ‌چک سرور و کلاینت در CI — هر دو به‌صورت موازی
 # سامانه‌ی مدیریت تجهیزات و قطعات یدکی — طراح: میثم ایجادی / Meysam Ijadi
-# ----------------------------------------------------------------
+# -------------------------------------------------------------------
 # روی هر push (هر شاخه)، هر PR و اجرای دستی اجرا می‌شود و دو job مستقل دارد:
 #   • server  → npx tsc -p server/tsconfig.json --noEmit
 #   • client  → npx tsc -b --force (داخل client)
-# کش کامل وابستگی‌ها روی package-lock.json — بدنه‌ی خالی (بدون تگ) → بدون انتشار.
+#
+# سرعت‌بخشی (آپدیت هوشمند):
+#   • کش npm (setup-node@v7) — شامل بسته‌های پلتفرمیِ prebuilt موتور
+#     oxide/tailwind و binding های rolldown و esbuild (.node/.bin)، پس
+#     «کش باینری» عملاً همین کش npm است؛ حالت binary-cache جداگانه‌ای در
+#     oxide/rolldown وجود ندارد (فقط proposal — ر.ک. rolldown#10159).
+#   • npm ci --prefer-offline → استفاده‌ی اولویت‌دار از همان باینری‌های
+#     کش‌شده بدون revalidation شبکه (+ --no-audit --no-fund برای حذف
+#     فراخوانی‌های زائد registry).
+#   • concurrency → لغو اجرای قدیمیِ همان ref هنگام pushهای پشت‌سرهم
+#     (صرفه‌جویی runner-minute).
+#   • checkout@v7 / setup-node@v7 — آخرین نسخه‌ها (cache پیش‌فرض در v5+).
+# کش روی package-lock.json — بدنه‌ی خالی (بدون تگ) → بدون انتشار.
 # ============================================================
 name: Typecheck (server & client)
 
@@ -17,23 +29,27 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: typecheck-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   server:
     name: Server — tsc --noEmit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Typecheck server
         run: npx tsc -p server/tsconfig.json --noEmit
@@ -43,17 +59,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Typecheck client
         run: npx tsc -b --force
