@@ -639,16 +639,27 @@ router.post('/extend', requireRole('admin'), (req: Request, res: Response) => {
 // ============================================================
 // چرخش کلید امضای لایسنس از پنل ادمین (۱.۲۹) — بدون SSH
 //   GET  /api/license/keys/status — وضعیت کلیدها (kid جاری/پذیرفته‌شده‌ها)
+//   GET  /api/license/keys/rotations — تاریخچه چرخش‌ها از rotations.jsonl
+//        (فقط‌خواندنی؛ سطرهای خراب گزارش می‌شوند؛ فایل غایب = لیست خالی)
 //   POST /api/license/keys/rotate — چرخش: کلید قبلی بایگانی+پذیرفته‌شده می‌ماند،
 //        جفت‌کلید جدید جایگزین می‌شود و حافظه‌ی تأیید نوسازی می‌گردد.
 //        کدهای صادرشده با کلید قبلی تا پایان exp معتبر می‌مانند (تأیید چندکلیدی).
 // هماهنگ با scripts/make-license-code.mjs --rotate-keys (همان مسیرها/رجیستری).
 // ============================================================
-import { keyStatus, rotateSigningKeys, KeyRotationError } from '../lib/keyRotation.js';
+import { keyStatus, rotateSigningKeys, rotationHistory, KeyRotationError } from '../lib/keyRotation.js';
 
 router.get('/keys/status', requireRole('admin'), (_req: Request, res: Response) => {
   try {
     res.json(keyStatus());
+  } catch (e) {
+    const status = e instanceof KeyRotationError ? e.status : 500;
+    res.status(status).json({ error: (e as Error).message });
+  }
+});
+
+router.get('/keys/rotations', requireRole('admin'), (_req: Request, res: Response) => {
+  try {
+    res.json(rotationHistory());
   } catch (e) {
     const status = e instanceof KeyRotationError ? e.status : 500;
     res.status(status).json({ error: (e as Error).message });

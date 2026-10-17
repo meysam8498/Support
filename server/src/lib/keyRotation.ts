@@ -180,3 +180,85 @@ export function rotateSigningKeys(): KeyRotationResult {
     rotated_at: rotatedAt,
   };
 }
+
+// ============================================================
+// تاریخچه چرخش‌ها — خواندن رجیستری keys/rotations.jsonl (فقط‌خواندنی)
+// برای اندپوینت GET /api/license/keys/rotations (پنل ادمین):
+//   • سطرهای فایل از آخرین به اولین (جدیدترین اول)
+//   • هر سطر: فیلدهای خام رجیستری + وضعیت بایگانی عمومی روی همین سرور
+//     (مسیر archived_pub ممکن است مسیر مطلق ماشین صادرکننده باشد —
+//      به‌نامِ kid در keys/accepted_license_public_keys/ هم جست‌وجو می‌شود)
+//   • فایل ناموجود → لیست خالی (خطا نیست)؛ سطرهای خراب گزارش می‌شوند نه حذف بی‌صدا
+// ============================================================
+export interface RotationHistoryEntry {
+  /** زمان چرخش (ISO از رجیستری) — اگر نامعتبر بود همان مقدار خام */
+  rotated_at: string;
+  old_kid: string;
+  new_kid: string;
+  /** مسیر بایگانی عمومی قدیمی که روی همین سرور پیدا شد (یا مسیر ثبت‌شده در رجیستری) */
+  archived_pub: string | null;
+  /** فایل بایگانی عمومی قدیمی همین‌جا موجود است؟ */
+  archive_ok: boolean;
+  /** چه کسی چرخش را انجام داد (پنل ادمین / CLI) — در رجیستری‌های قدیمی نیست */
+  by?: string;
+}
+
+export interface RotationHistory {
+  /** مسیر کامل رجیستری روی همین سرور */
+  path: string;
+  exists: boolean;
+  /** تعداد سطرهای معتبر */
+  count: number;
+  /** تعداد سطرهای قابل‌تحلیل ولی ناقص/خراب (فقط‌گزارش — بدون حذف) */
+  invalid_lines: number;
+  /** kid کلید جاری (null اگر کلید عمومی جاری خوانده نشود) */
+  current_kid: string | null;
+  /** جدیدترین چرخش اول */
+  rotations: RotationHistoryEntry[];
+}
+
+export function rotationHistory(): RotationHistory {
+  const dir = keysDir();
+  const registry = join(dir, 'rotations.jsonl');
+  const empty = (exists: boolean, invalid = 0): RotationHistory => {
+    let current: string | null = null;
+    try { current = currentKid(); } catch { /* کلید جاری نیست — تاریخچه همچنان قابل نمایش است */ }
+    return { path: registry, exists, count: 0, invalid_lines: invalid, current_kid: current, rotations: [] };
+  };
+  if (!existsSync(registry)) return empty(false);
+
+  const raw = readFileSync(registry, 'utf8');
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+  const rotations: RotationHistoryEntry[] = [];
+  let invalid = 0;
+  for (const line of lines) {
+    try {
+      const e = JSON.parse(line) as { rotated_at?: unknown; old_kid?: unknown; new_kid?: unknown; archived_pub?: unknown; by?: unknown };
+      if (typeof e.old_kid !== 'string' || !/^[0-9a-f]{8}$/.test(e.old_kid)
+        || typeof e.new_kid !== 'string' || !/^[0-9a-f]{8}$/.test(e.new_kid)) {
+        invalid++;
+        continue;
+      }
+      const archived = typeof e.archived_pub === 'string' && e.archived_pub ? e.archived_pub : null;
+      // جست‌وجوی بایگانی عمومی: مسیر ثبت‌شده (ممکن است متعلق به ماشین دیگری باشد) → نام kid در پوشه‌ی بایگانی
+      const candidates = [
+        archived,
+        join(dir, 'accepted_license_public_keys', `license_public_${e.old_kid}.pem`),
+        join(dir, `license_public_${e.old_kid}.pem`),
+      ].filter((p): p is string => !!p);
+      const resolved = candidates.find((p) => existsSync(p)) ?? null;
+      rotations.push({
+        rotated_at: typeof e.rotated_at === 'string' ? e.rotated_at : '',
+        old_kid: e.old_kid,
+        new_kid: e.new_kid,
+        archived_pub: resolved ?? archived,
+        archive_ok: !!resolved,
+        ...(typeof e.by === 'string' && e.by ? { by: e.by } : {}),
+      });
+    } catch {
+      invalid++;
+    }
+  }
+  rotations.reverse(); // جدیدترین اول
+  return { path: registry, exists: true, count: rotations.length, invalid_lines: invalid, current_kid: (() => { try { return currentKid(); } catch { return null; } })(), rotations };
+}

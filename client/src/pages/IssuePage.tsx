@@ -70,6 +70,27 @@ interface RotationResult {
   guide: string[];
 }
 
+/** سطر تاریخچه‌ی چرخش‌ها — GET /license/keys/rotations (از rotations.jsonl) */
+interface RotationHistoryEntry {
+  rotated_at: string;
+  old_kid: string;
+  new_kid: string;
+  archived_pub: string | null;
+  /** فایل بایگانی عمومی قدیمی روی همین سرور موجود است */
+  archive_ok: boolean;
+  by?: string;
+}
+
+interface RotationHistory {
+  path: string;
+  exists: boolean;
+  count: number;
+  invalid_lines: number;
+  current_kid: string | null;
+  /** جدیدترین چرخش اول */
+  rotations: RotationHistoryEntry[];
+}
+
 const PLAN_LABELS: Record<string, string> = {
   month: 'یک‌ماهه', quarter: 'سه‌ماهه', 'half-year': 'شش‌ماهه', year: 'یک‌ساله', lifetime: 'دائمی',
 };
@@ -93,6 +114,8 @@ export default function IssuePage() {
   const [rotResult, setRotResult] = useState<RotationResult | null>(null);
   const [rotBusy, setRotBusy] = useState(false);
   const [rotError, setRotError] = useState('');
+  /** تاریخچه چرخش‌ها از رجیستری rotations.jsonl */
+  const [rotHistory, setRotHistory] = useState<RotationHistory | null>(null);
   // ---------- عمومی ----------
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -114,7 +137,12 @@ export default function IssuePage() {
     try { setKeys(await api.get<KeysStatus>('/license/keys/status')); } catch { /* پنل چرخش اطلاع محور نیست */ }
   }, []);
 
+  const loadHistory = useCallback(async () => {
+    try { setRotHistory(await api.get<RotationHistory>('/license/keys/rotations')); } catch { /* اطلاع‌محور — بدون خطا در UI */ }
+  }, []);
+
   useEffect(() => { if (isAdmin) loadKeys(); }, [isAdmin, loadKeys]);
+  useEffect(() => { if (isAdmin) loadHistory(); }, [isAdmin, loadHistory]);
 
   const rotateKeys = async () => {
     if (!window.confirm('چرخش کلید امضای لایسنس؟\n\n\u2022 جفت‌کلید جدید جای کلید فعلی می‌شود (صدور آینده با کلید جدید).\n\u2022 کلید قبلی بایگانی و همچنان برای تأیید کدهای صادرشده‌ی قبلی پذیرفته می‌ماند.\n\u2022 کدهای قبلی هیچ‌وقت باطل نمی‌شوند.\n\u2022 اگر بیش از یک سرور دارید باید فایل‌ها را همگام کنید (راهنما بعد از چرخش نمایش داده می‌شود).\n\nادامه می‌دهید؟')) return;
@@ -123,6 +151,7 @@ export default function IssuePage() {
       const r = await api.post<RotationResult>('/license/keys/rotate');
       setRotResult(r);
       await loadKeys();
+      await loadHistory(); // سطر تازه‌ی رجیستری بلافاصله نمایش داده شود
     } catch (e) {
       const err = e as Error & { payload?: { error?: string } };
       setRotError(err.payload?.error || err.message);
@@ -356,6 +385,73 @@ export default function IssuePage() {
             </details>
           </div>
         )}
+
+        {/* ─────────── تاریخچه چرخش‌ها (از rotations.jsonl) ─────────── */}
+        <div className="mt-5 pt-4 border-t border-stone-200 dark:border-stone-700">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h3 className="text-sm font-bold text-stone-700 dark:text-stone-200">📜 تاریخچه چرخش‌ها</h3>
+            {rotHistory && rotHistory.count > 0 && (
+              <span className="badge bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300 text-[10px]" title="تعداد سطرهای معتبر رجیستری keys/rotations.jsonl">
+                <span className="fa-nums">{toFa(rotHistory.count)}</span> سطر ثبت‌شده
+              </span>
+            )}
+          </div>
+          {!rotHistory || rotHistory.count === 0 ? (
+            <p className="text-xs text-stone-400 leading-6">
+              {rotHistory && !rotHistory.exists
+                ? 'رجیستری چرخش هنوز ساخته نشده است (keys/rotations.jsonl) — با اولین چرخش از همین پنل ثبت می‌شود.'
+                : 'هنوز چرخشی ثبت نشده است.'}
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-stone-400 border-b border-stone-200 dark:border-stone-700">
+                      <th className="text-right py-2 px-2">تاریخ چرخش</th>
+                      <th className="text-right py-2 px-2">کلید قدیمی</th>
+                      <th className="text-right py-2 px-2">کلید جدید</th>
+                      <th className="text-right py-2 px-2">بایگانی عمومی</th>
+                      <th className="text-right py-2 px-2">منبع</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rotHistory.rotations.map((r, i) => (
+                      <tr key={`${r.old_kid}-${i}`} className="border-b border-stone-100 dark:border-stone-800">
+                        <td className="py-2 px-2 fa-nums whitespace-nowrap">
+                          {Number.isNaN(Date.parse(r.rotated_at)) ? '—' : new Date(r.rotated_at).toLocaleString('fa-IR')}
+                        </td>
+                        <td className="py-2 px-2 font-mono" dir="ltr">{r.old_kid}</td>
+                        <td className="py-2 px-2">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="font-mono" dir="ltr">{r.new_kid}</span>
+                            {r.new_kid === rotHistory.current_kid && (
+                              <span className="badge bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300 text-[10px]" title="کلید جاریِ صدور و تأیید">جاری</span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2">
+                          {r.archive_ok ? (
+                            <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 text-[10px]" title={r.archived_pub || ''}>موجود</span>
+                          ) : (
+                            <span className="badge bg-gold/10 text-gold-dark dark:text-gold-light border border-gold/40 text-[10px]" title={r.archived_pub || 'فایل بایگانی پیدا نشد'}>مفقود</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-2 text-stone-500 dark:text-stone-400">{r.by || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {rotHistory.invalid_lines > 0 && (
+                <p className="text-[11px] text-gold-dark dark:text-gold-light mt-2">
+                  ⚠ {toFa(rotHistory.invalid_lines)} سطر خراب/ناقص در رجیستری نادیده گرفته شد.
+                </p>
+              )}
+              <p className="text-[10px] text-stone-400 mt-2 font-mono truncate" dir="ltr" title="مسیر رجیستری روی سرور">{rotHistory.path}</p>
+            </>
+          )}
+        </div>
       </section>
 
       {/* ─────────── رجیستری کدهای صادرشده ─────────── */}

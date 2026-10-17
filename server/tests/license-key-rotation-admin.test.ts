@@ -125,6 +125,36 @@ describe('چرخش کلید امضای لایسنس از اندپوینت ادم
     expect(newKidOnDisk).toBe(r.data.new_kid);
   });
 
+  it('GET keys/rotations — تاریخچه چرخش‌ها از rotations.jsonl (ادمین)؛ غیرادمین: ۴۰۳', async () => {
+    interface Hist {
+      path: string; exists: boolean; count: number; invalid_lines: number;
+      current_kid: string | null;
+      rotations: Array<{ rotated_at: string; old_kid: string; new_kid: string; archived_pub: string | null; archive_ok: boolean; by?: string }>;
+    }
+    const r = await s.api<Hist>('GET', '/api/license/keys/rotations', { token });
+    expect(r.status).toBe(200);
+    expect(r.data.path).toContain('rotations.jsonl');
+    expect(r.data.exists).toBe(true);
+    expect(r.data.count).toBe(1); // دقیقاً همان یک چرخش این suite
+    expect(r.data.invalid_lines).toBe(0);
+    // جدیدترین اول و سازگار با وضعیت واقعی دیسک
+    const e = r.data.rotations[0];
+    expect(e.old_kid).toMatch(/^[0-9a-f]{8}$/);
+    expect(e.new_kid).toMatch(/^[0-9a-f]{8}$/);
+    expect(e.old_kid).not.toBe(e.new_kid);
+    expect(Date.parse(e.rotated_at)).not.toBeNaN();
+    expect(e.by).toBe('admin-panel');
+    expect(e.archive_ok).toBe(true); // بایگانی عمومیِ قدیمی ساخته شده
+    expect(existsSync(e.archived_pub!)).toBe(true);
+    expect(r.data.current_kid).toBe(kidOf(readFileSync(join(tmpKeys, 'license_public.pem'), 'utf8')));
+    expect(r.data.current_kid).toBe(e.new_kid);
+
+    // غیرادمین → ۴۰۳ (همان کاربر viewer ساخته‌شده در تست اول)
+    const vToken = await s.login('rotviewer', 'v1ewer-pass-1');
+    const forbidden = await s.api('GET', '/api/license/keys/rotations', { token: vToken });
+    expect(forbidden.status).toBe(403);
+  });
+
   it('کدِ صادرشده پیش‌ازچرخش (kid قدیمی) پس از چرخش هنوز تأیید می‌شود (code-status ۲۰۰)', async () => {
     const r = await s.api<{ jti?: string; kid?: string }>('POST', '/api/license/code-status', { token, body: { code: preCode } });
     expect(r.status).toBe(200);
