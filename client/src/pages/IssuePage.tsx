@@ -301,7 +301,7 @@ export default function IssuePage() {
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="label">طرح</label>
-            <select value={plan} onChange={(e) => setPlan(e.target.value)} className="input">
+            <select value={plan} onChange={(e) => setPlan(e.target.value)} className="input" aria-label="طرح">
               {PLANS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
             <p className="text-[11px] text-stone-400 mt-1">
@@ -335,7 +335,7 @@ export default function IssuePage() {
         <section className="card p-5 space-y-4">
           <div className="rounded-lg border border-green-200 dark:border-green-800 bg-success/5 dark:bg-green-900/20 p-4 space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 text-[10px]">
+              <span className="badge bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 text-[10px]">
                 {issued.plan_label}
               </span>
               <span className="text-stone-600 dark:text-stone-300">
@@ -446,7 +446,7 @@ export default function IssuePage() {
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600 dark:text-stone-300">
               {kidMatches ? (
-                <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 text-[10px]">تطبیق kid ✓</span>
+                <span className="badge bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-[10px]">تطبیق kid ✓</span>
               ) : (
                 <span className="badge bg-gold/10 text-gold-dark dark:text-gold-light border border-gold/40 text-[10px]">عدم تطابق kid</span>
               )}
@@ -507,7 +507,7 @@ export default function IssuePage() {
                         </td>
                         <td className="py-2 px-2">
                           {r.archive_ok ? (
-                            <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 text-[10px]" title={r.archived_pub || ''}>موجود</span>
+                            <span className="badge bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-[10px]" title={r.archived_pub || ''}>موجود</span>
                           ) : (
                             <span className="badge bg-gold/10 text-gold-dark dark:text-gold-light border border-gold/40 text-[10px]" title={r.archived_pub || 'فایل بایگانی پیدا نشد'}>مفقود</span>
                           )}
@@ -563,7 +563,7 @@ export default function IssuePage() {
                       {r.revoked
                         ? <span className="badge bg-coral/10 text-coral-dark dark:text-coral-light border border-coral/40 text-[10px]">ابطال‌شده</span>
                         : r.activated
-                          ? <span className="badge bg-green-50 text-success dark:bg-green-900/30 dark:text-green-300 text-[10px]">فعال‌شده</span>
+                          ? <span className="badge bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-[10px]">فعال‌شده</span>
                           : <span className="badge bg-stone-100 text-stone-500 dark:bg-stone-700 dark:text-stone-300 text-[10px]">صادرشده</span>}
                     </td>
                     <td className="py-2 px-2 whitespace-nowrap">

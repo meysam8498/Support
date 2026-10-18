@@ -19,7 +19,7 @@ import { inspect } from 'node:util';
 import { getDb, applySchema, migrateSchema } from './db/db.js';
 import { seedIfEmpty } from './db/init.js';
 import { authRequired, requireRole, errorHandler } from './middleware/auth.js';
-import { startBackupScheduler, backupOnce, backupStatus, listBackups, backupDir, prepareRestore, confirmRestore, restorePendingMarkerPath } from './lib/backup.js';
+import { startBackupScheduler, backupOnce, backupStatus, backupHistory, listBackups, backupDir, prepareRestore, confirmRestore, restorePendingMarkerPath } from './lib/backup.js';
 import authRoutes from './routes/auth.js';
 import listsRoutes from './routes/lists.js';
 import devicesRoutes from './routes/devices.js';
@@ -200,9 +200,9 @@ app.use('/api/license', authRequired, licenseRoutes);
 app.use('/api/license', authRequired, licenseActivateRoutes);
 
 // --- پشتیبان‌گیری (فقط ادمین) ---
-// GET /api/backups — فهرست بکاپ‌ها + وضعیت زمان‌بند
+// GET /api/backups — فهرست بکاپ‌ها + وضعیت زمان‌بند + تاریخچه‌ی ثبت‌شده در DB (برای نمودار خطی داشبورد)
 app.get('/api/backups', authRequired, requireRole('admin'), (_req, res) => {
-  res.json({ ...backupStatus(), items: listBackups() });
+  res.json({ ...backupStatus(), items: listBackups(), history: backupHistory(getDb()) });
 });
 // POST /api/backups/run — بکاپ دستی (فوری)
 app.post('/api/backups/run', authRequired, requireRole('admin'), async (_req, res) => {

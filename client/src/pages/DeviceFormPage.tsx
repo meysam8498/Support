@@ -187,7 +187,7 @@ export default function DeviceFormPage() {
     }
   };
 
-  if (loading) return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.loading}</p>;
+  if (loading) return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.loading}</p>;
 
   const filteredModels = lists
     ? lists.deviceModels.filter((m) => !form.brand_id || m.brand_id === form.brand_id)
@@ -204,27 +204,27 @@ export default function DeviceFormPage() {
       <form onSubmit={submit} className="card space-y-5" noValidate>
         {/* اطلاعات پایه */}
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">اطلاعات پایه</h3>
+          <h2 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">اطلاعات پایه</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <SelectField label={t.projectName} value={form.project_id} onChange={(v) => set('project_id', v as number)} required
               options={lists?.projects || []} error={fieldErrors.project_id} />
             <div>
               <label className="label">{t.contractNumber}</label>
-              <input className="input" value={form.contract_number} onChange={(e) => set('contract_number', e.target.value)} dir="ltr" />
+              <input className="input" aria-label={t.contractNumber} value={form.contract_number} onChange={(e) => set('contract_number', e.target.value)} dir="ltr" />
             </div>
             <SelectField label={t.salesExpert} value={form.sales_expert_id} onChange={(v) => set('sales_expert_id', v as number)}
               options={lists?.salesExperts || []} />
             <div>
               <label className="label">{t.mainSerial}</label>
-              <input className="input" value={form.main_serial} onChange={(e) => set('main_serial', e.target.value)} dir="ltr" />
+              <input className="input" aria-label={t.mainSerial} value={form.main_serial} onChange={(e) => set('main_serial', e.target.value)} dir="ltr" />
             </div>
             <div>
               <label className="label">{t.partNumber1}</label>
-              <input className="input" value={form.part_number_1} onChange={(e) => set('part_number_1', e.target.value)} dir="ltr" />
+              <input className="input" aria-label={t.partNumber1} value={form.part_number_1} onChange={(e) => set('part_number_1', e.target.value)} dir="ltr" />
             </div>
             <div>
               <label className="label">{t.partNumber2}</label>
-              <input className="input" value={form.part_number_2} onChange={(e) => set('part_number_2', e.target.value)} dir="ltr" />
+              <input className="input" aria-label={t.partNumber2} value={form.part_number_2} onChange={(e) => set('part_number_2', e.target.value)} dir="ltr" />
             </div>
             <SelectField label={t.deviceType} value={form.device_type_id} onChange={(v) => set('device_type_id', v as number)} required
               options={lists?.deviceTypes || []} error={fieldErrors.device_type_id} />
@@ -239,7 +239,7 @@ export default function DeviceFormPage() {
 
         {/* انبار و تحویل */}
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">انبار و تحویل</h3>
+          <h2 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">انبار و تحویل</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <JalaliDatePicker label={t.warehouseExitDate} value={form.warehouse_exit_jalali} onChange={(v) => set('warehouse_exit_jalali', v)} />
             <JalaliDatePicker label={t.customerDeliveryDate} value={form.customer_delivery_jalali} onChange={(v) => set('customer_delivery_jalali', v)} />
@@ -248,11 +248,11 @@ export default function DeviceFormPage() {
 
         {/* گارانتی */}
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">گارانتی</h3>
+          <h2 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">گارانتی</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="label">{t.warrantyDuration}</label>
-              <input type="number" min={0} className={`input fa-nums ${fieldErrors.warranty_duration_months ? 'input-error' : ''}`} dir="ltr"
+              <input type="number" min={0} aria-label={t.warrantyDuration} className={`input fa-nums ${fieldErrors.warranty_duration_months ? 'input-error' : ''}`} dir="ltr"
                 value={form.warranty_duration_months} aria-invalid={!!fieldErrors.warranty_duration_months}
                 onChange={(e) => set('warranty_duration_months', e.target.value ? Number(e.target.value) : '')} />
               {fieldErrors.warranty_duration_months && (
@@ -270,11 +270,11 @@ export default function DeviceFormPage() {
 
         {/* وضعیت و دلایل تعویض */}
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">وضعیت و دلایل تعویض</h3>
+          <h2 className="mb-3 text-sm font-semibold text-brand-700 dark:text-brand-300">وضعیت و دلایل تعویض</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="label">{t.deviceStatus}</label>
-              <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
+              <select className="input" aria-label={t.deviceStatus} value={form.status} onChange={(e) => set('status', e.target.value)}>
                 <option value="active">{t.statusActive}</option>
                 <option value="defective">{t.statusDefective}</option>
                 <option value="replacing">{t.statusReplacing}</option>
@@ -283,7 +283,7 @@ export default function DeviceFormPage() {
             </div>
             <div>
               <label className="label">{t.replacementReasonType}</label>
-              <select className="input" value={form.replacement_reason_type}
+              <select className="input" aria-label={t.replacementReasonType} value={form.replacement_reason_type}
                 onChange={(e) => set('replacement_reason_type', e.target.value)}>
                 <option value="">—</option>
                 <option value="hardware">{t.reasonHardware}</option>
@@ -294,7 +294,7 @@ export default function DeviceFormPage() {
           </div>
           <div className="mt-4">
             <label className="label">{t.replacementReasonDesc}</label>
-            <textarea className="input" rows={2} value={form.replacement_reason_desc}
+            <textarea className="input" rows={2} aria-label={t.replacementReasonDesc} value={form.replacement_reason_desc}
               onChange={(e) => set('replacement_reason_desc', e.target.value)} />
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function DeviceFormPage() {
         {/* توضیحات */}
         <div>
           <label className="label">{t.description}</label>
-          <textarea className="input" rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} />
+          <textarea className="input" rows={2} aria-label={t.description} value={form.description} onChange={(e) => set('description', e.target.value)} />
         </div>
 
         <div className="flex gap-2 justify-end pt-2">

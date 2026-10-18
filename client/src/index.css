@@ -44,6 +44,13 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* آژیر وضعیت (نبض دائمی) — با احترام به ترجیح کاهش حرکت سیستم‌عامل */
+@media (prefers-reduced-motion: reduce) {
+  .animate-siren-pulse {
+    animation: none !important;
+  }
+}
+
 /* اسکرول‌بار خنثی */
 ::-webkit-scrollbar {
   width: 9px;

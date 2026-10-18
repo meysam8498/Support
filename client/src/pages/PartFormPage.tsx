@@ -98,7 +98,7 @@ export default function PartFormPage() {
     finally { setSaving(false); }
   };
 
-  if (loading) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
+  if (loading) return <p className="text-stone-500 dark:text-stone-400 text-center mt-20">{t.loading}</p>;
 
   // کاربر غیر ادمین اجازه ایجاد/ویرایش ندارد
   if (!isAdmin) {
@@ -116,7 +116,7 @@ export default function PartFormPage() {
       <form onSubmit={submit} className="card space-y-4" noValidate>
         <div>
           <label className="label">دستگاه<span className="text-coral mr-1">*</span></label>
-          <select className={`input ${fieldErrors.device_id ? 'input-error' : ''}`} value={form.device_id}
+          <select className={`input ${fieldErrors.device_id ? 'input-error' : ''}`} aria-label="دستگاه" value={form.device_id}
             onChange={(e) => set('device_id', e.target.value ? Number(e.target.value) : '')}
             required aria-invalid={!!fieldErrors.device_id} disabled={!!presetDevice && !isEdit}>
             <option value="">انتخاب دستگاه...</option>
@@ -128,7 +128,7 @@ export default function PartFormPage() {
         </div>
         <div>
           <label className="label">{t.partTitle}<span className="text-coral mr-1">*</span></label>
-          <input className={`input ${fieldErrors.title ? 'input-error' : ''}`} value={form.title}
+          <input className={`input ${fieldErrors.title ? 'input-error' : ''}`} aria-label={t.partTitle} value={form.title}
             onChange={(e) => set('title', e.target.value)} required aria-invalid={!!fieldErrors.title} />
           {fieldErrors.title && <p className="field-error">⚠ {fieldErrors.title}</p>}
         </div>
@@ -152,17 +152,17 @@ export default function PartFormPage() {
           </div>
           <div>
             <label className="label">{t.partNumber2}</label>
-            <input className="input" dir="ltr" value={form.part_number_2} onChange={(e) => set('part_number_2', e.target.value)} />
+            <input className="input" dir="ltr" aria-label={t.partNumber2} value={form.part_number_2} onChange={(e) => set('part_number_2', e.target.value)} />
           </div>
           <div>
             <label className="label">{t.partSerial}</label>
-            <input className="input" dir="ltr" value={form.part_serial_number} onChange={(e) => set('part_serial_number', e.target.value)} />
+            <input className="input" dir="ltr" aria-label={t.partSerial} value={form.part_serial_number} onChange={(e) => set('part_serial_number', e.target.value)} />
           </div>
           <JalaliDatePicker label={t.soldDate} value={form.sold_at_jalali} onChange={(v) => set('sold_at_jalali', v)} />
         </div>
         <div>
           <label className="label">{t.techSpecs}</label>
-          <textarea className="input" rows={2} value={form.tech_specs} onChange={(e) => set('tech_specs', e.target.value)} />
+          <textarea className="input" rows={2} aria-label={t.techSpecs} value={form.tech_specs} onChange={(e) => set('tech_specs', e.target.value)} />
         </div>
         <div className="flex gap-2 justify-end">
           <button type="button" onClick={() => navigate(-1)} className="btn-secondary">{t.cancel}</button>

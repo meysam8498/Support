@@ -342,6 +342,7 @@ export default function SerialImportPage() {
             </label>
             <select
               className="input"
+              aria-label="پروژه‌ی مقصد"
               value={projectId}
               onChange={(e) => {
                 setProjectId(e.target.value ? Number(e.target.value) : '');
@@ -363,6 +364,7 @@ export default function SerialImportPage() {
             <label className="label">۲) تجهیز مقصد</label>
             <select
               className="input"
+              aria-label="تجهیز مقصد"
               value={deviceId}
               onChange={(e) => {
                 setDeviceId(e.target.value ? Number(e.target.value) : '');
@@ -463,7 +465,7 @@ export default function SerialImportPage() {
               value={pastedText}
               onChange={(e) => { setPastedText(e.target.value); setPreview(null); }}
             />
-            <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-1 leading-5">
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1 leading-5">
               هر ردیف = یک قطعه · جداکننده: Tab (کپی مستقیم از اکسل)، | یا ؛ · سرستون اختیاری:
               سریال تجهیز | نوع قطعه | عنوان قطعه | پارت‌نامبر | سریال قطعه | مشخصات فنی
             </p>
@@ -475,6 +477,7 @@ export default function SerialImportPage() {
               ref={inputRef}
               type="file"
               accept=".xlsx,.xls"
+              aria-label="فایل اکسل"
               className="input"
               onChange={(e) => {
                 setFile(e.target.files?.[0] ?? null);

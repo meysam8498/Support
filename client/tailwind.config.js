@@ -104,9 +104,15 @@ export default {
           from: { width: '0%' },
           to: { width: 'var(--progress-w, 100%)' },
         },
+        // آژیر وضعیت — نبض قرمز/طلایی برای نشان دادن بکاپ ناموفق یا عقب‌افتاده (کارت بکاپ داشبورد)
+        'siren-pulse': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.45', transform: 'scale(1.6)' },
+        },
       },
       animation: {
         'progress-fill': 'progress-fill 200ms ease-out forwards',
+        'siren-pulse': 'siren-pulse 1.2s ease-in-out infinite',
       },
     },
   },

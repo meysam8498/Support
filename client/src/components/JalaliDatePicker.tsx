@@ -156,6 +156,7 @@ export default function JalaliDatePicker({
           onChange={(e) => setRaw(e.target.value)}
           onBlur={blur}
           dir="ltr"
+          aria-label={label}
           style={{ textAlign: 'center' }}
           required={required}
         />
@@ -195,7 +196,7 @@ export default function JalaliDatePicker({
             </div>
 
             {/* روزهای هفته */}
-            <div className="grid grid-cols-7 gap-1 text-center text-xs text-stone-400 dark:text-stone-500">
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-stone-500 dark:text-stone-400">
               {WEEK_DAYS.map((d) => (
                 <div key={d} className="py-1">{d}</div>
               ))}

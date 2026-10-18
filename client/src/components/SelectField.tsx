@@ -22,6 +22,7 @@ export default function SelectField({ label, value, onChange, options, placehold
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
         required={required}
         aria-invalid={!!error}
+        aria-label={label}
       >
         <option value="">{placeholder || 'انتخاب کنید...'}</option>
         {options.map((o) => (

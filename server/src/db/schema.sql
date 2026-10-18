@@ -331,3 +331,23 @@ CREATE INDEX IF NOT EXISTS idx_parts_pn1              ON parts(part_number_1);
 CREATE INDEX IF NOT EXISTS idx_parts_pn2              ON parts(part_number_2);
 CREATE INDEX IF NOT EXISTS idx_projects_name          ON projects(name);
 CREATE INDEX IF NOT EXISTS idx_users_active           ON users(active);
+
+-- --------------------------------------------------------
+-- تاریخچه‌ی بکاپ‌ها — ثبت هر اجرای پشتیبان‌گیری برای نمودار رشد حجم (داشدبورد)
+--   source: manual (دستی) | daily (روزانه) | initial (اولیه) | safety (ایمنی restore)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS backup_history (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  ran_at      TEXT NOT NULL,                          -- زمان اجرا (ISO8601 به وقت سرور)
+  source      TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'daily', 'initial', 'safety')),
+  ok          INTEGER NOT NULL DEFAULT 0,             -- 1 = بکاپ سالم ثبت شد
+  file        TEXT,                                   -- نام فایل خروجی (در صورت موفقیت)
+  size_bytes  INTEGER,                                -- حجم فایل بکاپ — داده‌ی نمودار خطی داشبورد
+  integrity   TEXT,                                   -- نتیجه‌ی PRAGMA integrity_check
+  duration_ms INTEGER,
+  error       TEXT,                                   -- پیام خطا (در صورت شکست)
+  push_ok     INTEGER,                                -- نتیجه‌ی push خارجی (NULL = مقصدی تنظیم نشده)
+  push_target TEXT,
+  push_error  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_backup_history_ran_at  ON backup_history(ran_at);

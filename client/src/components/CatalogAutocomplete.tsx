@@ -36,6 +36,8 @@ interface Props {
   dir?: 'ltr' | 'rtl' | 'auto';
   /** onChange برای کنترل مقدار توسط والد (کنترل‌شده) */
   onChange?: (v: string) => void;
+  /** نام دسترس‌پذیر برای صفحه‌خوان (در گرید از عنوان ستون داده می‌شود) */
+  ariaLabel?: string;
   /** پاس‌دادن رویدادهای گرید اکسل‌مانند */
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onPaste?: (e: React.ClipboardEvent<HTMLInputElement>) => void;
@@ -52,6 +54,7 @@ export default function CatalogAutocomplete({
   onKeyDown,
   onPaste,
   cellAttr,
+  ariaLabel,
 }: Props) {
   const { isAdmin } = useAuth();
   const [hits, setHits] = useState<CatalogEntry[]>([]);
@@ -125,6 +128,7 @@ export default function CatalogAutocomplete({
         value={value}
         placeholder={placeholder}
         dir={dir}
+        aria-label={ariaLabel}
         autoComplete="off"
         data-grid-cell={cellAttr ? '' : undefined}
         {...cellAttr}
@@ -164,7 +168,7 @@ export default function CatalogAutocomplete({
             </button>
           ))}
           {isAdmin && (
-            <p className="px-3 py-1.5 text-[10px] text-stone-400 dark:text-stone-500 border-t border-dashed border-stone-100 dark:border-stone-700">
+            <p className="px-3 py-1.5 text-[10px] text-stone-500 dark:text-stone-400 border-t border-dashed border-stone-100 dark:border-stone-700">
               ↑↓ انتخاب · Enter تأیید — انتخاب، عنوان و مشخصات را خودکار پر می‌کند
             </p>
           )}

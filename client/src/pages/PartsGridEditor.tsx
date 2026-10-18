@@ -241,7 +241,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
                 <th className="px-2 py-3 font-semibold text-right min-w-[150px]">سریال قطعه</th>
                 <th className="px-2 py-3 font-semibold text-right min-w-[150px]">تاریخ فروش</th>
                 <th className="px-2 py-3 font-semibold text-right min-w-[160px]">مشخصات فنی</th>
-                <th className="w-10 px-2 py-3"></th>
+                <th className="w-10 px-2 py-3"><span className="sr-only">عملیات ردیف</span></th>
               </tr>
             </thead>
             <tbody>
@@ -252,10 +252,11 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
                     i % 2 === 1 ? 'bg-stone-50/60 dark:bg-stone-800/30' : ''
                   } hover:bg-brand-50/40 dark:hover:bg-brand-900/15`}
                 >
-                  <td className="px-2 text-center text-[11px] text-stone-400 dark:text-stone-500 fa-nums">{toFa(i + 1)}</td>
+                  <td className="px-2 text-center text-[11px] text-stone-500 dark:text-stone-400 fa-nums">{toFa(i + 1)}</td>
                   <td className="px-1 py-1">
                     <input
                       data-grid-cell
+                      aria-label="عنوان قطعه"
                       className={cellCls}
                       value={r.title}
                       placeholder="مثلاً 32GB DDR4 RDIMM یا Paste از اکسل"
@@ -278,6 +279,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
                       onChange={(v) => setCell(r.key, 'part_number_1', v)}
                       onKeyDown={(e) => onCellKeyDown(e, r.key, isLast(i), isEmptyRow(r))}
                       onPaste={onCellPaste}
+                      ariaLabel="پارت‌نامبر ۱"
                       cellAttr={{ 'data-grid-cell': '' }}
                       className={`${cellCls} fa-nums`}
                     />
@@ -285,6 +287,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
                   <td className="px-1 py-1">
                     <input
                       data-grid-cell
+                      aria-label="پارت‌نامبر ۲"
                       className={`${cellCls} fa-nums`}
                       value={r.part_number_2}
                       dir="ltr"
@@ -295,6 +298,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
                   <td className="px-1 py-1">
                     <input
                       data-grid-cell
+                      aria-label="سریال قطعه"
                       className={`${cellCls} fa-nums ${isSerialDupe(r.part_serial_number) ? 'border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/20' : ''}`}
                       value={r.part_serial_number}
                       dir="ltr"
@@ -306,6 +310,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
                   <td className="px-1 py-1 min-w-[130px]">
                     <input
                       data-grid-cell
+                      aria-label="تاریخ فروش"
                       className={`${cellCls} fa-nums`}
                       value={r.sold_at_jalali}
                       placeholder={defaultSoldAt || '1404/05/10'}
@@ -317,6 +322,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
                   <td className="px-1 py-1">
                     <input
                       data-grid-cell
+                      aria-label="مشخصات فنی"
                       className={cellCls}
                       value={r.tech_specs}
                       placeholder="PC4-2666 …"
@@ -345,7 +351,7 @@ export default function PartsGridEditor({ deviceId, deviceSerial, defaultSoldAt 
 
       {/* ---------- راهنما و اکشن ---------- */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[11px] text-stone-400 dark:text-stone-500 leading-5">
+        <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-5">
           <kbd className="border border-stone-300 dark:border-stone-600 rounded px-1">Enter</kbd> ردیف جدید ·
           <kbd className="border border-stone-300 dark:border-stone-600 rounded px-1 mr-1">Tab</kbd> سلول بعدی ·
           <kbd className="border border-stone-300 dark:border-stone-600 rounded px-1 mr-1">Esc</kbd> حذف ردیفِ خالی آخر ·

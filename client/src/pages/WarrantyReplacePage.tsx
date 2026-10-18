@@ -177,7 +177,7 @@ export default function WarrantyReplacePage() {
     }
   };
 
-  if (loadingLists) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
+  if (loadingLists) return <p className="text-stone-500 dark:text-stone-400 text-center mt-20">{t.loading}</p>;
 
   // فقط ادمین/کارشناس فنی اجازه ثبت تعویض دارد
   if (!canReplace) {
@@ -198,7 +198,7 @@ export default function WarrantyReplacePage() {
 
       {/* گام ۱: انتخاب پروژه */}
       <div className="card card-accent">
-        <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-200 mb-3">{t.warrantyStep1}</h3>
+        <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-200 mb-3">{t.warrantyStep1}</h2>
         <SelectField
           label={t.projectName}
           value={projectId}
@@ -216,9 +216,9 @@ export default function WarrantyReplacePage() {
       {/* گام ۲: انتخاب دستگاه (فقط اگر پروژه انتخاب شده) */}
       {projectId && (
         <div className="card card-accent">
-          <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-200 mb-3">{t.warrantyStep2}</h3>
+          <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-200 mb-3">{t.warrantyStep2}</h2>
           {filteredDevices.length === 0 ? (
-            <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p>
+            <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p>
           ) : (
             <div className="space-y-2">
               {filteredDevices.map((d) => {
@@ -258,7 +258,7 @@ export default function WarrantyReplacePage() {
       {deviceId && selectedDevice && (
         <div className="card card-accent">
           <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
-            <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-200">{t.warrantyStep3}</h3>
+            <h2 className="text-sm font-semibold text-stone-700 dark:text-stone-200">{t.warrantyStep3}</h2>
             <span className="text-xs text-stone-500 dark:text-stone-400">
               {selectedDevice.device_type_name} {selectedDevice.brand_name} {selectedDevice.device_model_name}
               {' · '}<span className="fa-nums" dir="ltr">{selectedDevice.main_serial || '—'}</span>
@@ -267,15 +267,15 @@ export default function WarrantyReplacePage() {
           <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">{t.partsOfDevice}</p>
 
           {loadingParts ? (
-            <p className="text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
+            <p className="text-stone-500 dark:text-stone-400 text-sm">{t.loading}</p>
           ) : partsOfDevice.length === 0 ? (
-            <p className="text-stone-400 dark:text-stone-500 text-sm">{t.partNotFound}</p>
+            <p className="text-stone-500 dark:text-stone-400 text-sm">{t.partNotFound}</p>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-700">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-surface-card dark:bg-stone-800/80 text-stone-600 dark:text-stone-300">
-                    <th className="text-right px-3 py-2.5 font-semibold w-8"></th>
+                    <th className="text-right px-3 py-2.5 font-semibold w-8"><span className="sr-only">انتخاب قطعه</span></th>
                     <th className="text-right px-3 py-2.5 font-semibold">{t.partTitle}</th>
                     <th className="text-right px-3 py-2.5 font-semibold">{t.partNumber1}</th>
                     <th className="text-right px-3 py-2.5 font-semibold">{t.partSerial}</th>
@@ -385,7 +385,7 @@ export default function WarrantyReplacePage() {
       )}
 
       {!projectId && (
-        <p className="text-center text-stone-400 dark:text-stone-500 text-sm">{t.noActiveDevice}</p>
+        <p className="text-center text-stone-500 dark:text-stone-400 text-sm">{t.noActiveDevice}</p>
       )}
     </div>
   );

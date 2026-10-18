@@ -13,17 +13,20 @@ import PartDetailPage from './pages/PartDetailPage';
 import WarrantyReplacePage from './pages/WarrantyReplacePage';
 import ReplacementsListPage from './pages/ReplacementsListPage';
 import PartsGridEditor from './pages/PartsGridEditor';
-import ReportsPage from './pages/ReportsPage';
 import ListsPage from './pages/ListsPage';
 import UsersPage from './pages/UsersPage';
 import CustomerViewPage from './pages/CustomerViewPage';
-import SerialImportPage from './pages/SerialImportPage';
 import BackupsPage from './pages/BackupsPage';
 import LicensePage from './pages/LicensePage';
 import IssuePage from './pages/IssuePage';
 import AboutPage from './pages/AboutPage';
-import LogViewerPage from './pages/LogViewerPage';
 import { api, type Device } from './api/api';
+
+// صفحات سنگین با React.lazy جدا بارگذاری می‌شوند تا چانک اولیه (index) سبک‌تر بماند
+// و فقط هنگام ورود به همان مسیر دانلود شوند.
+const ReportsPage = React.lazy(() => import('./pages/ReportsPage'));
+const SerialImportPage = React.lazy(() => import('./pages/SerialImportPage'));
+const LogViewerPage = React.lazy(() => import('./pages/LogViewerPage'));
 
 /** روتر کمکی گرید قطعات: داده‌ی تجهیز را می‌گیرد و PartsGridEditor را رندر می‌کند */
 function PartsGridRouter() {
@@ -63,6 +66,18 @@ function Protected({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
+  );
+}
+
+/**
+ * درخت مسیرها — جدا از BrowserRouter تا تست‌ها (tst/a11y) همان مسیرها را
+ * داخل MemoryRouter با shell واقعی (Layout) رندر کنند.
+ */
+export function AppRoutes() {
+  return (
+    <React.Suspense fallback={<PageLoading />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<Protected><Layout /></Protected>}>
@@ -92,6 +107,15 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </React.Suspense>
+  );
+}
+
+/** فالبک بارگذاری صفحات lazy — برای به‌روزرسانی‌های زنده (role=status) هم خوانا است */
+function PageLoading() {
+  return (
+    <div className="p-8 text-center text-stone-400" role="status" data-testid="page-loading">
+      در حال بارگذاری…
+    </div>
   );
 }

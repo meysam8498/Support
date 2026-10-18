@@ -1,15 +1,16 @@
 # ============================================================
-# تست‌های خودکار سرور در CI — vitest + سرور موقت ایزوله
+# تست‌های خودکار در CI — سرور (vitest + سرور موقت ایزوله) + کلاینت (a11y با axe)
 # سامانه‌ی مدیریت تجهیزات و قطعات یدکی — طراح: میثم ایجادی / Meysam Ijadi
 # -------------------------------------------------------------------
 # روی هر push، PR و اجرای دستی اجرا می‌شود. هر فایل تست سرور موقت خودش را
 # با DB در tmpdir بالا می‌آورد (بدون هیچ اثری روی دیتابیس واقعی).
+# تست a11y کلاینت: همه‌ی مسیرها در jsdom با shell واقعی رندر و با axe سنجیده می‌شوند.
 #
 # سرعت‌بخشی: کش npm (setup-node@v7) شامل باینری‌های prebuilt ابزارهاست؛
 # npm ci --prefer-offline از کش استفاده می‌کند بدون revalidation شبکه؛
 # concurrency اجرای قدیمیِ همان ref را هنگام push پشت‌سرهم لغو می‌کند.
 # ============================================================
-name: Tests (server)
+name: Tests
 
 on:
   push:
@@ -43,3 +44,23 @@ jobs:
 
       - name: Run server tests
         run: npm test -w server
+
+  client-a11y:
+    name: Client — a11y (axe-core روی صفحات)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run client a11y tests
+        run: npm test -w client

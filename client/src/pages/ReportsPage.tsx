@@ -202,7 +202,7 @@ export default function ReportsPage() {
         .filter((c) => c.claims_count > 0)
     : byCust;
 
-  if (loading) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
+  if (loading) return <p className="text-stone-500 dark:text-stone-400 text-center mt-20">{t.loading}</p>;
 
   const maxFailed = Math.max(1, ...failedShown.map((x) => x.replacement_count));
   const maxCust = Math.max(1, ...byCustShown.map((x) => x.claims_count));
@@ -333,6 +333,7 @@ export default function ReportsPage() {
               value={trendProjectId}
               onChange={(e) => setTrendProjectId(e.target.value)}
               title="فیلتر پروژه"
+              aria-label="فیلتر پروژه"
             >
               <option value="">همه‌ی پروژه‌ها</option>
               {projects.map((p) => (
@@ -342,7 +343,7 @@ export default function ReportsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-2">
-          <span className="text-[11px] text-stone-400 dark:text-stone-500">بازه‌ی صریح:</span>
+          <span className="text-[11px] text-stone-500 dark:text-stone-400">بازه‌ی صریح:</span>
           <input
             className="input min-h-[30px] w-[110px] fa-nums text-center text-xs"
             placeholder="از 1404/01/01"
@@ -374,7 +375,7 @@ export default function ReportsPage() {
         </div>
         {trendData && trendData.months.length > 0 ? (
           trendData.months.every((m) => m.count === 0) ? (
-            <p className="text-stone-400 dark:text-stone-500 text-sm">در این بازه تعویضی ثبت نشده است.</p>
+            <p className="text-stone-500 dark:text-stone-400 text-sm">در این بازه تعویضی ثبت نشده است.</p>
           ) : (
             <TrendChart
               months={trendData.months}
@@ -383,7 +384,7 @@ export default function ReportsPage() {
             />
           )
         ) : (
-          <p className="text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
+          <p className="text-stone-500 dark:text-stone-400 text-sm">{t.loading}</p>
         )}
       </div>
 
@@ -391,7 +392,7 @@ export default function ReportsPage() {
         {/* پرخرابی‌ترین قطعات — کلیک → فهرست فیلترشده */}
         <div className="card">
           <h2 className="text-base font-semibold mb-2 dark:text-stone-50">{t.mostFailed}</h2>
-          {failedShown.length === 0 ? <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p> : (
+          {failedShown.length === 0 ? <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p> : (
             failedShown.map((f) => (
               <Link
                 key={f.part_title + (f.part_number_1 || '')}
@@ -411,7 +412,7 @@ export default function ReportsPage() {
         {/* خرابی بر اساس مشتری — کلیک → فهرست فیلترشده‌ی پروژه */}
         <div className="card">
           <h2 className="text-base font-semibold mb-2 dark:text-stone-50">{t.failuresByCustomer}</h2>
-          {byCustShown.length === 0 ? <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p> : (
+          {byCustShown.length === 0 ? <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p> : (
             byCustShown.map((c) => (
               <Link
                 key={c.project_id}
@@ -428,7 +429,7 @@ export default function ReportsPage() {
         {/* خرابی بر اساس دلیل */}
         <div className="card">
           <h2 className="text-base font-semibold mb-2 dark:text-stone-50">{t.failuresByReason}</h2>
-          {byReason.length === 0 ? <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p> : (
+          {byReason.length === 0 ? <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p> : (
             byReason.map((r) => (
               <BarRow key={r.failure_reason_id} label={r.failure_reason_name} value={r.replacement_count} max={maxReason} color="bg-purple-500" term={term} />
             ))
@@ -438,7 +439,7 @@ export default function ReportsPage() {
         {/* نیاز خدمات به تفکیک نوع دستگاه */}
         <div className="card">
           <h2 className="text-base font-semibold mb-3 dark:text-stone-50">{t.serviceNeeds}</h2>
-          {service.length === 0 ? <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p> : (
+          {service.length === 0 ? <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="bg-surface-card dark:bg-stone-800/80 text-stone-600 dark:text-stone-300">
@@ -474,7 +475,7 @@ export default function ReportsPage() {
           <span className="chip chip-default fa-nums text-xs">{toFa(filteredReps.length)} ردیف</span>
         </div>
         {filteredReps.length === 0 ? (
-          <p className="text-stone-400 dark:text-stone-500 text-sm text-center py-6">
+          <p className="text-stone-500 dark:text-stone-400 text-sm text-center py-6">
             {hasSearch ? 'هیچ تعویضی با این فیلتر پیدا نشد.' : 'هنوز تعویضی ثبت نشده است.'}
           </p>
         ) : (
@@ -486,14 +487,14 @@ export default function ReportsPage() {
                     <span className="font-medium text-red-600 dark:text-red-400" dir="auto">
                       <Highlight text={r.old_part_title || '؟'} term={term} />
                     </span>
-                    {r.old_part_serial && <span className="text-[11px] text-stone-400 dark:text-stone-500 fa-nums mr-1.5" dir="ltr">(<Highlight text={r.old_part_serial} term={term} />)</span>}
-                    <span className="mx-2 text-stone-400 dark:text-stone-500">→</span>
+                    {r.old_part_serial && <span className="text-[11px] text-stone-500 dark:text-stone-400 fa-nums mr-1.5" dir="ltr">(<Highlight text={r.old_part_serial} term={term} />)</span>}
+                    <span className="mx-2 text-stone-500 dark:text-stone-400">→</span>
                     <span className="font-medium text-green-600 dark:text-green-400" dir="auto">
                       <Highlight text={r.new_part_title || '؟'} term={term} />
                     </span>
-                    {r.new_part_serial && <span className="text-[11px] text-stone-400 dark:text-stone-500 fa-nums mr-1.5" dir="ltr">(<Highlight text={r.new_part_serial} term={term} />)</span>}
+                    {r.new_part_serial && <span className="text-[11px] text-stone-500 dark:text-stone-400 fa-nums mr-1.5" dir="ltr">(<Highlight text={r.new_part_serial} term={term} />)</span>}
                   </div>
-                  <span className="text-xs text-stone-400 dark:text-stone-500 fa-nums whitespace-nowrap">
+                  <span className="text-xs text-stone-500 dark:text-stone-400 fa-nums whitespace-nowrap">
                     <Highlight text={formatJalaliLong(r.replaced_at_jalali)} term={term} />
                   </span>
                 </div>
@@ -508,7 +509,7 @@ export default function ReportsPage() {
               </div>
             ))}
             {filteredReps.length > 100 && (
-              <p className="text-xs text-stone-400 dark:text-stone-500 text-center fa-nums">… {toFa(filteredReps.length - 100)} ردیف دیگر (برای دیدن همه، فیلتر را محدودتر کنید)</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 text-center fa-nums">… {toFa(filteredReps.length - 100)} ردیف دیگر (برای دیدن همه، فیلتر را محدودتر کنید)</p>
             )}
           </div>
         )}

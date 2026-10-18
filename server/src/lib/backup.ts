@@ -222,6 +222,83 @@ const state = {
   lastPush: null as (PushResult & { at: string; file: string }) | null,
 };
 
+// ============================================================
+// تاریخچه‌ی بکاپ‌ها — ثبت هر اجرا در جدول backup_history (نمودار رشد حجم داشبورد)
+// ============================================================
+export type BackupSource = 'manual' | 'daily' | 'initial' | 'safety';
+
+export interface BackupHistoryRow {
+  ranAt: string;
+  source: BackupSource;
+  ok: boolean;
+  file: string | null;
+  sizeBytes: number | null;
+  integrity: string | null;
+  durationMs: number | null;
+  error: string | null;
+  pushOk: boolean | null;
+  pushTarget: string | null;
+  pushError: string | null;
+}
+
+/** سقف ردیف‌های نگهداری‌شده در تاریخچه — جلوگیری از رشد بی‌انتهای جدول */
+const HISTORY_KEEP = 500;
+
+/**
+ * ثبت یک اجرا در backup_history — idempotent در برابر خطا:
+ * شکست ثبت تاریخچه هرگز نباید بکاپ را خراب کند، فقط هشدار می‌دهد.
+ */
+function recordBackupHistory(db: DatabaseSync, ranAt: string, r: BackupResult, source: BackupSource): void {
+  try {
+    db.prepare(`
+      INSERT INTO backup_history
+        (ran_at, source, ok, file, size_bytes, integrity, duration_ms, error, push_ok, push_target, push_error)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      ranAt, source, r.ok ? 1 : 0, r.file ?? null, r.sizeBytes ?? null,
+      r.integrity ?? null, r.durationMs ?? null, r.error ?? null,
+      r.push ? (r.push.ok ? 1 : 0) : null, r.push?.target || null, r.push?.error ?? null,
+    );
+    // اعمال سقف نگهداری: قدیمی‌ترین ردیف‌های فراتر از HISTORY_KEEP حذف می‌شوند
+    db.prepare(`DELETE FROM backup_history WHERE id NOT IN (SELECT id FROM backup_history ORDER BY id DESC LIMIT ?)`)
+      .run(HISTORY_KEEP);
+  } catch (e) {
+    console.error('⚠ ثبت تاریخچه‌ی بکاپ ناموفق (بکاپ خودش اعمال شد):', (e as Error).message);
+  }
+}
+
+/**
+ * خواندن تاریخچه‌ی بکاپ‌ها برای نمودار خطی داشبورد — جدید→قدیمی داخل DB،
+ * خروجی به‌ترتیب زمانی (قدیمی→جدید) برای رسم پیوسته‌ی نمودار.
+ */
+export function backupHistory(db: DatabaseSync, limit = 120): BackupHistoryRow[] {
+  try {
+    const rows = db.prepare(`
+      SELECT ran_at, source, ok, file, size_bytes, integrity, duration_ms, error, push_ok, push_target, push_error
+      FROM backup_history ORDER BY id DESC LIMIT ?
+    `).all(limit) as {
+      ran_at: string; source: string; ok: number; file: string | null; size_bytes: number | null;
+      integrity: string | null; duration_ms: number | null; error: string | null;
+      push_ok: number | null; push_target: string | null; push_error: string | null;
+    }[];
+    return rows.reverse().map((x) => ({
+      ranAt: x.ran_at,
+      source: (x.source as BackupSource) || 'manual',
+      ok: x.ok === 1,
+      file: x.file,
+      sizeBytes: x.size_bytes,
+      integrity: x.integrity,
+      durationMs: x.duration_ms,
+      error: x.error,
+      pushOk: x.push_ok === null ? null : x.push_ok === 1,
+      pushTarget: x.push_target,
+      pushError: x.push_error,
+    }));
+  } catch {
+    return []; // جدول هنوز ساخته نشده — کارت داشبورد بدون نمودار رندر می‌شود
+  }
+}
+
 /** آخرین وضعیت بکاپ (برای endpoint وضعیت) */
 export function backupStatus(): {
   dir: string; keep: number; atHour: number; lastRun: string | null; lastResult: BackupResult | null; count: number;
@@ -231,19 +308,22 @@ export function backupStatus(): {
   return { dir: backupDir(), keep: BACKUP_KEEP, atHour: BACKUP_AT, lastRun: state.lastRun, lastResult: state.lastResult, count: listBackups().length, push: { target, enabled: !!target, last: state.lastPush } };
 }
 
-/** اجرای بکاپ + ثبت وضعیت + push خارجی (با قفل ضدتداخل) */
-export async function backupOnce(db: DatabaseSync): Promise<BackupResult> {
+/** اجرای بکاپ + ثبت وضعیت + ثبت در تاریخچه + push خارجی (با قفل ضدتداخل) */
+export async function backupOnce(db: DatabaseSync, source: BackupSource = 'manual'): Promise<BackupResult> {
   if (state.running) return { ok: false, error: 'بکاپ قبلی هنوز در حال اجراست.' };
   state.running = true;
   try {
     const r = runBackup(db);
-    state.lastRun = new Date().toISOString();
+    const ranAt = new Date().toISOString();
+    state.lastRun = ranAt;
     state.lastResult = r;
     // push خارجی فقط بعد از بکاپ موفق — شکستش بکاپ محلی را باطل نمی‌کند
     if (r.ok && r.file) {
       r.push = await pushBackupFile(r.file);
       state.lastResult = r;
     }
+    // ثبت در تاریخچه‌ی DB — بعد از push تا نتیجه‌ی push هم در ردیف باشد
+    recordBackupHistory(db, ranAt, r, source);
     return r;
   } finally {
     state.running = false;
@@ -262,7 +342,7 @@ function hasRunToday(): boolean {
 export function startBackupScheduler(db: DatabaseSync): void {
   // بکاپ راه‌اندازی: اگر هیچ بکاپی نیست، بلافاصله یکی بگیر
   if (listBackups().length === 0) {
-    void backupOnce(db).then((r) => console.log(`🗄️ بکاپ اولیه: ${r.ok ? r.file : ('خطا: ' + r.error)}`));
+    void backupOnce(db, 'initial').then((r) => console.log(`🗄️ بکاپ اولیه: ${r.ok ? r.file : ('خطا: ' + r.error)}`));
   }
   setInterval(() => {
     (async () => {
@@ -270,7 +350,7 @@ export function startBackupScheduler(db: DatabaseSync): void {
         const now = new Date();
         if (hasRunToday()) return;
         if (now.getHours() < BACKUP_AT) return;
-        const r = await backupOnce(db);
+        const r = await backupOnce(db, 'daily');
         if (r.ok) {
           console.log(`🗄️ بکاپ روزانه: ${r.file} (${Math.round((r.sizeBytes ?? 0) / 1024)}KB, نگهداری ${BACKUP_KEEP} نسخه)`);
           if (r.push && r.push.target && !r.push.ok) console.error(`🗄️ push خارجی ناموفق: ${r.push.error}`);
@@ -316,6 +396,7 @@ export function prepareRestore(db: DatabaseSync, file: string, requestedBy: stri
   }
   // بکاپ ایمنی از وضعیت فعلی (بدون push — نتیجه‌ی restore نباید مقصد خارجی را آلوده کند)
   const safety = runBackup(db);
+  recordBackupHistory(db, new Date().toISOString(), safety, 'safety');
   if (!safety.ok) return { ok: false, error: `بکاپ ایمنی از وضعیت فعلی ناموفق بود: ${safety.error ?? '?'}` };
   const token = randomBytes(16).toString('hex');
   pendingRestores.set(token, { file, requestedAt: Date.now(), by: requestedBy });
