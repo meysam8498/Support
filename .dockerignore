@@ -14,6 +14,12 @@ npm-debug.log*
 .gitignore
 .gitattributes
 
+# امنیتی — کلید خصوصی صدور لایسنس و داده‌های محلی هرگز وارد build context نشوند
+# (در غیر این صورت کلید به daemon داکر آپلود شده و در کش build می‌ماند)
+keys
+data
+desktop/src-tauri/resources
+
 # ویرایشگرها و سیستم‌عامل
 .vscode
 .idea

@@ -9,6 +9,10 @@ client/dist/
 # کل پوشه‌ی داده‌ی محلی — شامل DB واقعی و پشتیبان‌ها؛ هیچ‌چیز از server/data کامیت نمی‌شود
 server/data/
 
+# داده‌ی محلیِ ریشه — سرورِ اجراشده از ریشه، JWT secret را در data/jwt-secret.txt می‌سازد
+# (SECRET است — نباید کامیت شود؛ قبلاً فقط server/data نادیده گرفته می‌شد)
+/data/
+
 # Logs
 *.log
 npm-debug.log*
