@@ -162,6 +162,8 @@ const health = await api('GET', '/api/health');
 ok('GET /api/health → 200', health.status === 200 && health.data?.ok === true);
 const version = await api('GET', '/api/version');
 ok('GET /api/version → ورژن معتبر', version.status === 200 && /^\d+\.\d+\.\d+$|^dev$/.test(version.data?.version ?? ''), JSON.stringify(version.data));
+// نسخه‌ی سرور (تفکیک ۱.۲۹) — شماره‌گذاری مستقل داخلی که از server/package.json می‌آید
+ok('server_version جدا و semver/dev', /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$|^dev$/.test(version.data?.server_version ?? ''), JSON.stringify(version.data));
 
 // ─────────── ۱.۵) endpoint لاگ سرور /api/logs — تطبیقی (۱.۲۷) ───────────
 // smoke-test ممکن است به سرور SUPPORT_ONLY یا سرور عادی وصل شود — هر دو مسیر درست چک می‌شود.

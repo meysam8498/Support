@@ -3,8 +3,14 @@
 // چک خودکار همگام‌سازی ورژن‌ها و مستندات
 // سامانه‌ی مدیریت تجهیزات و قطعات یدکی — طراح: میثم ایجادی / Meysam Ijadi
 // ----------------------------------------------------------------
-// تضمین می‌کند که در هر تغییر، ورژن در «همه‌ی» جاها یکی باشد:
-//   • package.json (ریشه + server + client) و package-lock.json
+// دو نسخه‌ی مجزا (۱.۲۹) — «نسخه‌ی محصول/مشتری» و «نسخه‌ی سرور»:
+//   • نسخه‌ی محصول = package.json ریشه + client + package-lock + تگ Docker + README + OVERVIEW
+//   • نسخه‌ی سرور (server/package.json) شماره‌گذاری «مستقل» دارد؛ فقط semver آن چک می‌شود،
+//     توسط bump-version هم همگام نمی‌شود (دستی جداگانه bump می‌شود) و از /api/version
+//     به‌عنوان server_version گزارش می‌شود — مشتری هرگز آن را نمی‌بیند.
+// تضمین می‌کند نسخه‌ی محصول در همه‌ی جاها یکی باشد:
+//   • package.json (ریشه + client) و package-lock.json — یکی باشند
+//   • server/package.json → فقط semver معتبر (مستقل؛ یکی نبودن با محصول مجاز است)
 //   • README.md            → بج «نسخه‌ی فعلی» + ردیف جدول تاریخچه
 //   • DOCKER_HUB_OVERVIEW.md → بج «نسخه‌ی فعلی image» + جدول تگ‌ها + تاریخچه
 //   • Dockerfile           → هدر + org.opencontainers.image.version
@@ -36,11 +42,16 @@ try {
   const vClient = pkgClient.version;
   const vLock = lock.packages?.['']?.version ?? null;
 
-  // --- ۱) ورژن هر سه package.json یکی باشد ---
-  if (vRoot === vServer && vRoot === vClient && vRoot === vLock) {
-    ok.push(`ورژن package.json ها هماهنگ است: ${vRoot}`);
+  // --- ۱) نسخه‌ی محصول: ریشه + کلاینت + lock یکی باشند؛ نسخه‌ی سرور فقط semver معتبر ---
+  if (vRoot === vClient && vRoot === vLock) {
+    ok.push(`نسخه‌ی محصول/مشتری هماهنگ است (ریشه = کلاینت = lock = تگ Docker): ${vRoot}`);
   } else {
-    errors.push(`ورژن‌های package.json ناهماهنگ‌اند → root=${vRoot} | server=${vServer} | client=${vClient} | lock=${vLock}`);
+    errors.push(`نسخه‌ی محصول ناهماهنگ است → root=${vRoot} | client=${vClient} | lock=${vLock}`);
+  }
+  if (/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(vServer)) {
+    ok.push(`نسخه‌ی سرور (مستقل) معتبر است: ${vServer}${vServer === vRoot ? ' — تصادفاً با نسخه‌ی محصول یکی است؛ مستقل نگه‌اش دارید؟' : ''}`);
+  } else {
+    errors.push(`server/package.json نسخه‌ی semver معتبر ندارد: ${vServer}`);
   }
 
   // --- ۲) README: بج نسخه + ردیف تاریخچه ---

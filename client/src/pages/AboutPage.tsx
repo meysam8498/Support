@@ -44,11 +44,14 @@ export default function AboutPage() {
   const { role } = useAuth();
   const isAdmin = role === 'admin';
   const [version, setVersion] = useState('…');
+  const [serverVersion, setServerVersion] = useState('…');
   const [license, setLicense] = useState<LicenseStatus | null>(null);
   const [deviceLimit, setDeviceLimit] = useState<DeviceLimit | null>(null);
 
   useEffect(() => {
-    api.get<{ version: string }>('/version').then((r) => setVersion(r.version)).catch(() => setVersion('—'));
+    api.get<{ version: string; server_version?: string }>('/version')
+      .then((r) => { setVersion(r.version); setServerVersion(r.server_version ?? '—'); })
+      .catch(() => { setVersion('—'); setServerVersion('—'); });
     api.get<LicenseStatus>('/license').then(setLicense).catch(() => setLicense(null));
     api.get<DeviceLimit>('/license/device-limit').then(setDeviceLimit).catch(() => setDeviceLimit(null));
   }, []);
@@ -80,9 +83,18 @@ export default function AboutPage() {
               کاتالوگ پارت‌نامبر، یکتایی سریال و گزارش‌های تحلیلی.
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <span className="badge bg-brand-50 text-brand-700 border border-brand-200 dark:bg-brand-900/40 dark:text-brand-300 dark:border-brand-800" dir="ltr">
+              <span className="badge bg-brand-50 text-brand-700 border border-brand-200 dark:bg-brand-900/40 dark:text-brand-300 dark:border-brand-800" dir="ltr" title="نسخه‌ی محصول — همان که مشتری نصب می‌کند">
                 v{version}
               </span>
+              {isAdmin && (
+                <span
+                  className="badge bg-stone-100 text-stone-600 border border-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:border-stone-600"
+                  dir="ltr"
+                  title="نسخه‌ی سرور — شماره‌گذاری مستقل داخلی (فروشنده)"
+                >
+                  ⚙️ سرور v{serverVersion}
+                </span>
+              )}
               {license && (
                 <span
                   className={`badge ${

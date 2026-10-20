@@ -12,7 +12,7 @@ import { config } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import crypto from 'node:crypto';
 import { inspect } from 'node:util';
 
@@ -138,11 +138,19 @@ app.use('/api/license', licenseLimiter);
 // APP_VERSION در Dockerfile/runtime ست می‌شود؛ fallback برای اجرای dev محلی
 // support_only برای بنر ثابت UI (۱.۲۵) — کاربر بداند روی سرور پشتیبانی است
 const APP_VERSION = process.env.APP_VERSION || 'dev';
+// نسخه‌ی سرور (۱.۲۹) — شماره‌گذاری مستقل از نسخه‌ی محصول/مشتری (که از تگ گیت می‌آید).
+// از server/package.json خوانده می‌شود: هم در dev (از src/) و هم در تولید (از dist/)
+// ماژول یک سطح بالاتر است، پس همین مسیر در هر دو حالت درست خوانده می‌شود.
+// کاربرد: تشخیص نسخه‌ی backend برای خودِ فروشنده/پشتیبانی؛ مشتری نسخه‌ی محصول را می‌بیند.
+let SERVER_VERSION = 'dev';
+try {
+  SERVER_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version || 'dev';
+} catch { /* بی‌صدا — اگر package.json در دسترس نبود */ }
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, time: new Date().toISOString(), support_only: SUPPORT_ONLY });
 });
 app.get('/api/version', (_req, res) => {
-  res.json({ version: APP_VERSION, support_only: SUPPORT_ONLY });
+  res.json({ version: APP_VERSION, server_version: SERVER_VERSION, support_only: SUPPORT_ONLY });
 });
 
 // --- گزارش لاگ سرور برای اشکال‌زدایی مشتری (۱.۲۷) ---

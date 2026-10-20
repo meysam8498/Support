@@ -60,7 +60,10 @@ const patch = isRecommit
   };
 
 // --- ۱) package.json ها + lock (در اجرای دوباره رد می‌شود) ---
-if (!isRecommit) for (const f of ['package.json', 'server/package.json', 'client/package.json'])
+// ⚠️ نسخه‌ی سرور (server/package.json) مستقل است و عمداً اینجا همگام نمی‌شود —
+// هم‌ریختن: نسخه‌ی محصول/مشتری (ریشه + کلاینت + تگ Docker) اینجا bump می‌شود؛
+// نسخه‌ی سرور را فقط خودِ فروشنده دستی و جداگانه بالا می‌برد.
+if (!isRecommit) for (const f of ['package.json', 'client/package.json'])
   patch(`"version": "${current}"`, f, (s) => s.replace(`"version": "${current}"`, `"version": "${NEW}"`));
 if (!isRecommit) {
   execSync('npm install --package-lock-only --no-audit --no-fund', { stdio: 'ignore' });
