@@ -14,6 +14,10 @@ import { useAuth } from '../context/AuthContext';
 import TrendChart from '../components/TrendChart';
 import Alert from '../components/Alert';
 import VendorContact from '../components/VendorContact';
+import BackupSizeChart, { type BackupHistoryMeta, type BackupHistoryRow } from '../components/BackupSizeChart';
+import { ROTATE_KEYS_CONFIRM } from '../lib/keyRotationGuide';
+import { prefetchProps } from './registry';
+import WidgetBoard, { Widget } from '../components/WidgetBoard';
 
 /** ورژن جاری — از /api/version (در داکر از APP_VERSION/تگ گیت) */
 function AboutCard() {
@@ -127,26 +131,9 @@ interface DashboardBackupStatus {
   items: { file: string; sizeBytes: number; mtime: string }[];
   /** تاریخچه‌ی ثبت‌شده در جدول backup_history سرور — داده‌ی نمودار خطی رشد */
   history?: BackupHistoryRow[];
+  /** سقف نگهداری تاریخچه — capped یعنی قدیمی‌ترین ردیف‌ها در حال حذف‌شدن‌اند (هشدار UI) */
+  history_meta?: BackupHistoryMeta;
 }
-
-/** یک ردیف از تاریخچه‌ی بکاپ‌ها (INSERT هر اجرا در سرور) */
-interface BackupHistoryRow {
-  ranAt: string;
-  source: 'manual' | 'daily' | 'initial' | 'safety';
-  ok: boolean;
-  file: string | null;
-  sizeBytes: number | null;
-  durationMs: number | null;
-  error: string | null;
-}
-
-/** برچسب فارسیِ منبع اجرای بکاپ (ستون source در backup_history) */
-const BACKUP_SOURCE_LABEL: Record<string, string> = {
-  manual: 'دستی',
-  daily: 'روزانه',
-  initial: 'اولیه',
-  safety: 'ایمنی',
-};
 
 /** وضعیت کلیدهای امضای لایسنس — GET /license/keys/status (فقط ادمین) */
 interface LicenseKeysStatus {
@@ -166,6 +153,28 @@ interface LicenseKeyRotations {
   invalid_lines: number;
   /** جدیدترین چرخش اول */
   rotations: { rotated_at: string; old_kid: string; new_kid: string; archive_ok: boolean; by?: string }[];
+}
+
+/** تعداد سطرهای نمایش‌داده‌شده از تاریخچه‌ی چرخش در کارت داشبورد (لیست فشرده) */
+const ROT_HISTORY_SHOWN = 5;
+
+/** برچسب خوانای عامل چرخش — متن خام rotations.jsonl (مثل «admin-panel») برای کاربر */
+function rotateByLabel(by: string): string {
+  if (by === 'admin-panel') return 'پنل ادمین';
+  if (by === 'admin-panel-restore') return 'بازیابی از پنل ادمین';
+  return by;
+}
+
+/** نتیجه‌ی POST /api/license/keys/rotate — چرخش از کارت داشبورد (همان پاسخ پنل ساخت لایسنس) */
+interface RotationResult {
+  ok: boolean;
+  old_kid: string;
+  new_kid: string;
+  accepted_kids: string[];
+  current_kid: string;
+  rotated_at: string;
+  /** راهنمای بعد از چرخش (همگام‌سازی چندسرور/مستندات) — متن از سرور، منبع واحد */
+  guide: string[];
 }
 
 /** نتیجه‌ی POST /api/backups/run — همان BackupResult سرور */
@@ -201,124 +210,6 @@ const BACKUP_ALARM_META: Record<BackupAlarm, { cls: string; dot: string; label: 
 function backupSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${toFa(Math.max(1, Math.round(bytes / 1024)))} کیلوبایت`;
   return `${toFa((bytes / (1024 * 1024)).toFixed(1))} مگابایت`;
-}
-
-/** حجم خوانا و کوتاه برای برچسب محور نمودار — KB/MB */
-function shortSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${toFa(Math.max(1, Math.round(bytes / 1024)))}KB`;
-  return `${toFa((bytes / (1024 * 1024)).toFixed(1))}MB`;
-}
-
-/** تاریخ کوتاه شمسی برای برچسب محور x — به وقت تهران، ارقام فارسی */
-function axisDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' });
-}
-
-/**
- * نمودار خطی رشد حجم بکاپ‌ها — داده از جدول backup_history سرور (GET /api/backups.history)
- * SVG سبک بدون وابستگی خارجی؛ هم‌سان با TrendChart: RTLپسند، اسکلول افقیِ برای ردیف‌های زیاد
- */
-function BackupSizeChart({ history }: { history: BackupHistoryRow[] }) {
-  const rows = history;
-  const okIdx = rows.map((h, i) => (h.ok && h.sizeBytes != null ? i : -1)).filter((i) => i >= 0);
-  const sizes = okIdx.map((i) => rows[i].sizeBytes as number);
-  const first = sizes[0];
-  const last = sizes[sizes.length - 1];
-  const deltaPct = first > 0 ? Math.round(((last - first) / first) * 100) : 0;
-
-  const head = (
-    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-      <p className="text-xs font-semibold text-stone-800 dark:text-stone-200">
-        📈 رشد حجم بکاپ‌ها
-        <span className="font-normal text-stone-500 dark:text-stone-400"> — {toFa(rows.length)} اجرای ثبت‌شده در تاریخچه</span>
-      </p>
-      {okIdx.length >= 2 && (
-        <span
-          className="badge bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300 text-[10px] fa-nums"
-          title={`رشد حجم فایل بکاپ از اولین تا آخرین بکاپ سالم ثبت‌شده`}
-        >
-          {deltaPct >= 0 ? '↗' : '↘'} {toFa(Math.abs(deltaPct))}٪ · {shortSize(first)} → {shortSize(last)}
-        </span>
-      )}
-    </div>
-  );
-
-  if (rows.length === 0)
-    return <>{head}<p className="text-[11px] text-stone-500 dark:text-stone-400">هنوز اجرایی در تاریخچه ثبت نشده است — با اولین بکاپ، تاریخچه اینجا جمع می‌شود.</p></>;
-  if (okIdx.length < 2)
-    return <>{head}<p className="text-[11px] text-stone-500 dark:text-stone-400">برای رسم خط رشد حداقل ۲ بکاپ سالم لازم است.</p></>;
-
-  const W = Math.max(560, rows.length * 46);
-  const H = 170;
-  const padL = 46;
-  const padR = 14;
-  const padT = 16;
-  const padB = 30;
-  const min = Math.min(...sizes);
-  const max = Math.max(...sizes);
-  const span = Math.max(1, max - min);
-  const x = (i: number) => padL + (i * (W - padL - padR)) / Math.max(1, rows.length - 1);
-  const y = (v: number) => padT + (1 - (v - min) / span) * (H - padT - padB);
-  const linePts = okIdx.map((i) => `${x(i).toFixed(1)},${y(rows[i].sizeBytes as number).toFixed(1)}`).join(' ');
-  const lastIdx = okIdx[okIdx.length - 1];
-  const labelEvery = Math.ceil(rows.length / 7); // جلوگیری از شلوغی برچسب‌های محور x
-
-  return (
-    <div className="space-y-1">
-      {head}
-      <div className="overflow-x-auto" role="region" aria-label="نمودار خطی رشد حجم بکاپ‌ها (قابل اسکرول افقی)" tabIndex={0}>
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="نمودار خطی رشد حجم بکاپ‌ها">
-          <defs>
-            <linearGradient id="backupAreaFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.02" />
-            </linearGradient>
-          </defs>
-          {/* شبکه‌ی افقی: کف و سقف محدوده‌ی حجم + خط پایه */}
-          <line x1={padL} y1={y(max)} x2={W - padR} y2={y(max)} stroke="#e4e4e7" strokeDasharray="3 3" strokeWidth={1} />
-          <line x1={padL} y1={y(min)} x2={W - padR} y2={y(min)} stroke="#e4e4e7" strokeDasharray="3 3" strokeWidth={1} />
-          <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="#a1a1aa" strokeWidth={1} />
-          <text x={padL - 6} y={y(max) + 4} textAnchor="end" fontSize={10} fill="#a1a1aa" className="fa-nums">{shortSize(max)}</text>
-          <text x={padL - 6} y={y(min) + 4} textAnchor="end" fontSize={10} fill="#a1a1aa" className="fa-nums">{shortSize(min)}</text>
-          {/* ناحیه‌ی زیر منحنی */}
-          <polygon points={`${padL},${H - padB} ${linePts} ${x(lastIdx).toFixed(1)},${H - padB}`} fill="url(#backupAreaFill)" />
-          {/* خط رشد */}
-          <polyline points={linePts} fill="none" stroke="#4F46E5" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-          {/* نقاط بکاپ سالم — نقطه‌ی آخر برجسته */}
-          {okIdx.map((i) => {
-            const h = rows[i];
-            const isLast = i === lastIdx;
-            return (
-              <g key={`ok-${i}`}>
-                <title>{`${axisDate(h.ranAt)} · ${shortSize(h.sizeBytes as number)} · ${BACKUP_SOURCE_LABEL[h.source] ?? h.source}${h.durationMs != null ? ` · ${toFa(Math.round(h.durationMs / 1000))} ثانیه` : ''}`}</title>
-                <circle cx={x(i)} cy={y(h.sizeBytes as number)} r={isLast ? 4.5 : 3} fill={isLast ? '#4F46E5' : '#818CF8'} stroke="#ffffff" strokeWidth={1.5} />
-              </g>
-            );
-          })}
-          {/* اجرای ناموفق — نشان قرمز روی خط پایه با دلیل خطا */}
-          {rows.map((h, i) => (
-            h.ok ? null : (
-              <g key={`fail-${i}`}>
-                <title>{`${axisDate(h.ranAt)} · بکاپ ناموفق${h.error ? `: ${h.error}` : ''}`}</title>
-                <circle cx={x(i)} cy={H - padB} r={3.5} fill="#EF4444" />
-              </g>
-            )
-          ))}
-          {/* برچسب محور x — تاریخ شمسی روز اجرا (نقطه‌ی آخر پررنگ) */}
-          {rows.map((h, i) => (
-            (i % labelEvery === 0 || i === rows.length - 1) ? (
-              <text key={`x-${i}`} x={x(i)} y={H - padB + 14} textAnchor="middle" fontSize={9} fill={i === rows.length - 1 ? '#4F46E5' : '#a1a1aa'} fontWeight={i === rows.length - 1 ? 600 : 400}>
-                {axisDate(h.ranAt)}
-              </text>
-            ) : null
-          ))}
-        </svg>
-      </div>
-      <p className="text-[10px] text-stone-500 dark:text-stone-400">
-        🔴 نقطه‌ی قرمز: اجرای ناموفق · خط آبی: حجم فایل هر بکاپ سالم ثبت‌شده در DB (نگهداری {toFa(500)} ردیف آخر)
-      </p>
-    </div>
-  );
 }
 
 /** یک سطر از گزارش پرخرابی‌ترین قطعات */
@@ -357,6 +248,10 @@ export default function DashboardPage() {
   const [licKeys, setLicKeys] = useState<LicenseKeysStatus | null>(null);
   const [licRots, setLicRots] = useState<LicenseKeyRotations | null>(null);
   const [licKeysErr, setLicKeysErr] = useState<string | null>(null);
+  // چرخش کلید امضا از همین کارت (۱.۳۰) — با confirm و راهنمای بعد از چرخش
+  const [rotResult, setRotResult] = useState<RotationResult | null>(null);
+  const [rotBusy, setRotBusy] = useState(false);
+  const [rotError, setRotError] = useState<string | null>(null);
 
   const loadBackup = useCallback(() => {
     api.get<DashboardBackupStatus>('/backups')
@@ -370,17 +265,27 @@ export default function DashboardPage() {
       .catch(() => setDeviceLimit(null));
   }, []);
 
+  /** وضعیت کلیدها + تاریخچه‌ی چرخش — بعد از عملیات چرخش هم دوباره خوانده می‌شود */
+  const loadKeys = useCallback(async () => {
+    try {
+      const [k, rh] = await Promise.all([
+        api.get<LicenseKeysStatus>('/license/keys/status'),
+        api.get<LicenseKeyRotations>('/license/keys/rotations'),
+      ]);
+      setLicKeys(k);
+      setLicRots(rh);
+      setLicKeysErr(null);
+    } catch (e) {
+      // اطلاع‌محور؛ خطا کارت را با پیام قرمز نشان می‌دهد نه داشبورد را
+      setLicKeysErr((e as Error & { payload?: { error?: string } }).payload?.error || (e as Error).message);
+    }
+  }, []);
+
   useEffect(() => {
     if (user?.role !== 'admin') return;
     loadBackup();
-    // وضعیت کلیدهای لایسنس — اطلاع‌محور؛ خطا کارت را با پیام قرمز نشان می‌دهد نه داشبورد را
-    Promise.all([
-      api.get<LicenseKeysStatus>('/license/keys/status'),
-      api.get<LicenseKeyRotations>('/license/keys/rotations'),
-    ])
-      .then(([k, rh]) => { setLicKeys(k); setLicRots(rh); })
-      .catch((e) => setLicKeysErr((e as Error & { payload?: { error?: string } }).payload?.error || (e as Error).message));
-  }, [user?.role, loadBackup]);
+    loadKeys();
+  }, [user?.role, loadBackup, loadKeys]);
 
   useEffect(() => {
     (async () => {
@@ -433,6 +338,24 @@ export default function DashboardPage() {
     }
   };
 
+  // چرخش کلید امضا از کارت داشبورد — همان مسیر پنل ساخت لایسنس (POST /license/keys/rotate)
+  // با confirm مشترک (منبع واحد: lib/keyRotationGuide) و راهنمای بعد از چرخش از پاسخ سرور (guide)
+  const rotateKeys = async () => {
+    if (!window.confirm(ROTATE_KEYS_CONFIRM)) return;
+    setRotBusy(true);
+    setRotError(null);
+    setRotResult(null);
+    try {
+      const r = await api.post<RotationResult>('/license/keys/rotate');
+      setRotResult(r);
+      await loadKeys(); // kid جاری/تعداد پذیرفته‌شده/تاریخچه بلافاصله تازه شود
+    } catch (e) {
+      setRotError((e as Error & { payload?: { error?: string } }).payload?.error || (e as Error).message);
+    } finally {
+      setRotBusy(false);
+    }
+  };
+
   // نوار پیشرفت قطعات فعال نسبت به کل
   const activeRatio = stats && stats.parts > 0 ? Math.round((stats.activeParts / stats.parts) * 100) : 0;
 
@@ -467,11 +390,15 @@ export default function DashboardPage() {
         </Alert>
       )}
 
+      {/* ---------- تخته‌ی ویجت‌های داشبورد (الگوی Microsoft CRM) — چیدمان هر کاربر جداگانه ذخیره می‌شود ---------- */}
+      <WidgetBoard userId={user?.id}>
+
       {/* ---------- کارت وضعیت آخرین بکاپ — فقط ادمین (با بکاپ فوری + آژیر وضعیت) ---------- */}
       {user?.role === 'admin' && backup && (() => {
         const alarm = backupAlarmOf(backup);
         const meta = alarm ? BACKUP_ALARM_META[alarm] : null;
         return (
+          <Widget id="backup" title="آخرین پشتیبان‌گیری" span="full">
           <section className="card card-accent p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0 flex-wrap">
@@ -521,20 +448,20 @@ export default function DashboardPage() {
             </div>
             {/* نمودار خطی رشد حجم — از تاریخچه‌ی بکاپ‌های ثبت‌شده در DB (فقط ادمین) */}
             <div className="mt-4 pt-3 border-t border-stone-200 dark:border-stone-700/60">
-              <BackupSizeChart history={backup.history ?? []} />
+              <BackupSizeChart history={backup.history ?? []} meta={backup.history_meta} pngTitle="رشد حجم بکاپ‌های پشتیبان‌گیری (داشبورد)" />
             </div>
             {backupMsg && (
               <Alert variant={backupMsg.kind} className="mt-3 text-xs leading-5">{backupMsg.text}</Alert>
             )}
           </section>
+          </Widget>
         );
       })()}
 
       {/* ---------- کارت وضعیت کلیدهای امضای لایسنس (چرخش/بایگانی/صدور) — فقط ادمین ---------- */}
       {user?.role === 'admin' && (licKeys || licKeysErr) && (() => {
-        const lastRot = licRots?.rotations[0] ?? null;
-        const latest = licRots && licRots.count > 0 ? lastRot : null;
         return (
+          <Widget id="license" title="کلیدهای امضای لایسنس" span="full">
           <section className="card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0 flex-wrap">
@@ -575,29 +502,100 @@ export default function DashboardPage() {
                   </>
                 )}
               </div>
-              <Link to="/issue" className="btn-ghost min-h-[32px] text-xs" title="پنل صدور کد و چرخش کلید: چرخش دستی، تاریخچه‌ی رجیستری، تست صدور با کلید جدید">
-                مدیریت کلیدها ←
-              </Link>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={rotateKeys}
+                  disabled={rotBusy}
+                  className="btn-ghost-danger min-h-[32px] text-xs"
+                  title="چرخش کلید امضای لایسنس — با تأیید (confirm) و راهنمای همگام‌سازی بعد از چرخش؛ کدهای قبلی معتبر می‌مانند — فقط ادمین"
+                >
+                  {rotBusy ? '…در حال چرخش' : '🔄 چرخش کلید'}
+                </button>
+                {/* hover/focus → گرم‌کردن چانک پنل ساخت لایسنس (صفحه‌ی lazy) پیش از کلیک */}
+                <Link to="/issue" className="btn-ghost min-h-[32px] text-xs" title="پنل صدور کد و چرخش کلید: تاریخچه‌ی رجیستری، تست صدور با کلید جدید" {...prefetchProps('/issue')}>
+                  مدیریت کلیدها ←
+                </Link>
+              </div>
             </div>
-            {/* آخرین چرخش — از رجیستری rotations.jsonl */}
-            {latest && (
-              <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-2 fa-nums" title={`رجیستری: ${licRots?.path ?? ''}`}>
-                آخرین چرخش: {new Date(latest.rotated_at).toLocaleString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' })}
-                {' · '}<b dir="ltr" className="font-mono">{latest.old_kid}</b> ← <b dir="ltr" className="font-mono">{latest.new_kid}</b> (kid جدید)
-                {latest.by && <> · توسط {latest.by === 'admin-panel' ? 'پنل ادمین' : latest.by === 'admin-panel-restore' ? 'بازیابی از پنل ادمین' : latest.by}</>}
-                {' · '}بایگانی عمومی قدیمی {latest.archive_ok ? '✓ موجود' : '✗ مفقود'}
-              </p>
-            )}
+            {/* چند سطر آخر تاریخچه‌ی چرخش — لیست فشرده از رجیستری rotations.jsonl (جدیدترین اول، سقف ۵) */}
+            {licRots && licRots.count > 0 && licRots.rotations.length > 0 && (() => {
+              const rows = licRots.rotations.slice(0, ROT_HISTORY_SHOWN);
+              const rest = licRots.rotations.length - rows.length;
+              return (
+                <ul
+                  className="mt-2 pt-2 border-t border-stone-100 dark:border-stone-700/50 space-y-1"
+                  title={`رجیستری: ${licRots.path} — جدیدترین اول؛ فرمت هر سطر: تاریخ · کلید قدیمی ← کلید جدید · عامل · بایگانی`}
+                >
+                  <li className="text-[10px] font-semibold text-stone-400 dark:text-stone-500">آخرین چرخش‌ها:</li>
+                  {rows.map((r, i) => (
+                    <li
+                      key={`${r.rotated_at}-${r.old_kid}-${i}`}
+                      className="text-[11px] leading-5 text-stone-500 dark:text-stone-400 fa-nums flex flex-wrap items-baseline gap-x-2"
+                    >
+                      <span className="text-stone-400 dark:text-stone-500 shrink-0">{toFa(i + 1)}.</span>
+                      <span className="shrink-0">{new Date(r.rotated_at).toLocaleString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' })}</span>
+                      <span className="shrink-0" dir="ltr">
+                        <b className="font-mono">{r.old_kid}</b> ← <b className="font-mono">{r.new_kid}</b>
+                      </span>
+                      {r.by && (
+                        <span className="truncate" title={`عامل چرخش: ${rotateByLabel(r.by)}`}>· {rotateByLabel(r.by)}</span>
+                      )}
+                      <span
+                        className={`shrink-0 ${r.archive_ok ? 'text-green-600 dark:text-green-400' : 'text-coral-dark dark:text-coral-light'}`}
+                        title="بایگانی کلید عمومی قدیمی در پوشه‌ی accepted_license_public_keys"
+                      >
+                        {r.archive_ok ? '✓ بایگانی' : '✗ بایگانی مفقود'}
+                      </span>
+                    </li>
+                  ))}
+                  {rest > 0 && (
+                    <li className="text-[11px] text-stone-400 dark:text-stone-500">
+                      و {toFa(rest)} چرخش دیگر…{' '}
+                      <Link to="/issue" className="underline font-semibold" title="پنل ساخت لایسنس — تاریخچه‌ی کامل چرخش‌ها">
+                        مدیریت کلیدها ←
+                      </Link>
+                    </li>
+                  )}
+                </ul>
+              );
+            })()}
             {!licKeysErr && licRots && licRots.count === 0 && (
               <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-2">
-                هنوز چرخشی ثبت نشده — رجیستری با اولین چرخش از پنل <Link to="/issue" className="underline font-semibold">ساخت لایسنس</Link> ساخته می‌شود؛ کدهای قبلی همچنان با همین کلید جاری معتبرند.
+                هنوز چرخشی ثبت نشده — رجیستری با اولین چرخش (از همین کارت یا پنل <Link to="/issue" className="underline font-semibold">ساخت لایسنس</Link>) ساخته می‌شود؛ کدهای قبلی همچنان با همین کلید جاری معتبرند.
               </p>
             )}
+            {rotError && (
+              <Alert variant="danger" className="mt-3 text-xs leading-5">چرخش انجام نشد: {rotError}</Alert>
+            )}
+            {/* راهنمای بعد از چرخش — kid جدید/قدیمی + راهنمای همگام‌سازی (متن از سرور) */}
+            {rotResult && (
+              <div className="mt-3 rounded-lg border border-green-200 dark:border-green-800 bg-success/5 dark:bg-green-900/20 p-3 text-xs space-y-2">
+                <p className="font-bold text-green-700 dark:text-green-300">
+                  ✔ چرخش انجام شد — {new Date(rotResult.rotated_at).toLocaleString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' })}
+                </p>
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-stone-700 dark:text-stone-200">
+                  <span>کلید قبلی (بایگانی/پذیرفته‌شده): <b dir="ltr" className="font-mono">{rotResult.old_kid}</b></span>
+                  <span>کلید جدید (صدور جاری): <b dir="ltr" className="font-mono">{rotResult.new_kid}</b></span>
+                </div>
+                <details className="text-stone-500 dark:text-stone-300">
+                  <summary className="cursor-pointer font-semibold">راهنمای بعد از چرخش (همگام‌سازی سرورها/مستندات)</summary>
+                  <ul className="list-disc pr-5 mt-1 space-y-1 leading-5">
+                    {rotResult.guide.map((g, i) => <li key={i}>{g}</li>)}
+                  </ul>
+                  <p className="mt-2">
+                    برای اطمینان از صدور با کلید جدید، در پنل <Link to="/issue" className="underline font-semibold">ساخت لایسنس</Link> دکمه‌ی «صدور کد آزمایشی با کلید جدید» را بزنید.
+                  </p>
+                </details>
+              </div>
+            )}
           </section>
+          </Widget>
         );
       })()}
 
       {/* ---------- هدر خوش‌آمد: سِری نمایشی + Overline ---------- */}
+      <Widget id="welcome" title="هدر خوش‌آمد" span="full">
       <header className="pt-2">
         <p className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-stone-400 mb-1">
           {t.appName}
@@ -609,8 +607,10 @@ export default function DashboardPage() {
           نمای کلی تجهیزات، قطعات و پروژه‌های در جریان
         </p>
       </header>
+      </Widget>
 
       {/* ---------- کارت‌های آمار PipelinePro: نوار رنگی + اعداد بزرگ Outfit ---------- */}
+      <Widget id="stats" title="کارت‌های آمار" span="full">
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {cards.map((c) => (
           <div key={c.label} className="relative card p-4 overflow-hidden hover:-translate-y-0.5 hover:shadow-md">
@@ -627,8 +627,10 @@ export default function DashboardPage() {
           </div>
         ))}
       </section>
+      </Widget>
 
       {/* ---------- نوار پیشرفت قطعات فعال ---------- */}
+      <Widget id="progress" title="سهم قطعات فعال از کل" span="full">
       <section className="card">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold text-stone-800 dark:text-stone-200">
@@ -643,9 +645,10 @@ export default function DashboardPage() {
           {toFa(stats?.activeParts ?? 0)} فعال از {toFa(stats?.parts ?? 0)} قطعه
         </p>
       </section>
+      </Widget>
 
       {/* ---------- نمودارها: روند ماهانه + پرمصرف‌ترین قطعات ---------- */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <Widget id="trend" title="روند تعویض‌های ماهانه" span="half">
         {/* روند ماهانه‌ی تعویض‌ها (۱۲ ماه شمسی اخیر) */}
         <section className="card">
           <div className="flex items-center justify-between mb-4">
@@ -670,7 +673,9 @@ export default function DashboardPage() {
             />
           )}
         </section>
+      </Widget>
 
+      <Widget id="topParts" title="قطعات پرمصرف" span="half">
         {/* قطعات پرمصرف (بیشترین تعویض) با نوار رتبه‌ای */}
         <section className="card">
           <div className="flex items-center justify-between mb-4">
@@ -716,9 +721,10 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
-      </div>
+      </Widget>
 
       {/* ---------- گزارش سریع: ۵ قطعه با بیشترین خرابی (progress بارهای رتبه‌ای) ---------- */}
+      <Widget id="quickReport" title="گزارش سریع — پرخرابی‌ترین قطعات" span="full">
       <section className="card">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
@@ -793,8 +799,9 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+      </Widget>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <Widget id="recent" title="آخرین تعویض‌های گارانتی" span="half">
         {/* ---------- آخرین تعویض‌ها: ردیف‌های گرم با خط جداکننده ---------- */}
         <div className="card">
           <div className="flex items-center justify-between mb-3">
@@ -828,8 +835,10 @@ export default function DashboardPage() {
             <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p>
           )}
         </div>
+      </Widget>
 
-        {/* ---------- پروژه‌ها: آواتار حرف اول + چایپ کارشناس ---------- */}
+      {/* ---------- پروژه‌ها: آواتار حرف اول + چایپ کارشناس ---------- */}
+      <Widget id="projects" title="پروژه‌ها (مشتریان)" span="half">
         <div className="card">
           <div className="flex items-center justify-between mb-3">
             <h2 className="heading-serif text-lg font-bold text-stone-900 dark:text-stone-50">
@@ -875,15 +884,18 @@ export default function DashboardPage() {
             <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p>
           )}
         </div>
-      </div>
+      </Widget>
 
       {/* ---------- اکشن‌ها: فقط یک CTA اصلی تراکوتا در کل صفحه ---------- */}
+      <Widget id="actions" title="میان‌برهای سریع" span="full">
       <section className="flex flex-wrap gap-3 pb-2">
         {canWrite && <Link to="/devices/new" className="btn-primary">{t.addDevice}</Link>}
         {canReplace && <Link to="/warranty" className="btn-secondary">{t.replacePart}</Link>}
         <Link to="/reports" className="btn-ghost">{t.navReports}</Link>
         {canWrite && <Link to="/serial-import" className="btn-ghost">ورود سریال از اکسل</Link>}
       </section>
+      </Widget>
+    </WidgetBoard>
     </div>
   );
 }
