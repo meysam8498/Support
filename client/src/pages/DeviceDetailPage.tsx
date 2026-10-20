@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { t } from '../i18n/fa';
 import { formatJalaliLong, toFa } from '../lib/date';
 import StatusBadge from '../components/StatusBadge';
+import { prefetchProps } from './registry';
 
 interface Detail {
   device: Device & { project_name?: string; sales_expert_name?: string; device_type_name?: string; device_model_name?: string; brand_name?: string; technical_expert_name?: string };
@@ -60,7 +61,8 @@ export default function DeviceDetailPage() {
         {canWrite && (
           <div className="flex gap-2">
             <Link to={`/devices/${d.id}/edit`} className="btn-secondary">{t.edit}</Link>
-            <Link to={`/devices/${d.id}/parts-grid`} className="btn-secondary" title="افزودن چند قطعه به‌صورت جدولی">🔩 قطعات (جدولی)</Link>
+            {/* hover/focus → گرم‌کردن چانک گرید قطعات (صفحه‌ی lazy) پیش از کلیک */}
+            <Link to={`/devices/${d.id}/parts-grid`} className="btn-secondary" title="افزودن چند قطعه به‌صورت جدولی" {...prefetchProps(`/devices/${d.id}/parts-grid`)}>🔩 قطعات (جدولی)</Link>
             <Link to={`/parts/new?device=${d.id}`} className="btn-primary">{t.addPart}</Link>
           </div>
         )}

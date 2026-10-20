@@ -21,6 +21,7 @@
     "test:logs": "node scripts/logs-test.mjs",
     "test:retention": "npx tsx scripts/retention-test.mjs",
     "check:schema": "node scripts/schema-drift-check.mjs",
+    "check:bundle": "node scripts/check-bundle-budget.mjs",
     "license:gen-keys": "node scripts/make-license-code.mjs --gen-keys",
     "license:issue": "node scripts/make-license-code.mjs",
     "license:verify": "node scripts/make-license-code.mjs --verify",

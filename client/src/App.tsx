@@ -10,23 +10,27 @@ import DeviceDetailPage from './pages/DeviceDetailPage';
 import PartsPage from './pages/PartsPage';
 import PartFormPage from './pages/PartFormPage';
 import PartDetailPage from './pages/PartDetailPage';
-import WarrantyReplacePage from './pages/WarrantyReplacePage';
 import ReplacementsListPage from './pages/ReplacementsListPage';
-import PartsGridEditor from './pages/PartsGridEditor';
 import ListsPage from './pages/ListsPage';
 import UsersPage from './pages/UsersPage';
 import CustomerViewPage from './pages/CustomerViewPage';
-import BackupsPage from './pages/BackupsPage';
 import LicensePage from './pages/LicensePage';
-import IssuePage from './pages/IssuePage';
 import AboutPage from './pages/AboutPage';
+import {
+  ReportsPage,
+  SerialImportPage,
+  LogViewerPage,
+  IssuePage,
+  PartsGridEditor,
+  BackupsPage,
+  WarrantyReplacePage,
+} from './pages/registry';
 import { api, type Device } from './api/api';
 
-// صفحات سنگین با React.lazy جدا بارگذاری می‌شوند تا چانک اولیه (index) سبک‌تر بماند
-// و فقط هنگام ورود به همان مسیر دانلود شوند.
-const ReportsPage = React.lazy(() => import('./pages/ReportsPage'));
-const SerialImportPage = React.lazy(() => import('./pages/SerialImportPage'));
-const LogViewerPage = React.lazy(() => import('./pages/LogViewerPage'));
+// صفحات سنگین از pages/registry.ts می‌آیند (React.lazy آن‌جا تعریف شده) تا:
+//   • چانک اولیه (index) سبک بماند و هر صفحه فقط هنگام ورود دانلود شود
+//   • prefetch روی hover منو (Layout) از همان import استفاده کند → ورود بی‌مکث
+// بودجه‌ی هر چانک جداشده را scripts/check-bundle-budget.mjs می‌سنجد.
 
 /** روتر کمکی گرید قطعات: داده‌ی تجهیز را می‌گیرد و PartsGridEditor را رندر می‌کند */
 function PartsGridRouter() {

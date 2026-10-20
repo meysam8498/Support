@@ -15,6 +15,7 @@ import GlobalSearchBox from './GlobalSearchBox';
 import LicenseBadge from './LicenseBadge';
 import Alert from './Alert';
 import { api } from '../api/api';
+import { prefetchProps } from '../pages/registry';
 
 interface NavItem {
   to: string;
@@ -106,8 +107,9 @@ export default function Layout() {
 
           {/* لینک‌های اصلی — فقط نمایشگر پهن (xl+)؛ در عرض‌های ۱۰۲۴–۱۲۸۰ منوی ۷گانه جا نمی‌شود و سرریز می‌کرد */}
           <nav className="hidden xl:flex items-center gap-1 flex-1">
+            {/* hover/focus روی هر آیتم → prefetch چانک lazy مقصد (صفحات ایستا no-op) */}
             {mainItems.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.to === '/'} className={linkCls} title={item.label}>
+              <NavLink key={item.to} to={item.to} end={item.to === '/'} className={linkCls} title={item.label} {...prefetchProps(item.to)}>
                 <span className="text-base leading-none">{item.icon}</span>
                 <span>{item.label}</span>
               </NavLink>
@@ -217,6 +219,7 @@ export default function Layout() {
                     to={item.to}
                     onClick={() => setMenuOpen(false)}
                     className="list-item border-b-0 h-10 text-stone-700 dark:text-stone-200"
+                    {...prefetchProps(item.to)}
                   >
                     <span className="text-base leading-none">{item.icon}</span>
                     <span>{item.label}</span>
@@ -245,6 +248,7 @@ export default function Layout() {
                 to={item.to}
                 end={item.to === '/'}
                 onClick={() => setMobileOpen(false)}
+                {...prefetchProps(item.to)}
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
                     isActive
@@ -262,6 +266,7 @@ export default function Layout() {
                 key={item.to}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
+                {...prefetchProps(item.to)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-stone-800"
               >
                 <span className="text-base leading-none">{item.icon}</span>

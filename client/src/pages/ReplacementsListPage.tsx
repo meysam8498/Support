@@ -15,6 +15,7 @@ import { toFa, formatJalaliLong } from '../lib/date';
 import Alert from '../components/Alert';
 import PeriodicReportDialog from '../components/PeriodicReportDialog';
 import { useAuth } from '../context/AuthContext';
+import { prefetchProps } from './registry';
 
 interface ReplacementRow {
   id: number;
@@ -112,8 +113,9 @@ export default function ReplacementsListPage() {
           >
             🗓️ گزارش دوره‌ای
           </button>
+          {/* hover/focus روی این دکمه → prefetch چانک فرم تعویض (صفحه‌ی lazy) */}
           {canReplace && (
-            <Link to="/warranty/replace" className="btn-primary min-h-[34px] text-xs">
+            <Link to="/warranty/replace" className="btn-primary min-h-[34px] text-xs" {...prefetchProps('/warranty/replace')}>
               + ثبت تعویض جدید
             </Link>
           )}

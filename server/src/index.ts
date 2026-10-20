@@ -253,8 +253,19 @@ app.use('/api/users', authRequired, usersRoutes); // فقط مدیر (درون �
 const clientDist = process.env.CLIENT_DIST
   ? path.resolve(process.env.CLIENT_DIST)
   : path.join(__dirname, '..', '..', 'client', 'dist');
-app.use(express.static(clientDist));
+// کش فایل‌های بیلد (۱.۲۸): vite نام فایل‌های dist/assets را با هش محتوا می‌سازد (مثلاً index-DMZex_8L.js)،
+// پس محتوا عوض شود نام هم عوض می‌شود و می‌توان برای یک سال immutable کش کرد — با هر deploy
+// فایل جدید است و کلاینت بدون هیچ revalidate از کش می‌خواند.
+// اما سند ورودی (index.html و هر فایل بدون هش) باید همیشه revalidate شود (no-cache)
+// تا کلاینت‌های قدیمی بعد از deploy سراغ چانک‌های تازه بروند؛ وگرنه گیر کردن در نسخه‌ی قدیمی ممکن است.
+app.use(express.static(clientDist, {
+  setHeaders(res, filePath) {
+    const isHashedAsset = filePath.split(path.sep).includes('assets');
+    res.setHeader('Cache-Control', isHashedAsset ? 'public, max-age=31536000, immutable' : 'no-cache');
+  },
+}));
 app.get(/^\/(?!api).*/, (_req, res) => {
+  res.setHeader('Cache-Control', 'no-cache'); // سند ورودی SPA — همیشه تازه‌ترین نسخه
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 

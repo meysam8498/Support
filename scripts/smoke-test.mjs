@@ -15,6 +15,7 @@
 // ----------------------------------------------------------------
 // چه چیزی را چک می‌کند:
 //   ۱) GET /api/health و /api/version
+//   ۱.۲) هدرهای کش استاتیک: چانک‌های hashed زیر /assets → immutable یک‌ساله؛ index.html → no-cache
 //   ۲) GET /api/license و /api/license/device-limit (بدون 500 — رگرسیون schema)
 //   ۳) POST /api/devices تا سقف (با TRIAL_LIMIT_ENFORCE=1 سرور) → مورد s+1 باید 402
 //      با پیام ارتقا بدهد (متن دقیق باید عیناً با کلاینت هم‌واژه باشد)؛ بعد از ارتقا به طرح
@@ -164,6 +165,28 @@ const version = await api('GET', '/api/version');
 ok('GET /api/version → ورژن معتبر', version.status === 200 && /^\d+\.\d+\.\d+$|^dev$/.test(version.data?.version ?? ''), JSON.stringify(version.data));
 // نسخه‌ی سرور (تفکیک ۱.۲۹) — شماره‌گذاری مستقل داخلی که از server/package.json می‌آید
 ok('server_version جدا و semver/dev', /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$|^dev$/.test(version.data?.server_version ?? ''), JSON.stringify(version.data));
+
+// ─────────── ۱.۲) هدرهای کش فایل‌های استاتیک (۱.۲۸) ───────────
+// چانک‌های hashed زیر dist/assets باید immutable یک‌ساله بگیرند تا بعد از deploy دوباره
+// دانلود نشوند؛ سند ورودی (index.html) باید no-cache باشد تا کلاینتِ قدیمی بعد از deploy
+// سراغ چانک‌های تازه برود. اگر client/dist بیلد نشده باشد، چک بی‌صدا رد می‌شود.
+console.log('\n— هدر کش فایل‌های استاتیک');
+try {
+  const idx = await fetch(`${BASE}/`);
+  const html = await idx.text();
+  const assetUrl = html.match(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/)?.[1];
+  if (!assetUrl) {
+    console.log('  ⚠ هیچ فایلی در /assets ایندکس پیدا نشد (client/dist بیلد نشده؟) — چک کش رد شد.');
+  } else {
+    const a = await fetch(`${BASE}${assetUrl}`);
+    const cc = a.headers.get('cache-control') || '';
+    ok(`چانک hashed (${assetUrl}) → immutable یک‌ساله`, /immutable/.test(cc) && /max-age=31536000/.test(cc), `cache-control=${cc || '(خالی)'}`);
+    const icc = idx.headers.get('cache-control') || '';
+    ok('index.html → no-cache (همیشه revalidate)', /no-cache/.test(icc), `cache-control=${icc || '(خالی)'}`);
+  }
+} catch (e) {
+  ok('هدرهای کش فایل‌های استاتیک', false, e.message);
+}
 
 // ─────────── ۱.۵) endpoint لاگ سرور /api/logs — تطبیقی (۱.۲۷) ───────────
 // smoke-test ممکن است به سرور SUPPORT_ONLY یا سرور عادی وصل شود — هر دو مسیر درست چک می‌شود.
