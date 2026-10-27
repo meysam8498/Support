@@ -151,7 +151,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className={`text-center text-xs mt-4 ${dark ? 'text-stone-400' : 'text-stone-400 dark:text-stone-500'}`}>
+        <p className={`text-center text-xs mt-4 ${dark ? 'text-stone-500' : 'text-stone-500 dark:text-stone-400'}`}>
           طراح و توسعه‌دهنده: میثم ایجادی
         </p>
       </div>

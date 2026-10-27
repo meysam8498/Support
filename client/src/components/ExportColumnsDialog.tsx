@@ -135,7 +135,7 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
         <div className="space-y-2.5 max-h-64 overflow-y-auto pl-1">
           {groups.map(([group, cols]) => (
             <div key={group}>
-              <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 mb-1">{group}</p>
+              <p className="text-[10px] font-bold text-stone-500 dark:text-stone-400 mb-1">{group}</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {cols.map((c) => (
                   <label
@@ -162,7 +162,7 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
 
         {/* بازه‌ی تاریخ شمسی (اختیاری) + میان‌برهای سریع */}
         <div>
-          <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 mb-1">بازه‌ی تاریخ تعویض (شمسی — اختیاری)</p>
+          <p className="text-[10px] font-bold text-stone-500 dark:text-stone-400 mb-1">بازه‌ی تاریخ تعویض (شمسی — اختیاری)</p>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {([
               ['this-month', 'این ماه'],
@@ -217,7 +217,7 @@ export default function ExportColumnsDialog({ open, onClose, baseQuery = {} }: P
 
         {/* فرمت خروجی */}
         <div>
-          <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 mb-1">فرمت فایل</p>
+          <p className="text-[10px] font-bold text-stone-500 dark:text-stone-400 mb-1">فرمت فایل</p>
           <div className="flex gap-2">
             <button
               type="button"

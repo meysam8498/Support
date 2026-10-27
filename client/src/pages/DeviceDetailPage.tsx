@@ -44,8 +44,8 @@ export default function DeviceDetailPage() {
   };
   useEffect(() => { load(); }, [id]);
 
-  if (loading) return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.loading}</p>;
-  if (!data) return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.noData}</p>;
+  if (loading) return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.loading}</p>;
+  if (!data) return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.noData}</p>;
 
   const { device: d } = data;
 
@@ -82,7 +82,7 @@ export default function DeviceDetailPage() {
           <Spec label={t.brand} value={d.brand_name} />
           <Spec label={t.technicalExpert} value={d.technical_expert_name} />
           <div className="flex flex-col">
-            <span className="text-stone-400 text-xs dark:text-stone-500">{t.deviceStatus}</span>
+            <span className="text-stone-500 text-xs dark:text-stone-400">{t.deviceStatus}</span>
             {d.status ? <StatusBadge status={d.status} /> : <span>—</span>}
           </div>
           {d.replacement_reason_type && (
@@ -112,7 +112,7 @@ export default function DeviceDetailPage() {
           <Spec label={t.warrantyEnd} value={formatJalaliLong(d.warranty_end_jalali)} />
           {warrantyStatus && (
             <div className="flex flex-col">
-              <span className="text-stone-400 text-xs dark:text-stone-500">وضعیت گارانتی</span>
+              <span className="text-stone-500 text-xs dark:text-stone-400">وضعیت گارانتی</span>
               <span className={`text-sm font-medium ${warrantyStatus === t.warrantyValid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {warrantyStatus}
               </span>
@@ -125,7 +125,7 @@ export default function DeviceDetailPage() {
       <div className="card">
         <h2 className="text-base font-semibold mb-3 dark:text-stone-200">{t.warrantyRequests} ({toFa(data.warrantyRequests.length)})</h2>
         {data.warrantyRequests.length === 0 ? (
-          <p className="text-stone-400 text-sm dark:text-stone-500">{t.noData}</p>
+          <p className="text-stone-500 text-sm dark:text-stone-400">{t.noData}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -155,7 +155,7 @@ export default function DeviceDetailPage() {
       <div className="card">
         <h2 className="text-base font-semibold mb-3 dark:text-stone-200">قطعات این تجهیز ({toFa(data.parts.length)})</h2>
         {data.parts.length === 0 ? (
-          <p className="text-stone-400 text-sm dark:text-stone-500">{t.noData}</p>
+          <p className="text-stone-500 text-sm dark:text-stone-400">{t.noData}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -195,7 +195,7 @@ export default function DeviceDetailPage() {
       <div className="card">
         <h2 className="text-base font-semibold mb-3 dark:text-stone-200">تاریخچه تعویض ({toFa(data.replacements.length)})</h2>
         {data.replacements.length === 0 ? (
-          <p className="text-stone-400 text-sm dark:text-stone-500">{t.noData}</p>
+          <p className="text-stone-500 text-sm dark:text-stone-400">{t.noData}</p>
         ) : (
           <div className="space-y-3">
             {data.replacements.map((r) => (
@@ -206,7 +206,7 @@ export default function DeviceDetailPage() {
                     <span className="mx-2 text-stone-400">→</span>
                     <span className="font-medium text-green-600 dark:text-green-400">{r.new_part_title}</span>
                   </div>
-                  <span className="text-xs text-stone-400 fa-nums dark:text-stone-500">{formatJalaliLong(r.replaced_at_jalali)}</span>
+                  <span className="text-xs text-stone-500 fa-nums dark:text-stone-400">{formatJalaliLong(r.replaced_at_jalali)}</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-stone-500 dark:text-stone-400">
                   <span>کارشناس: {r.expert_name || '—'}</span>
@@ -228,7 +228,7 @@ export default function DeviceDetailPage() {
 function Spec({ label, value, ltr }: { label: string; value?: string | null; ltr?: boolean }) {
   return (
     <div className="flex flex-col">
-      <span className="text-stone-400 text-xs dark:text-stone-500">{label}</span>
+      <span className="text-stone-500 text-xs dark:text-stone-400">{label}</span>
       <span className={`font-medium fa-nums ${ltr ? 'dir-ltr' : ''}`} style={ltr ? { direction: 'ltr', textAlign: 'right' } : undefined}>{value || '—'}</span>
     </div>
   );

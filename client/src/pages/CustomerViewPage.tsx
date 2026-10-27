@@ -26,8 +26,8 @@ export default function CustomerViewPage() {
     })();
   }, [id]);
 
-  if (loading) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
-  if (!data) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.noData}</p>;
+  if (loading) return <p className="text-stone-500 dark:text-stone-400 text-center mt-20">{t.loading}</p>;
+  if (!data) return <p className="text-stone-500 dark:text-stone-400 text-center mt-20">{t.noData}</p>;
 
   return (
     <div className="space-y-6">
@@ -55,7 +55,7 @@ export default function CustomerViewPage() {
             <Link key={d.id} to={`/devices/${d.id}`} className="border dark:border-stone-700 rounded-lg p-3 hover:border-brand-300 hover:bg-brand-50/30 dark:hover:bg-stone-700/40 transition text-sm">
               <div className="flex justify-between">
                 <span className="font-medium dark:text-stone-200">{d.device_type_name}</span>
-                <span className="text-xs text-stone-400 dark:text-stone-500">{d.brand_name}</span>
+                <span className="text-xs text-stone-500 dark:text-stone-400">{d.brand_name}</span>
               </div>
               <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 سریال: <span className="fa-nums" dir="ltr">{d.main_serial || '—'}</span>
@@ -70,13 +70,13 @@ export default function CustomerViewPage() {
       {/* سابقه خدمات */}
       <div className="card">
         <h2 className="text-base font-semibold mb-3 dark:text-stone-50">سابقه خدمات و گارنتی</h2>
-        {data.services.length === 0 ? <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p> : (
+        {data.services.length === 0 ? <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p> : (
           <div className="space-y-2">
             {data.services.map((s) => (
               <div key={s.id} className="border-r-4 border-amber-400 bg-amber-50/40 dark:bg-amber-900/20 rounded p-3 text-sm">
                 <div className="flex justify-between">
                   <span className="dark:text-stone-200"><b className="text-red-600 dark:text-red-400">{s.old_part_title}</b> ← <b className="text-green-600 dark:text-green-400">{s.new_part_title}</b></span>
-                  <span className="text-xs text-stone-400 dark:text-stone-500 fa-nums">{formatJalaliLong(s.replaced_at_jalali)}</span>
+                  <span className="text-xs text-stone-500 dark:text-stone-400 fa-nums">{formatJalaliLong(s.replaced_at_jalali)}</span>
                 </div>
                 <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">دلیل: {s.failure_reason_name || '—'} | کارشناس: {s.expert_name || '—'}</div>
               </div>

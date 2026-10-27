@@ -74,7 +74,7 @@ export default function DevicesPage() {
   });
 
   if (loading)
-    return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.loading}</p>;
+    return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.loading}</p>;
 
   const statusCounts = {
     active: devices.filter((d) => d.status === 'active').length,
@@ -161,7 +161,7 @@ export default function DevicesPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-stone-400 text-center py-12 dark:text-stone-500">{t.noData}</p>
+        <p className="text-stone-500 text-center py-12 dark:text-stone-400">{t.noData}</p>
       ) : (
         <div className="card p-0 overflow-hidden">
           <div className="overflow-x-auto">

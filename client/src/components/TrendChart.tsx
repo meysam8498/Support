@@ -90,7 +90,7 @@ export default function TrendChart({ months, pngTitle, pngFileName }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" role="region" aria-label="نمودار روند ماهانه‌ی تعویض‌ها (قابل اسکرول افقی)" tabIndex={0}>
         <svg ref={svgRef} width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="نمودار روند ماهانه‌ی تعویض‌ها">
           {/* خط پایه */}
           <line x1={16} y1={H - padB} x2={W - 16} y2={H - padB} stroke="#d6d3d1" strokeWidth={1} />

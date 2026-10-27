@@ -54,6 +54,11 @@ export default function Layout() {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+  // دکمه‌های راه‌انداز منوها — Escape فوکوس را به همان‌ها برمی‌گرداند
+  const themeBtnRef = useRef<HTMLButtonElement>(null);
+  const userBtnRef = useRef<HTMLButtonElement>(null);
+  const burgerRef = useRef<HTMLButtonElement>(null);
   // سرور پشتیبانی (SUPPORT_ONLY=1) — بنر ثابت زیر هدر (۱.۲۵)
   const [supportOnly, setSupportOnly] = useState(false);
 
@@ -67,7 +72,6 @@ export default function Layout() {
   const userItems = USER_MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
 
   // بستن منوی کاربر و منوی تم با کلیک بیرون
-  const themeMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
@@ -77,17 +81,49 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
+  // دسترس‌پذیری کیبورد (۱.۳۱) — الگوی WAI-ARIA Menu:
+  // باز شدن → فوکوس روی اولین آیتم · Arrow/Home/End جابه‌جایی · Escape بستن + بازگشت فوکوس
+  useEffect(() => {
+    if (themeMenuOpen) themeMenuRef.current?.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus();
+  }, [themeMenuOpen]);
+  useEffect(() => {
+    if (menuOpen) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [menuOpen]);
+  // همبرگر موبایل: Escape می‌بندد و فوکوس را به دکمه‌ی منو برمی‌گرداند
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setMobileOpen(false); burgerRef.current?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
+
   const doLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const linkCls = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-1.5 px-2.5 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
-      isActive
-        ? 'bg-brand-500 text-white font-semibold shadow-glow'
-        : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-white/5'
-    }`;
+const linkCls = ({ isActive }: { isActive: boolean }) =>
+  `flex items-center gap-1.5 px-2.5 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
+    isActive
+      ? 'bg-brand-500 text-white font-semibold shadow-glow'
+      : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-white/5'
+  }`;
+
+/** کلیدبانی منوی کشویی — WAI-ARIA Menu: Arrow جابه‌جایی حلقه‌ای، Home/End سرها، Escape بستن + بازگشت فوکوس */
+function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => void, trigger: HTMLElement | null) {
+  const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]'));
+  if (items.length === 0) return;
+  const idx = items.indexOf(document.activeElement as HTMLElement);
+  switch (e.key) {
+    case 'ArrowDown': e.preventDefault(); items[(idx + 1) % items.length].focus(); break;
+    case 'ArrowUp': e.preventDefault(); items[(idx <= 0 ? items.length : idx) - 1].focus(); break;
+    case 'Home': e.preventDefault(); items[0].focus(); break;
+    case 'End': e.preventDefault(); items[items.length - 1].focus(); break;
+    case 'Escape': e.preventDefault(); onClose(); trigger?.focus(); break;
+  }
+}
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -118,9 +154,11 @@ export default function Layout() {
 
           {/* همبرگر — موبایل/تبلت/لپ‌تاپ متوسط (تا زیر xl) */}
           <button
+            ref={burgerRef}
             onClick={() => setMobileOpen(!mobileOpen)}
             className="xl:hidden btn-ghost min-h-[36px] px-2.5 shrink-0"
             aria-label="منو"
+            aria-expanded={mobileOpen}
           >
             {mobileOpen ? '✕' : '☰'}
           </button>
@@ -138,6 +176,7 @@ export default function Layout() {
           {/* تم — منوی سه‌گزینه‌ای: روشن / تاریک / همگام با سیستم */}
           <div className="relative shrink-0" ref={themeMenuRef}>
             <button
+              ref={themeBtnRef}
               onClick={() => setThemeMenuOpen(!themeMenuOpen)}
               className={`btn-ghost min-h-[36px] px-2.5 text-base shrink-0 ${themeMenuOpen ? 'bg-brand-50 dark:bg-brand-900/30' : ''}`}
               title={t.toggleTheme}
@@ -151,6 +190,8 @@ export default function Layout() {
             {themeMenuOpen && (
               <div
                 role="menu"
+                aria-label={t.themeMenu}
+                onKeyDown={(e) => menuKeyboard(e, () => setThemeMenuOpen(false), themeBtnRef.current)}
                 className="absolute left-0 mt-2 w-44 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-lg py-1.5 z-30"
               >
                 <p className="px-3 pb-1.5 pt-0.5 text-[11px] text-stone-400">{t.themeMenu}</p>
@@ -182,6 +223,7 @@ export default function Layout() {
           {/* منوی کاربر */}
           <div className="relative shrink-0" ref={menuRef}>
             <button
+              ref={userBtnRef}
               onClick={() => setMenuOpen(!menuOpen)}
               className={`flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 ${
                 menuOpen
@@ -190,6 +232,7 @@ export default function Layout() {
               }`}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
+              aria-label="منوی کاربر"
             >
               <span className="w-6.5 h-6.5 w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-[11px] font-bold text-white">
                 {user?.fullName?.charAt(0) ?? '؟'}
@@ -203,6 +246,8 @@ export default function Layout() {
             {menuOpen && (
               <div
                 role="menu"
+                aria-label="منوی کاربر"
+                onKeyDown={(e) => menuKeyboard(e, () => setMenuOpen(false), userBtnRef.current)}
                 className="absolute left-0 mt-2 w-60 rounded-lg border border-stone-200 dark:border-indigo-500/25 bg-white dark:bg-[#161628] shadow-lg py-1.5 z-30"
               >
                 {/* هدر پروفایل */}
@@ -212,11 +257,12 @@ export default function Layout() {
                     {role === 'admin' ? t.roleAdmin : role === 'viewer' ? t.roleUser : role === 'warehouse' ? 'انباردار' : role === 'sales' ? 'کارشناس فروش' : 'کارشناس فنی'}
                   </p>
                 </div>
-                {/* آیتم‌ها */}
+                {/* آیتم‌ها — role صریح الزام الگوی WAI-ARIA Menu است (فوکوس/کیبورد/صفحه‌خوان) */}
                 {userItems.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
+                    role="menuitem"
                     onClick={() => setMenuOpen(false)}
                     className="list-item border-b-0 h-10 text-stone-700 dark:text-stone-200"
                     {...prefetchProps(item.to)}
@@ -227,6 +273,7 @@ export default function Layout() {
                 ))}
                 <div className="border-t border-stone-100 dark:border-white/10 mt-1 pt-1">
                   <button
+                    role="menuitem"
                     onClick={doLogout}
                     className="list-item border-b-0 h-10 w-full text-coral dark:text-coral-light"
                   >
@@ -241,7 +288,7 @@ export default function Layout() {
 
         {/* منوی موبایل — کشویی زیر هدر */}
         {mobileOpen && (
-          <nav className="xl:hidden border-t border-stone-200 dark:border-indigo-500/20 px-3 py-2 grid grid-cols-2 sm:grid-cols-3 gap-1">
+          <nav id="mobile-nav" aria-label="منوی اصلی (موبایل)" className="xl:hidden border-t border-stone-200 dark:border-indigo-500/20 px-3 py-2 grid grid-cols-2 sm:grid-cols-3 gap-1">
             {mainItems.map((item) => (
               <NavLink
                 key={item.to}

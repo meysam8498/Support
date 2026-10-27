@@ -142,9 +142,9 @@ export default function ReplacementsListPage() {
       {/* ---------- فهرست ---------- */}
       <div className="card p-0 overflow-hidden">
         {loading ? (
-          <p className="p-8 text-center text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
+          <p className="p-8 text-center text-stone-500 dark:text-stone-400 text-sm">{t.loading}</p>
         ) : filtered.length === 0 ? (
-          <p className="p-8 text-center text-stone-400 dark:text-stone-500 text-sm">
+          <p className="p-8 text-center text-stone-500 dark:text-stone-400 text-sm">
             {hasFilter
               ? 'هیچ تعویضی برای این قطعه ثبت نشده است.'
               : q
@@ -183,7 +183,7 @@ export default function ReplacementsListPage() {
                         <span className="text-stone-500">—</span>
                       )}
                       {r.old_part_serial && (
-                        <span className="block text-[11px] text-stone-400 dark:text-stone-500 fa-nums" dir="ltr">{r.old_part_serial}</span>
+                        <span className="block text-[11px] text-stone-500 dark:text-stone-400 fa-nums" dir="ltr">{r.old_part_serial}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -195,7 +195,7 @@ export default function ReplacementsListPage() {
                         <span className="text-stone-500">—</span>
                       )}
                       {r.new_part_serial && (
-                        <span className="block text-[11px] text-stone-400 dark:text-stone-500 fa-nums" dir="ltr">{r.new_part_serial}</span>
+                        <span className="block text-[11px] text-stone-500 dark:text-stone-400 fa-nums" dir="ltr">{r.new_part_serial}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -214,7 +214,7 @@ export default function ReplacementsListPage() {
         )}
       </div>
 
-      <p className="text-xs text-stone-400 dark:text-stone-500 text-center fa-nums">
+      <p className="text-xs text-stone-500 dark:text-stone-400 text-center fa-nums">
         {toFa(filtered.length)} تعویض{hasFilter ? ' برای این قطعه' : ''}
       </p>
 

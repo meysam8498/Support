@@ -104,11 +104,11 @@ function ImportEditableList({
                 <span className={`badge border ${meta.cls}`}>{meta.label}</span>
               )}
               <span className="font-bold fa-nums" dir="ltr">{it.pn}</span>
-              {it.existing && <span className="text-[10px] text-stone-400 dark:text-stone-500">(موجود)</span>}
+              {it.existing && <span className="text-[10px] text-stone-500 dark:text-stone-400">(موجود)</span>}
               {it.filled && it.filled.length > 0 && (
                 <span className="text-[10px] text-sky-dark dark:text-sky-light">اعمال: {it.filled.join('، ')}</span>
               )}
-              {it.reason && <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate">{it.reason}</span>}
+              {it.reason && <span className="text-[10px] text-stone-500 dark:text-stone-400 truncate">{it.reason}</span>}
               {isEdited && (
                 <>
                   <span className="badge bg-gold/15 text-gold-dark dark:text-gold-light border border-gold/40">ویرایش‌شده</span>
@@ -144,7 +144,7 @@ function ImportEditableList({
                   ＋ مرجع جدید است
                 </button>
                 {decided && (
-                  <button type="button" onClick={() => onResolve(it.pn, null)} className="text-[10px] text-stone-400 dark:text-stone-500 underline cursor-pointer">
+                  <button type="button" onClick={() => onResolve(it.pn, null)} className="text-[10px] text-stone-500 dark:text-stone-400 underline cursor-pointer">
                     لغو تصمیم
                   </button>
                 )}
@@ -581,13 +581,13 @@ export default function CatalogManager() {
       {/* جدول مراجع */}
       <div className="card p-0 overflow-hidden">
         {loading ? (
-          <p className="p-8 text-center text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
+          <p className="p-8 text-center text-stone-500 dark:text-stone-400 text-sm">{t.loading}</p>
         ) : rows.length === 0 ? (
-          <p className="p-8 text-center text-stone-400 dark:text-stone-500 text-sm">
+          <p className="p-8 text-center text-stone-500 dark:text-stone-400 text-sm">
             {q ? 'مرجعی یافت نشد.' : 'کاتالوگ خالی است — با ثبت قطعه یا import اکسل خودکار پر می‌شود.'}
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" role="region" aria-label="جدول مراجع کاتالوگ (قابل اسکرول افقی)" tabIndex={0}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-surface-raised dark:bg-stone-800/80 text-stone-600 dark:text-stone-300">
@@ -646,7 +646,7 @@ export default function CatalogManager() {
                           {toFa(r.installed_count)} 🔗
                         </Link>
                       ) : (
-                        <span className="badge bg-stone-100 text-stone-400 dark:bg-stone-700 dark:text-stone-500 fa-nums">۰</span>
+                        <span className="badge bg-stone-100 text-stone-500 dark:bg-stone-700 dark:text-stone-400 fa-nums">۰</span>
                       )}
                     </td>
                     <td className="px-3 py-2">

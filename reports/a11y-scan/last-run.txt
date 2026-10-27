@@ -1,0 +1,55 @@
+
+> support-equipment-management@1.28.0 a11y:scan
+> node scripts/a11y-scan.mjs
+
+مرورگر: C:\Program Files\Google\Chrome\Application\chrome.exe
+دامنه: 23 صفحه × 2 تم (light/dark) × 1 عرض (390)
+✓❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌✓❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌
+
+────────────────────────────────────────────────────────────
+اسکن کامل: 46 اسکن (23 صفحه × 2 تم × 1 عرض) — 2 سالم، 44 با مشکل
+  ❌ داشبورد (/) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ فهرست تجهیزات (/devices) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ ثبت تجهیز جدید (/devices/new) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ جزئیات تجهیز (/devices/26) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ ویرایش تجهیز (/devices/26/edit) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ گرید قطعات تجهیز (/devices/26/parts-grid) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ فهرست قطعات (/parts) [light/390px] — axe×1 (label-content-name-mismatch) · سرریز افقی
+  ❌ ثبت قطعه جدید (/parts/new) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ جزئیات قطعه (/parts/297) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ ویرایش قطعه (/parts/297/edit) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ تعویض‌های گارانتی (/warranty) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ ثبت تعویض گارانتی (/warranty/replace) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ گزارش‌ها (/reports) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ مدیریت لیست‌ها (/lists) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ ورود سریال از اکسل (/serial-import) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ مدیریت کاربران (/users) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ مدیریت بکاپ‌ها (/backups) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ وضعیت لایسنس (/license) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ پنل ساخت لایسنس (/issue) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ درباره سامانه (/about) [light/390px] — axe×1 (label-content-name-mismatch)
+  ❌ لاگ سرور (/logs) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ نمای مشتری (/dashboard/customer/8) [light/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ داشبورد (/) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ فهرست تجهیزات (/devices) [dark/390px] — axe×2 (color-contrast, label-content-name-mismatch)
+  ❌ ثبت تجهیز جدید (/devices/new) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ جزئیات تجهیز (/devices/26) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ ویرایش تجهیز (/devices/26/edit) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ گرید قطعات تجهیز (/devices/26/parts-grid) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ فهرست قطعات (/parts) [dark/390px] — axe×1 (label-content-name-mismatch) · سرریز افقی
+  ❌ ثبت قطعه جدید (/parts/new) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ جزئیات قطعه (/parts/297) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ ویرایش قطعه (/parts/297/edit) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ تعویض‌های گارانتی (/warranty) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ ثبت تعویض گارانتی (/warranty/replace) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ گزارش‌ها (/reports) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ مدیریت لیست‌ها (/lists) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ ورود سریال از اکسل (/serial-import) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ مدیریت کاربران (/users) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ مدیریت بکاپ‌ها (/backups) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ وضعیت لایسنس (/license) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ پنل ساخت لایسنس (/issue) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ درباره سامانه (/about) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ لاگ سرور (/logs) [dark/390px] — axe×1 (label-content-name-mismatch)
+  ❌ نمای مشتری (/dashboard/customer/8) [dark/390px] — axe×1 (label-content-name-mismatch)
+گزارش: reports/a11y-scan/REPORT.md و latest.json

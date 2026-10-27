@@ -1,0 +1,1541 @@
+{
+  "meta": {
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "widths": [
+      390
+    ],
+    "pageCount": 23,
+    "appVersion": "dev",
+    "axeVersion": "4.14.0",
+    "browser": "Chrome/155.0.8059.82"
+  },
+  "results": [
+    {
+      "path": "/login",
+      "label": "ورود",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/",
+      "label": "داشبورد",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices",
+      "label": "فهرست تجهیزات",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".chip-active > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۶)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(2) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۶)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(3) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(4) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(5) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            }
+          ],
+          "nodeCount": 5
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices/new",
+      "label": "ثبت تجهیز جدید",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices/26",
+      "label": "جزئیات تجهیز",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices/26/edit",
+      "label": "ویرایش تجهیز",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices/26/parts-grid",
+      "label": "گرید قطعات تجهیز",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/parts",
+      "label": "فهرست قطعات",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": true
+    },
+    {
+      "path": "/parts/new",
+      "label": "ثبت قطعه جدید",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": "label > .text-\\[10px\\].text-stone-400",
+              "html": "<span class=\"text-[10px] text-stone-400\">(از کاتالوگ — عنوان و مشخصات خودکار پر می‌شود)</span>"
+            }
+          ],
+          "nodeCount": 1
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/parts/297",
+      "label": "جزئیات قطعه",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": "span:nth-child(2) > .bg-sky\\/10.text-sky-dark.border-sky\\/40",
+              "html": "<span class=\"badge bg-sky/10 text-sky-dark border border-sky/40 dark:bg-sky/15 dark:text-sky-light\"><span class=\"inline-block w-1.5 h-1.5 rounded-full bg-curren"
+            },
+            {
+              "target": ".mx-2 > .bg-sky\\/10.text-sky-dark.border-sky\\/40",
+              "html": "<span class=\"badge bg-sky/10 text-sky-dark border border-sky/40 dark:bg-sky/15 dark:text-sky-light\"><span class=\"inline-block w-1.5 h-1.5 rounded-full bg-curren"
+            }
+          ],
+          "nodeCount": 2
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/parts/297/edit",
+      "label": "ویرایش قطعه",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": "label > .text-stone-400.text-\\[10px\\]",
+              "html": "<span class=\"text-[10px] text-stone-400\">(از کاتالوگ — عنوان و مشخصات خودکار پر می‌شود)</span>"
+            }
+          ],
+          "nodeCount": 1
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/warranty",
+      "label": "تعویض‌های گارانتی",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/warranty/replace",
+      "label": "ثبت تعویض گارانتی",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/reports",
+      "label": "گزارش‌ها",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/lists",
+      "label": "مدیریت لیست‌ها",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".bg-gold\\/15",
+              "html": "<button class=\"px-3 py-1.5 rounded-lg text-sm transition bg-gold/15 text-[#8a6d00] dark:text-gold-light border border-gold/40 hover:bg-gold/25\" title=\"تعریف مرج"
+            }
+          ],
+          "nodeCount": 1
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/serial-import",
+      "label": "ورود سریال از اکسل",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/users",
+      "label": "مدیریت کاربران",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/backups",
+      "label": "مدیریت بکاپ‌ها",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".p-2\\.5.bg-surface-raised.dark\\:bg-stone-800\\/60:nth-child(1) > .mb-0\\.5.text-stone-500.dark\\:text-stone-400",
+              "html": "<p class=\"text-stone-500 dark:text-stone-400 mb-0.5\">زمان‌بندی</p>"
+            },
+            {
+              "target": ".p-2\\.5.bg-surface-raised.dark\\:bg-stone-800\\/60:nth-child(2) > .mb-0\\.5.text-stone-500.dark\\:text-stone-400",
+              "html": "<p class=\"text-stone-500 dark:text-stone-400 mb-0.5\">نگهداری</p>"
+            },
+            {
+              "target": ".p-2\\.5.bg-surface-raised.dark\\:bg-stone-800\\/60:nth-child(3) > .mb-0\\.5.text-stone-500.dark\\:text-stone-400",
+              "html": "<p class=\"text-stone-500 dark:text-stone-400 mb-0.5\">آخرین اجرا</p>"
+            },
+            {
+              "target": ".p-2\\.5.bg-surface-raised.dark\\:bg-stone-800\\/60:nth-child(4) > .mb-0\\.5.text-stone-500.dark\\:text-stone-400",
+              "html": "<p class=\"text-stone-500 dark:text-stone-400 mb-0.5\">Push خارجی</p>"
+            },
+            {
+              "target": ".p-2\\.5.bg-surface-raised.dark\\:bg-stone-800\\/60:nth-child(4) > .text-stone-500.dark\\:text-stone-400:nth-child(2)",
+              "html": "<p class=\"text-stone-500 dark:text-stone-400\">غیرفعال (BACKUP_PUSH_TARGET تنظیم نشده)</p>"
+            }
+          ],
+          "nodeCount": 5
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/license",
+      "label": "وضعیت لایسنس",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".text-coral",
+              "html": "<p class=\"text-coral text-sm\">درخواست زیاد روی لایسنس — یک دقیقه صبر کنید.</p>"
+            },
+            {
+              "target": ".mb-3",
+              "html": "<p class=\"text-xs text-stone-400 mb-3 leading-6\">کد فعال‌سازی دریافتی از فروشنده را وارد کنید. اعتبارسنجی کاملاً محلی و آفلاین است (تأیید امضا با کلید عمومی داخ"
+            },
+            {
+              "target": ".form-banner-error > .min-w-0",
+              "html": "<span class=\"min-w-0\">درخواست زیاد روی لایسنس — یک دقیقه صبر کنید.</span>"
+            }
+          ],
+          "nodeCount": 3
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/issue",
+      "label": "پنل ساخت لایسنس",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".mb-4",
+              "html": "<p class=\"text-xs text-stone-400 mb-4 leading-6\">"
+            }
+          ],
+          "nodeCount": 1
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license/issued",
+        "429 /api/license/keys/rotations",
+        "429 /api/license",
+        "429 /api/license/keys/status"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/about",
+      "label": "درباره سامانه",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/logs",
+      "label": "لاگ سرور",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".max-w-4xl > p",
+              "html": "<p class=\"text-[11px] text-stone-400 leading-5\">سرور آخرین ۵۰۰ لاگ را در حافظه نگه می‌دارد و با «تعداد خطوط» بخش آخر برگردانده می‌شود. توکن پشتیبانی همان مقدار "
+            },
+            {
+              "target": "p > .font-mono[dir=\"ltr\"]:nth-child(1)",
+              "html": "<span dir=\"ltr\" class=\"font-mono\">SUPPORT_LOG_TOKEN</span>"
+            },
+            {
+              "target": ".font-mono[dir=\"ltr\"]:nth-child(2)",
+              "html": "<span dir=\"ltr\" class=\"font-mono\">SUPPORT_TOKEN</span>"
+            }
+          ],
+          "nodeCount": 3
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/dashboard/customer/8",
+      "label": "نمای مشتری",
+      "theme": "light",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".text-green-600",
+              "html": "<b class=\"text-green-600 dark:text-green-400\">HIST DIMM</b>"
+            }
+          ],
+          "nodeCount": 1
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/login",
+      "label": "ورود",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/",
+      "label": "داشبورد",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices",
+      "label": "فهرست تجهیزات",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".chip-active > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۶)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(2) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۶)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(3) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(4) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(5) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            }
+          ],
+          "nodeCount": 5
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices/new",
+      "label": "ثبت تجهیز جدید",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices/26",
+      "label": "جزئیات تجهیز",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices/26/edit",
+      "label": "ویرایش تجهیز",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/devices/26/parts-grid",
+      "label": "گرید قطعات تجهیز",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/parts",
+      "label": "فهرست قطعات",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": true
+    },
+    {
+      "path": "/parts/new",
+      "label": "ثبت قطعه جدید",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/parts/297",
+      "label": "جزئیات قطعه",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/parts/297/edit",
+      "label": "ویرایش قطعه",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/warranty",
+      "label": "تعویض‌های گارانتی",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/warranty/replace",
+      "label": "ثبت تعویض گارانتی",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/reports",
+      "label": "گزارش‌ها",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/lists",
+      "label": "مدیریت لیست‌ها",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/serial-import",
+      "label": "ورود سریال از اکسل",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license/device-limit",
+        "429 /api/license"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/users",
+      "label": "مدیریت کاربران",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/backups",
+      "label": "مدیریت بکاپ‌ها",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/license",
+      "label": "وضعیت لایسنس",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/issue",
+      "label": "پنل ساخت لایسنس",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [
+        "429 /api/license",
+        "429 /api/license/device-limit",
+        "429 /api/license/keys/rotations",
+        "429 /api/license/keys/status",
+        "429 /api/license/issued"
+      ],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/about",
+      "label": "درباره سامانه",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/logs",
+      "label": "لاگ سرور",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/dashboard/customer/8",
+      "label": "نمای مشتری",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".px-2",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    }
+  ]
+}

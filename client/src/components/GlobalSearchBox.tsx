@@ -286,7 +286,7 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
                             </span>
                           )}
                           {h.meta && (
-                            <span className="mt-0.5 block text-[11px] text-stone-400 dark:text-stone-500 truncate" dir="auto">
+                            <span className="mt-0.5 block text-[11px] text-stone-500 dark:text-stone-400 truncate" dir="auto">
                               {h.meta}
                             </span>
                           )}
@@ -300,7 +300,7 @@ export default function GlobalSearchBox({ compact = false }: { compact?: boolean
                 </div>
               ))}
               {data.per_page === 0 && data.total !== undefined && data.total > data.hits.length && (
-                <p className="px-3 py-2 text-[11px] text-stone-400 dark:text-stone-500 text-center fa-nums">
+                <p className="px-3 py-2 text-[11px] text-stone-500 dark:text-stone-400 text-center fa-nums">
                   {toFa(data.hits.length)} از {toFa(data.total)} نتیجه — برای فهرست کامل‌تر، فیلتر نوع را بالا انتخاب کنید
                 </p>
               )}

@@ -107,7 +107,7 @@ export default function InlineEditCell({
       className="group flex items-start gap-1.5 max-w-[240px] rounded-lg px-2 py-1 -mx-2 text-right transition hover:bg-brand-50 dark:hover:bg-brand-900/40 cursor-text"
     >
       <span
-        className={`truncate ${numeric ? 'fa-nums' : ''} ${value ? 'text-stone-800 dark:text-stone-100' : 'text-stone-400 dark:text-stone-500'}`}
+        className={`truncate ${numeric ? 'fa-nums' : ''} ${value ? 'text-stone-800 dark:text-stone-100' : 'text-stone-500 dark:text-stone-400'}`}
         dir={numeric ? 'ltr' : 'auto'}
       >
         {value || '—'}

@@ -201,7 +201,7 @@ export default function ListsPage() {
         </div>
 
         {items.length === 0 ? (
-          <p className="text-stone-400 dark:text-stone-500 text-sm">{t.noData}</p>
+          <p className="text-stone-500 dark:text-stone-400 text-sm">{t.noData}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -218,7 +218,7 @@ export default function ListsPage() {
               <tbody>
                 {items.map((it, idx) => (
                   <tr key={it.id} className="border-b dark:border-stone-700 hover:bg-surface-card dark:hover:bg-brand-900/25">
-                    <td className="px-3 py-2 text-stone-400 dark:text-stone-500 fa-nums">{idx + 1}</td>
+                    <td className="px-3 py-2 text-stone-500 dark:text-stone-400 fa-nums">{idx + 1}</td>
                     <td className="px-3 py-2 font-medium dark:text-stone-200">{it.name}</td>
                     {active.hasPhone && <td className="px-3 py-2 fa-nums dark:text-stone-300" dir="ltr">{it.phone || '—'}</td>}
                     {active.hasExpertRole && (
@@ -233,7 +233,7 @@ export default function ListsPage() {
                       <td className="px-3 py-2 dark:text-stone-300">
                         <span className="fa-nums" dir="ltr">{it.contract_number || '—'}</span>
                         {lists?.salesExperts.find((s) => s.id === it.sales_expert_id) && (
-                          <span className="text-stone-400 dark:text-stone-500 text-xs mr-2">/ {lists.salesExperts.find((s) => s.id === it.sales_expert_id)?.name}</span>
+                          <span className="text-stone-500 dark:text-stone-400 text-xs mr-2">/ {lists.salesExperts.find((s) => s.id === it.sales_expert_id)?.name}</span>
                         )}
                       </td>
                     )}

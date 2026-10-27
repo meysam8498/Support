@@ -157,7 +157,7 @@ export default function PartsPage() {
   });
 
   if (loading)
-    return <p className="text-stone-400 text-center mt-20 dark:text-stone-500">{t.loading}</p>;
+    return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.loading}</p>;
 
   const statusCounts = {
     active: parts.filter((p) => p.status === 'active').length,
@@ -296,7 +296,7 @@ export default function PartsPage() {
       )}
 
       {filtered.length === 0 && !(serialSearch.trim()) ? (
-        <p className="text-stone-400 dark:text-stone-500 text-center py-12">{t.noData}</p>
+        <p className="text-stone-500 dark:text-stone-400 text-center py-12">{t.noData}</p>
       ) : !serialSearch.trim() ? (
         <div className="overflow-x-auto card p-0">
           <table className="w-full text-sm">
@@ -310,7 +310,7 @@ export default function PartsPage() {
                 <th className="text-right px-3 py-3 font-bold">دستگاه</th>
                 <th className="text-right px-3 py-3 font-bold">{t.status}</th>
                 <th className="text-right px-3 py-3 font-bold">تاریخ فروش</th>
-                {canWrite && dupPns.size > 0 && <th className="text-right px-3 py-3 font-bold"> </th>}
+                {canWrite && dupPns.size > 0 && <th className="text-right px-3 py-3 font-bold"><span className="sr-only">عملیات</span></th>}
               </tr>
             </thead>
             <tbody>
@@ -411,7 +411,7 @@ export default function PartsPage() {
                     <td className="px-3 py-2">
                       <StatusBadge status={p.status} />
                     </td>
-                    <td className="px-3 py-2 text-xs text-stone-400 dark:text-stone-500">
+                    <td className="px-3 py-2 text-xs text-stone-500 dark:text-stone-400">
                       {formatJalaliLong(p.sold_at_jalali)}
                     </td>
                     {canWrite && dupPns.size > 0 && (
@@ -607,7 +607,7 @@ function DescDialog({
                   className="mt-1 accent-brand-500"
                 />
                 <span className="text-brand-800 dark:text-brand-100">{v}</span>
-                <span className="text-xs text-stone-400 dark:text-stone-500 mr-auto shrink-0">
+                <span className="text-xs text-stone-500 dark:text-stone-400 mr-auto shrink-0">
                   ({toFa(group.filter((p) => p.tech_specs?.trim() === v).length)} رکورد)
                 </span>
               </label>

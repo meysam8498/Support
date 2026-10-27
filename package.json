@@ -16,6 +16,7 @@
     "install:all": "npm install",
     "db:reset": "npm run db:reset -w server",
     "build": "npm run build -w server && npm run build -w client",
+    "a11y:scan": "node scripts/a11y-scan.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:smoke:full": "node scripts/smoke-test.mjs --issue",
     "test:logs": "node scripts/logs-test.mjs",
@@ -28,6 +29,7 @@
     "license:ledger": "node scripts/make-license-code.mjs --ledger"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "puppeteer-core": "^25.14.0"
   }
 }

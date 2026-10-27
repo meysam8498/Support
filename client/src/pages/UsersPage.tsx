@@ -66,7 +66,7 @@ export default function UsersPage() {
     );
   }
 
-  if (loading) return <p className="text-stone-400 dark:text-stone-500 text-center mt-20">{t.loading}</p>;
+  if (loading) return <p className="text-stone-500 dark:text-stone-400 text-center mt-20">{t.loading}</p>;
 
   const openCreate = () => {
     setCreateForm({ username: '', fullName: '', email: '', password: '', role: 'viewer' });

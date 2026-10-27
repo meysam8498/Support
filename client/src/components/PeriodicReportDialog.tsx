@@ -82,7 +82,7 @@ export default function PeriodicReportDialog({ open, onClose }: { open: boolean;
               value={periodStart}
               onChange={(e) => { setPeriodStart(e.target.value); setFrom(''); setTo(''); }}
             />
-            <span className="text-[11px] text-stone-400 dark:text-stone-500 shrink-0">
+            <span className="text-[11px] text-stone-500 dark:text-stone-400 shrink-0">
               {period === 'monthly' ? '۱ ماه از این ماه' : '۳ ماه از این ماه'}
             </span>
             <div className="flex gap-1.5 shrink-0">
@@ -136,7 +136,7 @@ export default function PeriodicReportDialog({ open, onClose }: { open: boolean;
           </div>
         </div>
 
-        <p className="text-[11px] text-stone-400 dark:text-stone-500">
+        <p className="text-[11px] text-stone-500 dark:text-stone-400">
           بدون هیچ ورودی: آخرین دوره‌ی کامل قبل از امروز گزارش می‌شود.
         </p>
 
