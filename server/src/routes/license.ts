@@ -695,7 +695,7 @@ router.post('/extend', requireRole('admin'), (req: Request, res: Response) => {
 //        کدهای صادرشده با کلید قبلی تا پایان exp معتبر می‌مانند (تأیید چندکلیدی).
 // هماهنگ با scripts/make-license-code.mjs --rotate-keys (همان مسیرها/رجیستری).
 // ============================================================
-import { keyStatus, rotateSigningKeys, rotationHistory, KeyRotationError } from '../lib/keyRotation.js';
+import { keyStatus, rotateSigningKeys, rotationHistory, verifyArchivedKey, restoreSigningKey, KeyRotationError } from '../lib/keyRotation.js';
 
 router.get('/keys/status', requireRole('admin'), (_req: Request, res: Response) => {
   try {
@@ -732,6 +732,34 @@ router.post('/keys/rotate', requireRole('admin'), (_req: Request, res: Response)
   } catch (e) {
     const status = e instanceof KeyRotationError ? e.status : 500;
     console.error('⚠ چرخش کلید از پنل ناموفق:', (e as Error).message);
+    res.status(status).json({ error: (e as Error).message });
+  }
+});
+
+// GET /api/license/keys/rotations/:kid/verify — تأیید کلید قبلی از رجیستری/بایگانی (ادمین):
+//   فایل موجود؟ kid محاسبه‌شده برابر؟ کلید خصوصی با عمومی تطابق رمزنگاری دارد؟
+//   در rotations.jsonl ثبت شده؟ — فقط‌خواندنی؛ ۴۰۰ قالب نادرست · ۴۰۴ ناموجود
+router.get('/keys/rotations/:kid/verify', requireRole('admin'), (req: Request, res: Response) => {
+  try {
+    res.json(verifyArchivedKey(String(req.params.kid)));
+  } catch (e) {
+    const status = e instanceof KeyRotationError ? e.status : 500;
+    res.status(status).json({ error: (e as Error).message });
+  }
+});
+
+// POST /api/license/keys/restore { kid } — بازیابی جفت‌کلید قبلی از بایگانی به جایگاه
+//   جاری (برگرداندن چرخش)؛ فقط با جفت‌کلید کامل، با بایگانیِ کلیدهای جاری و
+//   راستی‌آزماییِ نوشتن + نوسازی حافظه‌ی تأیید بدون ری‌استارت. غیرادمین: ۴۰۳
+router.post('/keys/restore', requireRole('admin'), (req: Request, res: Response) => {
+  const kid = String((req.body as { kid?: unknown })?.kid ?? '').trim().toLowerCase();
+  try {
+    const result = restoreSigningKey(kid);
+    console.warn(`🔑 بازیابی کلید امضای لایسنس از پنل ادمین: → ${result.restored_kid} (کلید عوض‌شده: ${result.previous_kid ?? '—'} در بایگانی ماند)`);
+    res.json(result);
+  } catch (e) {
+    const status = e instanceof KeyRotationError ? e.status : 500;
+    console.error('⚠ بازیابی کلید از پنل ناموفق:', (e as Error).message);
     res.status(status).json({ error: (e as Error).message });
   }
 });

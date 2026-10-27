@@ -1,6 +1,7 @@
 // ============================================================
 // تست‌های چرخه‌ی حیاتی لایسنس — صدور، فعال‌سازی، replay، ابطال/لغو ابطال
-// سرور موقت با کلید فروشنده‌ی واقعی (keys/license_private.pem کنار پروژه).
+// سرور موقت با کلیدهای «ایزوله»ی هلپر (جفت‌کلید مخصوص سرور در tmpdir — کلیدهای
+// واقعیِ keys/ پروژه هرگز استفاده یا چرخش نمی‌شوند؛ ر.ک. helpers/spawn-server.ts).
 // ============================================================
 import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import { startTempServer, type TempServer } from './helpers/spawn-server.js';

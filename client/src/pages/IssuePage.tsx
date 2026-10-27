@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/api';
 import { toFa } from '../lib/date';
+import { ROTATE_KEYS_CONFIRM } from '../lib/keyRotationGuide';
 import { useAuth } from '../context/AuthContext';
 import Alert from '../components/Alert';
 
@@ -161,7 +162,8 @@ export default function IssuePage() {
   useEffect(() => { if (isAdmin) loadHistory(); }, [isAdmin, loadHistory]);
 
   const rotateKeys = async () => {
-    if (!window.confirm('چرخش کلید امضای لایسنس؟\n\n\u2022 جفت‌کلید جدید جای کلید فعلی می‌شود (صدور آینده با کلید جدید).\n\u2022 کلید قبلی بایگانی و همچنان برای تأیید کدهای صادرشده‌ی قبلی پذیرفته می‌ماند.\n\u2022 کدهای قبلی هیچ‌وقت باطل نمی‌شوند.\n\u2022 اگر بیش از یک سرور دارید باید فایل‌ها را همگام کنید (راهنما بعد از چرخش نمایش داده می‌شود).\n\nادامه می‌دهید؟')) return;
+    // متن confirm از منبع واحد (lib/keyRotationGuide) — همان متن در کارت داشبورد هم استفاده می‌شود
+    if (!window.confirm(ROTATE_KEYS_CONFIRM)) return;
     setRotBusy(true); setRotError(''); setRotResult(null);
     try {
       const r = await api.post<RotationResult>('/license/keys/rotate');

@@ -1,9 +1,13 @@
 // ============================================================
 // هلپر تست: سرور موقت ایزوله — DB_PATH در tmpdir، JWT_SECRET آزمایشی،
 // بدون زمان‌بند بکاپ مزاحم. در afterEach/afterAll خاموش می‌شود.
+// کلیدها هم ایزوله‌اند: هر سرور جفت‌کلید مخصوص خودش را در tmpdir می‌سازد و
+// LICENSE_KEYS_DIR/LICENSE_ISSUE_KEY به همان اشاره می‌کنند — keys/ واقعی پروژه
+// هرگز خوانده/چرخش/بازنویسی نمی‌شود (بازنویسی با env فراخواننده ممکن است).
 // ============================================================
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { generateKeyPairSync } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { join, dirname } from 'node:path';
@@ -24,17 +28,28 @@ export interface TempServer {
 }
 
 // پورت پایه برای تست — با هر شروع ۱۰ پورت جلو می‌رود تا تداخل TimeWait/دستاگپ‌دار پس از فایل قبلی حذف شود
-let nextPort = (Number(process.env.TEST_PORT_BASE) || 4311) + Math.floor(Math.random() * 20) * 10;
+// پورت آزاد از خودِ سیستم‌عامل (port 0): فایل‌های موازی vitest دیگر هرگز پورت مشترک نمی‌گیرند.
+// قبلاً پورت حدس زده می‌شد و اگر سرورِ فایلِ دیگری همان پورت را گرفته بود، health-check
+// همان سرورِ بیگانه پاسخ می‌داد و تست‌ها با کلید/دیتابیس اشتباه اجرا می‌شدند (رگرسیون ۱.۳۰).
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.once('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const addr = srv.address() as import('node:net').AddressInfo;
+      const p = addr.port;
+      srv.close(() => resolve(p));
+    });
+  });
+}
 
 export async function startTempServer(env: Record<string, string> = {}): Promise<TempServer> {
-  const port = nextPort++;
-  // تداخل EADDRINUSE: تا ۵ بار با پورت بعدی تلاش می‌کنیم (parallel suiteها ممکن است همزماننده شوند)
+  // تداخل EADDRINUSE (نادر با پورت OS-ای): تا ۵ بار با پورت تازه تلاش می‌کنیم
   for (let attempt = 0; attempt < 5; attempt++) {
-    try { return await spawnAt(port + attempt * 10, env); } catch (e) {
+    try { return await spawnAt(await freePort(), env); } catch (e) {
       const msg = String((e as Error).message);
       if (!msg.includes('EADDRINUSE')) throw e;
       if (attempt === 4) throw e;
-      // پورت بعدی
     }
   }
   throw new Error('unreachable');
@@ -42,12 +57,30 @@ export async function startTempServer(env: Record<string, string> = {}): Promise
 
 async function spawnAt(port: number, env: Record<string, string> = {}): Promise<TempServer> {
   const dir = mkdtempSync(join(tmpdir(), 'sem-test-'));
+  // ───── کلیدهای آزمایشی ایزوله (۱.۳۰) ─────
+  // هر سرور موقت «جفت‌کلید مخصوص خودش» را درون همان tmpdir می‌سازد و
+  // LICENSE_KEYS_DIR / LICENSE_ISSUE_KEY به آن اشاره می‌کنند:
+  //   • هیچ تستی کلیدهای واقعی keys/ پروژه را نمی‌خواند و مهم‌تر: نمی‌چرخاند/بازنویسی نمی‌کند
+  //     (حتی اگر فراخواننده LICENSE_KEYS_DIR ندهد — پیش‌فرض هم ایزوله است)
+  //   • اولویت با env فراخواننده است: تست‌هایی که خودشان کلید/پوشه می‌سازند همچنان برنده‌اند
+  const testKeysDir = join(dir, 'keys');
+  mkdirSync(testKeysDir, { recursive: true });
+  const testPair = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+  writeFileSync(join(testKeysDir, 'license_public.pem'), String(testPair.publicKey));
+  writeFileSync(join(testKeysDir, 'license_private.pem'), String(testPair.privateKey));
   const TSX = join(ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs');
   const ENTRY = join(ROOT, 'server', 'src', 'index.ts');
   const proc = spawn(process.execPath, [TSX, ENTRY], {
     cwd: ROOT, // در ریشه — keys/ و مسیرهای نسبی مثل اجرای واقعی
     env: {
       ...process.env,
+      // کلیدهای ایزوله‌ی این سرور موقت (قبل از ...env تا فراخواننده بتواند بازنویسی کند)
+      LICENSE_KEYS_DIR: testKeysDir,
+      LICENSE_ISSUE_KEY: join(testKeysDir, 'license_private.pem'),
       ...env, // ENV تزریق‌شده (کلیدهای لایسنس آزمایشی و...) اولویت دارد
       PORT: String(port),
       DB_PATH: join(dir, 'app.db'),
