@@ -261,6 +261,110 @@ export interface DashboardStats {
   projects: number;
 }
 
+/**
+ * چیدمان داشبورد از سرور — منبع حقیقت برای ترتیب/مخفی‌سازی ویجت‌ها.
+ * همگام بین دستگاه‌ها و نشست‌های همان کاربر (جداسازی با هویت نشست سمت سرور).
+ */
+export interface DashboardLayoutPayload {
+  order: string[];
+  hidden: string[];
+  /** ISO8601 — پایه‌ی تشخیص تداخل هنگام ذخیره (آخرین-نویسنده-برنده) */
+  updated_at: string;
+}
+
+/** پاسخ موفق PUT/DELETE */
+export interface DashboardLayoutSaved {
+  ok: true;
+  deleted?: boolean;
+  order: string[];
+  hidden: string[];
+  updated_at: string;
+}
+
+/** پاسخ ۴۰۹ — نشست دیگری وسطِ کار چیدمان را عوض کرده */
+export interface DashboardLayoutConflict {
+  error: string;
+  conflict: true;
+  current: DashboardLayoutPayload;
+}
+
+/** خطای ردیف‌دار سرور (۴۰۰/۴۰۹) — به‌همراه پاسخ تازه برای حل تداخل */
+export type ApiError = Error & { status?: number; payload?: unknown };
+
+/**
+ * خواندن چیدمان کاربر از سرور.
+ * ۴۰۴ یعنی «هنوز چیزی ذخیره نشده» — این حالت عادی است (اولین ورود) و
+ * با null برمی‌گردد تا فراخواننده از DEFAULT_ORDER استفاده کند؛ خطا نیست.
+ */
+export async function getDashboardLayout(): Promise<DashboardLayoutPayload | null> {
+  const res = await fetch(`${BASE}/dashboard/layout`, { headers: authHeaders() });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 404) return null;
+  if (!res.ok) throw toApiError(res.status, data);
+  const d = data as Partial<DashboardLayoutPayload>;
+  // پاسخ بدون order معتبر = ردیفی ذخیره نشده (یا پروکسی بد) — همان null
+  if (!Array.isArray(d.order)) return null;
+  return {
+    order: d.order,
+    hidden: Array.isArray(d.hidden) ? d.hidden : [],
+    updated_at: d.updated_at || new Date(0).toISOString(),
+  };
+}
+
+/**
+ * ذخیره‌ی چیدمان در سرور. baseUpdatedAt از GET قبلی است؛ اگر ردیف از آن
+ * زمان جلوتر رفته باشد سرور ۴۰۹ می‌دهد (تداخل با نشست دیگر) و این تابع آن را
+ * با payload فعلیِ سرور بالا می‌اندازد تا فراخواننده تصمیم بگیرد.
+ */
+export async function saveDashboardLayout(
+  order: string[],
+  hidden: string[],
+  baseUpdatedAt?: string,
+): Promise<DashboardLayoutSaved> {
+  const res = await fetch(`${BASE}/dashboard/layout`, {
+    method: 'PUT',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order, hidden, ...(baseUpdatedAt ? { base_updated_at: baseUpdatedAt } : {}) }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw toApiError(res.status, data);
+  const d = data as Partial<DashboardLayoutSaved>;
+  return {
+    ok: true,
+    order: Array.isArray(d.order) ? d.order : order,
+    hidden: Array.isArray(d.hidden) ? d.hidden : hidden,
+    updated_at: d.updated_at || new Date().toISOString(),
+  };
+}
+
+/** حذف چیدمان (بازگشت به پیش‌فرض) — برای همین کاربر روی سرور */
+export async function resetDashboardLayout(): Promise<DashboardLayoutSaved> {
+  const res = await fetch(`${BASE}/dashboard/layout`, { method: 'DELETE', headers: authHeaders() });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw toApiError(res.status, data);
+  // سرور بعد از حذف ردیف فقط ok/updated_at می‌دهد؛ order/hidden خالی‌اند (پیش‌فرض)
+  const d = data as Partial<DashboardLayoutSaved>;
+  return {
+    ok: true,
+    deleted: true,
+    order: d.order ?? [],
+    hidden: d.hidden ?? [],
+    updated_at: d.updated_at ?? new Date().toISOString(),
+  };
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function toApiError(status: number, data: { error?: string }): ApiError {
+  const err = new Error(data.error || `خطای ${status}`) as ApiError;
+  err.status = status;
+  err.payload = data;
+  return err;
+}
+
 export interface ReportSummary {
   totalReplacements: number;
   totalParts: number;

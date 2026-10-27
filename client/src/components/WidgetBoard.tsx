@@ -13,9 +13,9 @@
 // • چیدمان هر کاربر در localStorage (layoutKeyFor) + دکمه‌ی بازگشت به پیش‌فرض.
 // • بیرون از حالت ویرایش، ویجت‌ها بدون کادر/دسته رندر می‌شوند (ظاهر تمیز).
 // ============================================================
-import React, { Children, isValidElement, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Children, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  type LayoutState,
+  type SyncStatus,
   type WidgetDef,
   type WidgetSpan,
   applyLayout,
@@ -25,9 +25,18 @@ import {
   loadLayout,
   moveWidget,
   normalizeLayout,
+  readLocalStamp,
+  resolveInitialLayout,
   saveLayout,
   toggleHidden,
+  writeLocalStamp,
 } from '../lib/dashboardLayout';
+import {
+  getDashboardLayout,
+  resetDashboardLayout,
+  saveDashboardLayout,
+  type ApiError,
+} from '../api/api';
 
 /** props یک ویجت — id پایدار + عنوان کنترلی + عرض در شبکه */
 export interface WidgetProps {
@@ -53,6 +62,14 @@ interface WidgetBoardProps {
   userId?: number | string;
 }
 
+/** وضعیت چیدمان + زمانِ آخرین همگام‌سازی سرور (پایه‌ی حل تداخل) */
+interface BoardState {
+  order: string[];
+  hidden: string[];
+  /** updated_at سرور هنگام خواندن/نوشتن — برای base_updated_at در PUT */
+  serverUpdatedAt?: string;
+}
+
 /** استخراج defs + نگاشت element از فرزندان <Widget> (بدون لمس بقیه‌ی گره‌ها) */
 function collectWidgets(children: React.ReactNode): { defs: WidgetDef[]; byId: Map<string, React.ReactElement> } {
   const defs: WidgetDef[] = [];
@@ -69,25 +86,103 @@ function collectWidgets(children: React.ReactNode): { defs: WidgetDef[]; byId: M
 
 export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
   const storageKey = useMemo(() => layoutKeyFor(userId), [userId]);
-  const [state, setState] = useState<LayoutState>(() => loadLayout(storageKey));
+  const [state, setState] = useState<BoardState>(() => ({ ...loadLayout(storageKey) }));
   const [editing, setEditing] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   // اعلام‌کننده‌ی بصری برای صفحه‌خوان — تغییرات چیدمان با کیبورد را اعلام می‌کند
   const [live, setLive] = useState('');
+  // وضعیت همگام‌سازی سرور — برای نشان‌گر بصری در نوار ابزار
+  const [sync, setSync] = useState<SyncStatus>('synced');
 
   // اگر کاربر عوض شد (یا کلید عوض شد)، چیدمان همان را بخوان
   useEffect(() => {
-    setState(loadLayout(storageKey));
+    setState({ ...loadLayout(storageKey) });
   }, [storageKey]);
 
   const { defs, byId } = useMemo(() => collectWidgets(children), [children]);
 
-  const commit = useCallback((next: LayoutState) => {
-    const norm = normalizeLayout(next);
-    setState(norm);
-    saveLayout(storageKey, norm);
+  // نگه‌داری آخرین مقادیر در ref تا callbackهای async (fetch/put) همیشه تازه ببینند
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const keyRef = useRef(storageKey);
+  keyRef.current = storageKey;
+
+  /** ثبت نهایی روی سرور — شکستِ شبکه بی‌صدا نادیده گرفته می‌شود (چیدمان محلی معتبر است) */
+  const pushToServer = useCallback(async (next: BoardState) => {
+    const keyAtStart = keyRef.current;
+    setSync('saving');
+    try {
+      const saved = await saveDashboardLayout(next.order, next.hidden, next.serverUpdatedAt);
+      // فقط اگر هنوز همان کلید/نشستیم updated_at را بنویس — جلوی race با تعویض کاربر
+      if (keyRef.current === keyAtStart) {
+        setState((cur) => ({ ...cur, serverUpdatedAt: saved.updated_at }));
+      }
+      setSync('synced');
+    } catch (e) {
+      if (keyRef.current !== keyAtStart) return; // کاربر عوض شده — دخالت نکن
+      const err = e as ApiError;
+      if (err.status === 409) {
+        // تداخل: نشست دیگری زودتر نوشته — نسخه‌ی سرور را بگیر و به کاربر اطلاع بده
+        setSync('synced');
+        try {
+          const fresh = await getDashboardLayout();
+          if (fresh) {
+            const srv = normalizeLayout(fresh);
+            setState({ ...srv, serverUpdatedAt: fresh.updated_at });
+            saveLayout(keyRef.current, srv);
+            setLive('چیدمان روی دستگاه دیگری تغییر کرده بود — نسخه‌ی تازه اعمال شد.');
+          }
+        } catch { /* سرور در دسترس نیست — همان محلی بماند */ }
+      } else {
+        // شبکه/سرور در دسترس نیست — آفلاین؛ تغییر در localStorage می‌ماند
+        setSync('offline');
+        setLive('ذخیره روی سرور انجام نشد (شبکه در دسترس نیست) — چیدمان روی همین دستگاه ذخیره شد.');
+      }
+    }
   }, [storageKey]);
+
+  const commit = useCallback((next: BoardState) => {
+    const norm = normalizeLayout(next);
+    const nextBoard: BoardState = { ...norm, serverUpdatedAt: next.serverUpdatedAt };
+    setState(nextBoard);
+    saveLayout(storageKey, norm);
+    writeLocalStamp(storageKey);
+    void pushToServer(nextBoard); // همگام‌سازی بی‌درنگ با سرور (شکست → حالت آفلاین)
+  }, [storageKey, pushToServer]);
+
+  // ───── همگام‌سازی آغازین: سرور منبع حقیقت، localStorage نمایش فوری/آفلاین ─────
+  useEffect(() => {
+    let alive = true;
+    const key = storageKey;
+    (async () => {
+      setSync('saving');
+      try {
+        const server = await getDashboardLayout();
+        if (!alive || keyRef.current !== key) return;
+        const local = loadLayout(key);
+        const { decision, state: chosen } = resolveInitialLayout(
+          local,
+          server ? { order: server.order, hidden: server.hidden } : null,
+          server?.updated_at,
+          readLocalStamp(key),
+        );
+        const chosenNorm = normalizeLayout(chosen);
+        setState({ ...chosenNorm, serverUpdatedAt: server?.updated_at });
+        saveLayout(key, chosenNorm);
+        if (decision === 'push-local') {
+          // تغییری که فقط اینجا ثبت شده — به سرور ببر تا بقیه‌ی دستگاه‌ها ببینند
+          await pushToServer({ ...chosenNorm, serverUpdatedAt: server?.updated_at });
+        } else {
+          setSync('synced');
+        }
+      } catch {
+        if (!alive || keyRef.current !== key) return;
+        setSync('offline'); // سرور در دسترس نیست — همان نسخه‌ی محلی معتبر است
+      }
+    })();
+    return () => { alive = false; };
+  }, [storageKey, pushToServer]);
 
   // ویجت‌های قابل‌نمایش به‌ترتیب چیدمان (اعمال مخفی‌ها + ویجت‌های تازه)
   const visible = useMemo(() => applyLayout(defs, state), [defs, state]);
@@ -123,8 +218,23 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
   };
 
   const reset = () => {
-    commit({ order: defaultOrder(), hidden: [] });
-    setLive('چیدمان به حالت پیش‌فرض بازگشت.');
+    const norm = normalizeLayout({ order: defaultOrder(), hidden: [] });
+    const nextBoard: BoardState = { ...norm, serverUpdatedAt: undefined };
+    setState(nextBoard);
+    saveLayout(storageKey, norm);
+    writeLocalStamp(storageKey);
+    setLive('چیدمان به حالت پیش‌فرض بازگشت — روی همه‌ی دستگاه‌ها.');
+    // حذف ردیف سرور (به‌جای ذخیره‌ی «پیش‌فرض» به‌عنوان داده) تا همه‌ی نشست‌ها پیش‌فرض را ببینند
+    setSync('saving');
+    const keyAtStart = storageKey;
+    resetDashboardLayout()
+      .then((r) => {
+        if (keyRef.current === keyAtStart) setState((cur) => ({ ...cur, serverUpdatedAt: r.updated_at }));
+        setSync('synced');
+      })
+      .catch(() => {
+        if (keyRef.current === keyAtStart) setSync('offline');
+      });
   };
 
   // ───── Drag & Drop (HTML5) ─────
@@ -180,10 +290,23 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
               ↺ بازگشت به پیش‌فرض
             </button>
           )}
+          {/* نشان‌گر همگام‌سازی — فقط وقتی «در حال ذخیره» یا «آفلاین» است تا چشم‌گیر بماند */}
+          {sync !== 'synced' && (
+            <span
+              role="status"
+              className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border ${
+                sync === 'saving'
+                  ? 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-800'
+                  : 'bg-gold/15 text-gold-dark dark:text-gold-light border-gold/40'
+              }`}
+            >
+              {sync === 'saving' ? '⏳ در حال ذخیره روی سرور…' : '⚠ آفلاین — تغییرات روی همین دستگاه می‌ماند و بعداً همگام می‌شود'}
+            </span>
+          )}
         </div>
         {editing && (
           <p className="text-[11px] text-stone-500 dark:text-stone-400">
-            ویجت‌ها را بکشید یا با ↑/↓ جابه‌جا کنید؛ با چشم مخفی کنید. چیدمان ویژه‌ی شما ذخیره می‌شود.
+            ویجت‌ها را بکشید یا با ↑/↓ جابه‌جا کنید؛ با چشم مخفی کنید. چیدمان روی سرور ذخیره و بین دستگاه‌های شما همگام می‌شود.
           </p>
         )}
       </div>

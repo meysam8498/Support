@@ -351,3 +351,15 @@ CREATE TABLE IF NOT EXISTS backup_history (
   push_error  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_backup_history_ran_at  ON backup_history(ran_at);
+
+-- --------------------------------------------------------
+-- چیدمان داشبورد هر کاربر — ترتیب/مخفی‌سازی ویجت‌ها (الگوی Microsoft CRM)
+--   یک ردیف برای هر کاربر؛ order/hidden به‌صورت JSON متنی ذخیره می‌شوند.
+--   updated_at پایه‌ی حل تداخل «کدام نسخه تازه‌تر است» بین چند دستگاه است.
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_dashboard_layouts (
+  user_id    INTEGER PRIMARY KEY,                -- یک کاربر → یک چیدمان
+  layout     TEXT NOT NULL DEFAULT '{}',         -- JSON: { "order": [...], "hidden": [...] }
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

@@ -30,6 +30,12 @@ export interface LayoutState {
   hidden: string[];
 }
 
+/** برچسب وضعیت همگام‌سازی — برای نشان‌گر بصری و اعلام صفحه‌خوان تخته */
+export type SyncStatus = 'synced' | 'saving' | 'offline';
+
+/** پاسخ مقایسه‌ی چیدمان محلی با سرور — جهت همگام‌سازی را تعیین می‌کند */
+export type SyncDecision = 'use-server' | 'push-local' | 'use-default';
+
 /**
  * ترتیب پیش‌فرض همه‌ی ویجت‌ها — منبع واحد جهت‌گیری.
  * «welcome» سربرگ خوش‌آمد (H1) است؛ کارت «درباره» و بنر ارتقا عمداً ویجت
@@ -175,4 +181,69 @@ export function dropWidget(
 /** نمایش/پنهان‌کردن یک ویجت — toggle */
 export function toggleHidden(hidden: string[], id: string): string[] {
   return hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id];
+}
+
+/**
+ * زمانِ آخرین تغییر محلی — در کلید جداگانه‌ای کنار چیدمان نگه داشته می‌شود
+ * تا normalizeLayout ساختار {order,hidden} را آلوده نکند. پایه‌ی مقایسه‌ی
+ * تازگی میان نسخه‌ی محلی و سرور هنگام حل تداخل است.
+ */
+export function readLocalStamp(key: string): string | null {
+  try {
+    return globalThis.localStorage?.getItem(`${key}:at`) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** ثبت زمانِ همین لحظه برای «آخرین تغییر محلی» — همراه با هر ذخیره‌ی چیدمان */
+export function writeLocalStamp(key: string): void {
+  try {
+    globalThis.localStorage?.setItem(`${key}:at`, new Date().toISOString());
+  } catch {
+    /* ذخیره‌سازی در دسترس نیست */
+  }
+}
+
+/** دو چیدمان از نظر محتوا یکی‌اند؟ (نرمال‌شده، پس مقایسه‌ی عضوی قطعی است) */
+export function layoutsEqual(a: LayoutState, b: LayoutState): boolean {
+  return a.order.join('\u0000') === b.order.join('\u0000') && a.hidden.join('\u0000') === b.hidden.join('\u0000');
+}
+
+/**
+ * تصمیم همگام‌سازی هنگام بالا آمدن تخته — سرور منبع حقیقت است، ولی
+ * نمی‌خواهیم چیدمانی را که کاربر روی دستگاه دیگر ساخته با بی‌توجهی با نسخه‌ی
+ * تازه‌ساخته‌ی همین نشست بپوشانیم. قواعد:
+ *   • سرور چیزی ندارد → اگر محلی از پیش‌فرض فرق دارد همان را پوش بده، وگرنه پیش‌فرض.
+ *   • سرور و محلی یکی‌اند → فقط بخوان (پوش نده)؛ کار غیرضروری نکن.
+ *   • سرور با پیش‌فرض یکی ولی محلی فرق دارد → محلی برنده است (تغییری که هنوز به سرور نرسیده).
+ *   • سرور با پیش‌فرض فرق دارد و محلی هنوز پیش‌فرض است → سرور برنده است (چیدمان دستگاه دیگر).
+ *   • سرور و محلی هر دو فرق‌دار ولی با هم فرق دارند → آخرین‌نویسنده‌برنده: با updated_at تصمیم بگیر؛
+ *     اگر زمان در دسترس نیست سرور برنده است (همان چیزی که همه‌ی دستگاه‌ها می‌بینند).
+ */
+export function resolveInitialLayout(
+  local: LayoutState,
+  server: { order: string[]; hidden: string[] } | null,
+  serverUpdatedAt?: string,
+  localUpdatedAt?: string | null,
+): { decision: SyncDecision; state: LayoutState } {
+  const def = normalizeLayout(null);
+  if (!server) {
+    const differs = !layoutsEqual(local, def);
+    return { decision: differs ? 'push-local' : 'use-default', state: local };
+  }
+
+  const srv = normalizeLayout(server);
+  if (layoutsEqual(srv, local)) return { decision: 'use-server', state: srv };
+
+  const srvIsDefault = layoutsEqual(srv, def);
+  const localIsDefault = layoutsEqual(local, def);
+  if (srvIsDefault && !localIsDefault) return { decision: 'push-local', state: local };
+  if (!srvIsDefault && localIsDefault) return { decision: 'use-server', state: srv };
+
+  // هر دو سفارشی ولی متفاوت — تازه‌ترین برنده؛ بدون زمان معتبر، سرور برنده است
+  if (serverUpdatedAt && localUpdatedAt && Date.parse(localUpdatedAt) > Date.parse(serverUpdatedAt)) {
+    return { decision: 'push-local', state: local };
+  }
+  return { decision: 'use-server', state: srv };
 }

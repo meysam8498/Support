@@ -1,10 +1,177 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { getDb } from '../db/db.js';
+import { authRequired } from '../middleware/auth.js';
 
 /**
  * داشبورد یکپارچه — نگاه جامع بر اساس موجودیت‌های مختلف.
  */
 const router = Router();
+
+// ============================================================
+// چیدمان داشبورد کاربر (۱.۳۲) — همگام بین دستگاه‌ها و نشست‌ها
+// ------------------------------------------------------------
+// منبع حقیقت، سرور است: تخته‌ی ویجت‌ها پس از رندر، چیدمان را از همین‌جا
+// می‌خواند و هر تغییر را اینجا می‌نویسد؛ localStorage فقط «پنهانگاه» همان
+// نسخه برای نمایش فوری و کارکرد آفلاین است.
+//
+// طراحی:
+//   • جداسازی per-user از راهِ هویت نشست (req.user.sub) — نه ورودی کلاینت؛
+//     کاربر نمی‌تواند چیدمان کاربر دیگر را بخواند/بنویسد.
+//   • اعتبارسنجی سمت سرور با zod: هر id باید یکی از ویجت‌های شناخته‌شده باشد،
+//     ترتیب بدون تکرار و جایگشت کامل DEFAULT_ORDER باشد؛ مخفی‌ها زیرمجموعه‌اش.
+//     ولیداسیون کلاینت قابل‌اعتماد نیست — اینجا هم اعمال می‌شود.
+//   • no-store روی هر دو مسیر: چیدمان داده‌ی شخصی و زنده است؛ کش میان‌افزار
+//     نباید نسخه‌ی کهنه را برگرداند.
+//   • حل تداخل آخرین-نویسنده-برنده با مقایسه‌ی updated_at: کلاینت تغییرش را با
+//     زمان سرورِ هنگام خواندن می‌فرستد؛ اگر ردیف از آن زمان جلوتر رفته باشد
+//     (نشست دیگری روی دستگاه دیگر) ۴۰۹ برمی‌گردد تا کلاینت تصمیم بگیرد.
+//     این به‌جای «بی‌صدا بازنویسی» است که باعث می‌شد تغییر یک دستگاه بی‌دلیل
+//     تغییر دستگاه دیگر را بپوشاند.
+// ============================================================
+
+/** ویجت‌های شناخته‌شده‌ی داشبورد — باید با DEFAULT_ORDER کلاینت یکی باشد */
+const WIDGET_IDS = [
+  'welcome', 'backup', 'license', 'stats', 'progress', 'trend',
+  'topParts', 'quickReport', 'recent', 'projects', 'actions',
+] as const;
+const WIDGET_ID_SET = new Set<string>(WIDGET_IDS);
+
+/** پیکربندی یکسان‌سازی با اعتبارسنجی کلاینت (منطق واحد: همان normalizeLayout) */
+const widgetId = z.string().refine((v) => WIDGET_ID_SET.has(v), {
+  message: `شناسه‌ی ویجت ناشناخته است — مجاز: ${WIDGET_IDS.join(', ')}`,
+});
+
+/** هر دو آرایه باید جایگشت کاملی از همه‌ی ویجت‌ها باشند (بدون تکرار/حذف) */
+const orderSchema = z.array(widgetId).length(WIDGET_IDS.length).refine(
+  (arr) => new Set(arr).size === WIDGET_IDS.length,
+  { message: 'ترتیب باید دقیقاً یک جایگشت کامل از همه‌ی ویجت‌ها باشد (بدون تکرار).' },
+);
+const hiddenSchema = z.array(widgetId).refine(
+  (arr) => new Set(arr).size === arr.length,
+  { message: 'فهرست ویجت‌های مخفی‌شده نباید تکراری باشد.' },
+);
+
+const layoutBodySchema = z.object({
+  order: orderSchema,
+  hidden: hiddenSchema,
+  /** updated_at سرور هنگام خواندن — پایه‌ی تشخیص تداخل (اختیاری: نوشتن نخستین) */
+  base_updated_at: z.string().min(1).optional(),
+});
+
+interface LayoutRow {
+  user_id: number;
+  layout: string;
+  updated_at: string;
+}
+
+/**
+ * زمان SQLite («YYYY-MM-DD HH:MM:SS» به وقت UTC، بدون Z) → ISO8601 کامل.
+ * هم مقایسه‌ی تداخل و هم پاسخ به کلاینت از همین فرمت استفاده می‌کنند، چون
+ * فرمت خامِ Z-less (جایگزینی فضای خالی با T) با ISO پایه‌ی کلاینت قابل
+ * مقایسه نیست و تازگی را به‌اشتباه می‌شکست — حالا هر دو طرف ISO‌اند.
+ */
+function toIso(stamp: string): string {
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(stamp)) return `${stamp.replace(' ', 'T')}Z`;
+  return stamp; // از قبل ISO است (fallback هنگام حذف)
+}
+
+/**
+ * GET /api/dashboard/layout — چیدمان کاربرِ واردشده.
+ * اگر هنوز چیزی ذخیره نشده باشد ۴۰۴ برمی‌گردد تا کلاینت از DEFAULT_ORDER
+ * استفاده کند؛ ولی همیشه updated_at می‌دهد (برای ردیف تازه = زمان حال).
+ */
+router.get('/layout', authRequired, (req, res) => {
+  const userId = req.user!.sub;
+  const row = getDb()
+    .prepare(`SELECT user_id, layout, updated_at FROM user_dashboard_layouts WHERE user_id = ?`)
+    .get(userId) as LayoutRow | undefined;
+
+  res.setHeader('Cache-Control', 'no-store');
+  if (!row) {
+    return res.status(404).json({ error: 'چیدمانی برای این کاربر ذخیره نشده است.', updated_at: new Date().toISOString() });
+  }
+
+  let layout: { order?: unknown; hidden?: unknown };
+  try {
+    layout = JSON.parse(row.layout);
+  } catch {
+    // داده‌ی خراب در DB (دستی/نشست ناقص) — بی‌صدا پیش‌فرض برگردان، نه۵۰۰
+    console.error(`⚠ چیدمان کاربر ${userId} قابل خواندن نیست — پیش‌فرض برگردانده شد.`);
+    layout = {};
+  }
+
+  return res.json({
+    order: Array.isArray(layout.order) ? layout.order : [],
+    hidden: Array.isArray(layout.hidden) ? layout.hidden : [],
+    updated_at: toIso(row.updated_at),
+  });
+});
+
+/**
+ * PUT /api/dashboard/layout — ذخیره‌ی چیدمان کاربر واردشده (upsert).
+ * ۴۰۹ وقتی که ردیف از base_updated_at جلوتر رفته باشد — یعنی نشست دیگری
+ * (روی دستگاه دیگر) وسطِ کار تغییرش کرده و اینجا بازنویسیِ بی‌صدا نداریم.
+ */
+router.put('/layout', authRequired, (req, res) => {
+  const userId = req.user!.sub;
+  const parsed = layoutBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return res.status(400).json({ error: first.message, path: first.path.join('.') });
+  }
+  const { order, hidden, base_updated_at } = parsed.data;
+  const db = getDb();
+
+  const existing = db
+    .prepare(`SELECT user_id, layout, updated_at FROM user_dashboard_layouts WHERE user_id = ?`)
+    .get(userId) as LayoutRow | undefined;
+
+  // حل تداخل: فقط وقتی کلاینت زمان خواندن را فرستاده باشد و ردیف از آن جلوتر باشد.
+  // مقایسه باید ISO در برابر ISO باشد — فرمت خام SQLite با Z-less فضای خالی
+  // جایگزین T می‌دهد و رشته‌ی مقایسه را می‌شکست (تازگی به‌اشتباه قدیمی/جدید می‌شد).
+  if (base_updated_at && existing && toIso(existing.updated_at) > base_updated_at) {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(409).json({
+      error: 'چیدمان این کاربر روی دستگاه دیگری تغییر کرده است.',
+      conflict: true,
+      current: (() => {
+        const stamp = toIso(existing.updated_at);
+        try {
+          const p = JSON.parse(existing.layout) as { order?: unknown; hidden?: unknown };
+          return { order: Array.isArray(p.order) ? p.order : [], hidden: Array.isArray(p.hidden) ? p.hidden : [], updated_at: stamp };
+        } catch {
+          return { order: [], hidden: [], updated_at: stamp };
+        }
+      })(),
+    });
+  }
+
+  const layout = JSON.stringify({ order, hidden });
+  db.prepare(`
+    INSERT INTO user_dashboard_layouts (user_id, layout, updated_at)
+    VALUES (?, ?, datetime('now'))
+    ON CONFLICT(user_id) DO UPDATE SET layout = excluded.layout, updated_at = excluded.updated_at
+  `).run(userId, layout);
+
+  const saved = db
+    .prepare(`SELECT user_id, layout, updated_at FROM user_dashboard_layouts WHERE user_id = ?`)
+    .get(userId) as LayoutRow | undefined;
+
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ ok: true, order, hidden, updated_at: saved ? toIso(saved.updated_at) : new Date().toISOString() });
+});
+
+/**
+ * DELETE /api/dashboard/layout — بازگشت به پیش‌فرض؛ ردیف را حذف می‌کند تا
+ * کلاینت‌ها همگی از DEFAULT_ORDER شروع کنند (همان «بازگشت به پیش‌فرض» تخته).
+ */
+router.delete('/layout', authRequired, (req, res) => {
+  const userId = req.user!.sub;
+  getDb().prepare(`DELETE FROM user_dashboard_layouts WHERE user_id = ?`).run(userId);
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ ok: true, deleted: true, updated_at: new Date().toISOString() });
+});
 
 /** آمار کلی بالای داشبورد */
 router.get('/stats', (_req, res) => {
