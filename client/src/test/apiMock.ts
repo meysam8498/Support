@@ -118,6 +118,7 @@ const backupsFixture = {
     { ranAt: ISO_NOW, source: 'daily', ok: true, file: 'support-backup-20261018-033000.db', sizeBytes: 294912, integrity: 'ok', durationMs: 25, error: null, pushOk: null, pushTarget: null, pushError: null },
     { ranAt: '2026-10-17T00:00:00.000Z', source: 'daily', ok: true, file: 'support-backup-20261017-033000.db', sizeBytes: 290816, integrity: 'ok', durationMs: 24, error: null, pushOk: null, pushTarget: null, pushError: null },
   ],
+  history_meta: { total: 2, keep: 500, capped: false },
 };
 
 /** [method, regex-path, response] — به‌ترتیب اولویت؛ اولین تطبیق برنده است */

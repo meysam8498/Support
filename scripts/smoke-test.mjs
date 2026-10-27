@@ -211,6 +211,22 @@ if (isSupportOnly) {
   ok('لاگ: سرور عادی → 404 (endpoint mount نشده)', logStd.status === 404, `status=${logStd.status}`);
 }
 
+// ─────────── ۱.۳) تاریخچه‌ی بکاپ + سقف نگهداری (۱.۳۰) ───────────
+// UI وقتی جدول به سقف برسد (قدیمی‌ترین ردیف‌ها حذف می‌شوند) هشدار طلایی نشان می‌دهد —
+// پس پاسخ باید history (آرایه) و history_meta (total/keep/capped) داشته باشد.
+console.log('\n— تاریخچه‌ی بکاپ (history_meta برای هشدار سقف در UI)');
+if (isSupportOnly) {
+  const bkSup = await api('GET', '/api/backups', { token: TOKEN });
+  ok('SUPPORT_ONLY: GET /api/backups → 403 (گیت پشتیبانی)', bkSup.status === 403, `status=${bkSup.status}`);
+} else {
+  const bk = await api('GET', '/api/backups', { token: TOKEN });
+  const meta = bk.data?.history_meta;
+  ok('GET /api/backups → 200 با history + history_meta', bk.status === 200 && Array.isArray(bk.data?.history)
+    && typeof meta?.total === 'number' && typeof meta?.keep === 'number' && typeof meta?.capped === 'boolean',
+  `status=${bk.status} meta=${JSON.stringify(meta)}`);
+  ok('capped با total/keep هم‌خوان است (capped ⇔ total ≥ keep)', bk.status !== 200 || meta?.capped === (meta?.total >= meta?.keep), JSON.stringify(meta));
+}
+
 // ─────────── ۲) درفت اسکیما (رگرسیون catalog_id: ستونی که در مهاجرت بود و از schema.sql جا افتاد) ───────────
 // چک مستقل درون‌پردازشی — بدون سرور؛ همان منطق npm run check:schema با خروجی خلاصه
 console.log('\n— درفت اسکیما (schema.sql در برابر مهاجرت‌ها)');

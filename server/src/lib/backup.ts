@@ -242,7 +242,7 @@ export interface BackupHistoryRow {
 }
 
 /** سقف ردیف‌های نگهداری‌شده در تاریخچه — جلوگیری از رشد بی‌انتهای جدول */
-const HISTORY_KEEP = 500;
+export const HISTORY_KEEP = 500;
 
 /**
  * ثبت یک اجرا در backup_history — idempotent در برابر خطا:
@@ -267,12 +267,24 @@ function recordBackupHistory(db: DatabaseSync, ranAt: string, r: BackupResult, s
   }
 }
 
+/** وضعیت سقف تاریخچه — برای هشدار رابط کاربری وقتی قدیمی‌ترین ردیف‌ها حذف می‌شوند */
+export interface BackupHistoryMeta {
+  /** تعداد کل ردیف‌های فعلی جدول backup_history */
+  total: number;
+  /** سقف نگهداری (HISTORY_KEEP) */
+  keep: number;
+  /** true یعنی جدول به سقف رسیده و هر اجرای جدید قدیمی‌ترین ردیف را حذف می‌کند */
+  capped: boolean;
+}
+
 /**
  * خواندن تاریخچه‌ی بکاپ‌ها برای نمودار خطی داشبورد — جدید→قدیمی داخل DB،
  * خروجی به‌ترتیب زمانی (قدیمی→جدید) برای رسم پیوسته‌ی نمودار.
+ * meta سقف نگهداری را گزارش می‌کند تا UI وقتی ردیف‌ها در حال حذف‌شدن‌اند هشدار دهد.
  */
-export function backupHistory(db: DatabaseSync, limit = 120): BackupHistoryRow[] {
+export function backupHistory(db: DatabaseSync, limit = 120): { rows: BackupHistoryRow[]; meta: BackupHistoryMeta } {
   try {
+    const total = (db.prepare('SELECT COUNT(*) AS n FROM backup_history').get() as { n: number }).n;
     const rows = db.prepare(`
       SELECT ran_at, source, ok, file, size_bytes, integrity, duration_ms, error, push_ok, push_target, push_error
       FROM backup_history ORDER BY id DESC LIMIT ?
@@ -281,7 +293,9 @@ export function backupHistory(db: DatabaseSync, limit = 120): BackupHistoryRow[]
       integrity: string | null; duration_ms: number | null; error: string | null;
       push_ok: number | null; push_target: string | null; push_error: string | null;
     }[];
-    return rows.reverse().map((x) => ({
+    return {
+      meta: { total, keep: HISTORY_KEEP, capped: total >= HISTORY_KEEP },
+      rows: rows.reverse().map((x) => ({
       ranAt: x.ran_at,
       source: (x.source as BackupSource) || 'manual',
       ok: x.ok === 1,
@@ -293,9 +307,11 @@ export function backupHistory(db: DatabaseSync, limit = 120): BackupHistoryRow[]
       pushOk: x.push_ok === null ? null : x.push_ok === 1,
       pushTarget: x.push_target,
       pushError: x.push_error,
-    }));
+      })),
+    };
   } catch {
-    return []; // جدول هنوز ساخته نشده — کارت داشبورد بدون نمودار رندر می‌شود
+    // جدول هنوز ساخته نشده — کارت داشبورد بدون نمودار رندر می‌شود
+    return { rows: [], meta: { total: 0, keep: HISTORY_KEEP, capped: false } };
   }
 }
 

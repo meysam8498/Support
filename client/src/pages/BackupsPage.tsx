@@ -13,6 +13,7 @@ import { toFa } from '../lib/date';
 import { downloadAuthenticated } from '../lib/download';
 import Modal from '../components/Modal';
 import Alert from '../components/Alert';
+import BackupSizeChart, { BACKUP_SOURCE_LABEL, type BackupHistoryMeta, type BackupHistoryRow } from '../components/BackupSizeChart';
 import { useAuth } from '../context/AuthContext';
 
 interface BackupInfo {
@@ -29,6 +30,9 @@ interface BackupStatus {
   lastResult: { ok: boolean; error?: string; push?: { ok: boolean; target: string; error?: string } } | null;
   count: number;
   push: { target: string; enabled: boolean; last: { ok: boolean; target: string; file?: string; error?: string; at?: string } | null };
+  /** تاریخچه‌ی اجراها (جدول backup_history) — نمودار رشد + جدول جزئیات (۱.۳۰) */
+  history?: BackupHistoryRow[];
+  history_meta?: BackupHistoryMeta;
 }
 
 interface RestorePrepareResult {
@@ -200,19 +204,19 @@ export default function BackupsPage() {
       <div className="card">
         <h2 className="text-sm font-bold text-stone-800 dark:text-stone-100 mb-2.5">وضعیت زمان‌بند خودکار</h2>
         {loading && !status ? (
-          <p className="text-sm text-stone-400 dark:text-stone-500">{t.loading}</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">{t.loading}</p>
         ) : status ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
             <div className="rounded-lg bg-surface-raised dark:bg-stone-800/60 p-2.5">
-              <p className="text-stone-400 dark:text-stone-500 mb-0.5">زمان‌بندی</p>
+              <p className="text-stone-500 dark:text-stone-400 mb-0.5">زمان‌بندی</p>
               <p className="font-bold fa-nums text-stone-700 dark:text-stone-200">هر روز ~ ساعت {toFa(String(status.atHour).padStart(2, '0'))}:۳۰</p>
             </div>
             <div className="rounded-lg bg-surface-raised dark:bg-stone-800/60 p-2.5">
-              <p className="text-stone-400 dark:text-stone-500 mb-0.5">نگهداری</p>
+              <p className="text-stone-500 dark:text-stone-400 mb-0.5">نگهداری</p>
               <p className="font-bold fa-nums text-stone-700 dark:text-stone-200">{toFa(status.keep)} نسخه‌ی آخر</p>
             </div>
             <div className="rounded-lg bg-surface-raised dark:bg-stone-800/60 p-2.5">
-              <p className="text-stone-400 dark:text-stone-500 mb-0.5">آخرین اجرا</p>
+              <p className="text-stone-500 dark:text-stone-400 mb-0.5">آخرین اجرا</p>
               <p className="font-bold fa-nums text-stone-700 dark:text-stone-200" dir="ltr">
                 {status.lastRun ? new Date(status.lastRun).toLocaleString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' }) : '—'}
               </p>
@@ -221,7 +225,7 @@ export default function BackupsPage() {
               )}
             </div>
             <div className="rounded-lg bg-surface-raised dark:bg-stone-800/60 p-2.5">
-              <p className="text-stone-400 dark:text-stone-500 mb-0.5">Push خارجی</p>
+              <p className="text-stone-500 dark:text-stone-400 mb-0.5">Push خارجی</p>
               {status.push.enabled ? (
                 <>
                   <p className="font-bold text-stone-700 dark:text-stone-200 truncate" dir="ltr" title={status.push.target}>{status.push.target}</p>
@@ -246,9 +250,9 @@ export default function BackupsPage() {
           <span className="chip chip-default fa-nums text-xs">{toFa(items.length)} فایل</span>
         </div>
         {loading && items.length === 0 ? (
-          <p className="p-8 text-center text-stone-400 dark:text-stone-500 text-sm">{t.loading}</p>
+          <p className="p-8 text-center text-stone-500 dark:text-stone-400 text-sm">{t.loading}</p>
         ) : items.length === 0 ? (
-          <p className="p-8 text-center text-stone-400 dark:text-stone-500 text-sm">هنوز بکاپی گرفته نشده — با دکمه‌ی «بکاپ دستی الان» شروع کنید.</p>
+          <p className="p-8 text-center text-stone-500 dark:text-stone-400 text-sm">هنوز بکاپی گرفته نشده — با دکمه‌ی «بکاپ دستی الان» شروع کنید.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -279,6 +283,52 @@ export default function BackupsPage() {
                           ♻️ بازیابی
                         </button>
                       </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ---------- تاریخچه‌ی اجراها: نمودار رشد حجم + جدول جزئیات (از backup_history) ---------- */}
+      <div className="card">
+        <BackupSizeChart
+          history={status?.history ?? []}
+          meta={status?.history_meta}
+          pngTitle="رشد حجم بکاپ‌ها — تاریخچه‌ی اجراها (مدیریت پشتیبان‌ها)"
+          pngFileName="backup-history.png"
+        />
+        {(status?.history ?? []).length === 0 ? (
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-3">هنوز اجرایی در تاریخچه ثبت نشده است — هر بکاپ (روزانه/دستی/ایمنی) اینجا ثبت می‌شود.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto" role="region" aria-label="جدول جزئیات اجراهای بکاپ (قابل اسکرول افقی)" tabIndex={0}>
+            <table className="w-full text-xs">
+              <caption className="sr-only">جزئیات اجراهای ثبت‌شده در تاریخچه‌ی بکاپ — جدیدترین اول</caption>
+              <thead>
+                <tr className="bg-surface-card dark:bg-stone-800/60 text-stone-600 dark:text-stone-300">
+                  <th scope="col" className="text-right px-3 py-2 font-semibold">زمان اجرا</th>
+                  <th scope="col" className="text-right px-3 py-2 font-semibold">منبع</th>
+                  <th scope="col" className="text-right px-3 py-2 font-semibold">نتیجه</th>
+                  <th scope="col" className="text-right px-3 py-2 font-semibold">حجم</th>
+                  <th scope="col" className="text-right px-3 py-2 font-semibold">مدت</th>
+                  <th scope="col" className="text-right px-3 py-2 font-semibold">ذخیره‌ی خارجی</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* جدیدترین اول — معکوسِ ترتیب زمانیِ نمودار */}
+                {(status?.history ?? []).slice().reverse().map((h, i) => (
+                  <tr key={`${h.ranAt}-${i}`} className="border-t border-dashed border-stone-200 dark:border-stone-700 hover:bg-brand-50/40 dark:hover:bg-brand-900/15 transition-colors">
+                    <td className="px-3 py-2 fa-nums text-stone-700 dark:text-stone-200" dir="ltr">{new Date(h.ranAt).toLocaleString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' })}</td>
+                    <td className="px-3 py-2 text-stone-600 dark:text-stone-300">{BACKUP_SOURCE_LABEL[h.source] ?? h.source}</td>
+                    <td className={`px-3 py-2 ${h.ok ? 'text-success' : 'text-coral-dark dark:text-coral-light'}`}>
+                      {h.ok ? '✓ سالم' : `✗ ناموفق${h.error ? ` — ${h.error}` : ''}`}
+                    </td>
+                    <td className="px-3 py-2 text-stone-600 dark:text-stone-300">{h.sizeBytes != null ? fmtSize(h.sizeBytes) : '—'}</td>
+                    <td className="px-3 py-2 fa-nums text-stone-600 dark:text-stone-300">{h.durationMs != null ? `${toFa(Math.max(1, Math.round(h.durationMs / 1000)))} ثانیه` : '—'}</td>
+                    <td className="px-3 py-2 text-stone-600 dark:text-stone-300">
+                      {h.pushOk == null ? '—' : h.pushOk ? `✓ ${h.pushTarget ?? ''}` : `✗ ناموفق${h.pushError ? ` — ${h.pushError}` : ''}`}
                     </td>
                   </tr>
                 ))}

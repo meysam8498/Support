@@ -106,7 +106,9 @@ async function spawnAt(port: number, env: Record<string, string> = {}): Promise<
     if (proc.exitCode !== null) throw new Error(`سرور موقت زود بسته شد: ${out.join('').slice(-600)}`);
     try {
       const r = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(1200) });
-      if (r.ok) { up = true; break; }
+      // اطمینان از اینکه پاسخ از همین child آمده، نه سرور دیگری روی همان پورت:
+      // اگر child مرده باشد (EADDRINUSE و...) ادامه نده — لاگش داخل خطا می‌رود
+      if (r.ok && proc.exitCode === null) { up = true; break; }
     } catch { /* دیوار */ }
     await new Promise((r) => setTimeout(r, 300));
   }

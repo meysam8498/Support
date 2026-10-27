@@ -25,6 +25,7 @@ const healthyBackup = {
   push: { target: '', enabled: false, last: null },
   items: [],
   history: [],
+  history_meta: { total: 2, keep: 500, capped: false },
 };
 
 /** همان بکاپ ولی با شکست واقعی آخرین اجرا — مسیر خطای آژیر */
@@ -80,6 +81,52 @@ describe('آژیر بکاپ — مسیر خطا (بنر قرمز + پالس)', (
     );
     const banner = screen.getAllByRole('alert').find((b) => b.textContent?.includes('بکاپ ناموفق بود'))!;
     expect(banner.className).toContain('form-banner-error'); // استایل قرمز منبع واحد (Alert danger)
+  });
+
+  it('سقف تاریخچه‌ی بکاپ پر شده → هشدار طلایی «قدیمی‌ترین‌ها حذف می‌شوند»', async () => {
+    // وقتی جدول به HISTORY_KEEP برسد، هر اجرای جدید قدیمی‌ترین ردیف را حذف می‌کند — UI باید هشدار دهد
+    overrideRoute('GET', /^\/backups$/, () => ({
+      ...healthyBackup,
+      history_meta: { total: 500, keep: 500, capped: true },
+    }));
+    renderApp('/');
+    await settle();
+
+    const warn = await screen.findByText(/سقف تاریخچه/);
+    expect(warn.textContent).toContain('پر شد');
+    expect(warn.textContent).toContain('حذف');
+    expect(warn.className).toContain('text-gold-dark'); // طلایی = فوریت/اطلاع (قرمز فقط خطای واقعی)
+  });
+
+  it('کنترل: سقف پر نیست → بدون هشدار سقف تاریخچه', async () => {
+    overrideRoute('GET', /^\/backups$/, () => healthyBackup); // history_meta.capped = false
+    renderApp('/');
+    await settle();
+    await screen.findByTitle(/آژیر وضعیت بکاپ/);
+    expect(screen.queryByText(/سقف تاریخچه/)).toBeNull();
+  });
+
+  it('صفحه‌ی مدیریت بکاپ‌ها: نمودار تاریخچه + جدول جزئیات اجراها (جدیدترین اول)', async () => {
+    overrideRoute('GET', /^\/backups$/, () => ({
+      ...healthyBackup,
+      history: [
+        // حداقل ۲ بکاپ سالم تا نمودار خط رشد را رسم کند (شرط خودِ نمودار)
+        { ranAt: '2026-10-16T00:00:00.000Z', source: 'daily', ok: true, file: 'old.db', sizeBytes: 1024, integrity: 'ok', durationMs: 2100, error: null, pushOk: null, pushTarget: null, pushError: null },
+        { ranAt: '2026-10-17T00:00:00.000Z', source: 'daily', ok: true, file: 'a.db', sizeBytes: 2048, integrity: 'ok', durationMs: 2500, error: null, pushOk: null, pushTarget: null, pushError: null },
+        { ranAt: new Date().toISOString(), source: 'manual', ok: false, file: null, sizeBytes: null, integrity: null, durationMs: 900, error: 'دیسک پر است', pushOk: false, pushTarget: '/mnt/nas', pushError: 'timeout' },
+      ],
+      history_meta: { total: 2, keep: 500, capped: false },
+    }));
+    renderApp('/backups');
+
+    // جدول جزئیات: منبع (۲ ردیف روزانه)، نتیجه‌ی ردیف خطا و خطای push خارجی
+    expect((await screen.findAllByText('روزانه')).length).toBe(2);
+    expect(screen.getByText(/ناموفق — دیسک پر است/)).toBeTruthy();
+    expect(screen.getByText(/timeout/)).toBeTruthy();
+    // نمودار تاریخچه با نام دسترس‌پذیرش رندر شده است (SVG مشترک داشبورد/بکاپ‌ها)
+    expect(screen.getByRole('img', { name: 'نمودار خطی رشد حجم بکاپ‌ها' })).toBeTruthy();
+    // دکمه‌ی خروجی PNG (هم‌سبک نمودار روند — exportChartPng مشترک)
+    expect(screen.getByRole('button', { name: /خروجی PNG/ })).toBeTruthy();
   });
 
   it('کنترل: بکاپ سالم → نشان سبز بدون پالس (پالس فقط مخصوص خطا)', async () => {

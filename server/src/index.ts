@@ -230,8 +230,10 @@ app.use('/api/license', authRequired, licenseActivateRoutes);
 
 // --- پشتیبان‌گیری (فقط ادمین) ---
 // GET /api/backups — فهرست بکاپ‌ها + وضعیت زمان‌بند + تاریخچه‌ی ثبت‌شده در DB (برای نمودار خطی داشبورد)
+// history_meta: سقف نگهداری تاریخچه — UI وقتی جدول به سقف برسد (ردیف قدیمی حذف می‌شود) هشدار نشان می‌دهد
 app.get('/api/backups', authRequired, requireRole('admin'), (_req, res) => {
-  res.json({ ...backupStatus(), items: listBackups(), history: backupHistory(getDb()) });
+  const h = backupHistory(getDb());
+  res.json({ ...backupStatus(), items: listBackups(), history: h.rows, history_meta: h.meta });
 });
 // POST /api/backups/run — بکاپ دستی (فوری)
 app.post('/api/backups/run', authRequired, requireRole('admin'), async (_req, res) => {
