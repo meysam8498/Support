@@ -42,7 +42,7 @@ const USER_MENU_ITEMS: NavItem[] = [
   { to: '/users', icon: '👥', label: t.navUsers, roles: ['admin'] },
   { to: '/backups', icon: '🗄️', label: t.navBackups, roles: ['admin'] },
   { to: '/license', icon: '🔑', label: t.navLicense, roles: ['admin'] },
-  // نمایشگر لاگ سرور — فقط در استقرار پشتیبانی (SUPPORT_ONLY=1) معنا دارد
+  // نمایشگر لاگ سرور — برای ادمین در هر استقرار (نشست ادمین)؛ در استقرار پشتیبانی با توکن
   { to: '/logs', icon: '📜', label: t.navLogs, roles: ['admin'] },
 ];
 

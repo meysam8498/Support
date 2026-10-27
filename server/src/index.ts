@@ -5,6 +5,7 @@
 // نقش‌ها: 'admin' (دسترسی کامل) و 'user' (فقط مشاهده/جستجو).
 // ============================================================
 import express from 'express';
+import type { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -153,9 +154,29 @@ app.get('/api/version', (_req, res) => {
   res.json({ version: APP_VERSION, server_version: SERVER_VERSION, support_only: SUPPORT_ONLY });
 });
 
-// --- گزارش لاگ سرور برای اشکال‌زدایی مشتری (۱.۲۷) ---
-// فقط در حالت SUPPORT_ONLY mount می‌شود؛ بدون توکن → ۴۰۱؛ توکن غلط → ۴۰۱
-// ?lines=N تا سقف ۲۰۰ خط آخر را برمی‌گرداند؛ هدر no-store تا هیچ کشی لاگ را نگه ندارد
+// --- گزارش لاگ سرور (۱.۲۷) + خروجی پشتیبانی از نسخه‌ی ادمین (۱.۳۰) ---
+// یک مسیر، دو جریان دسترسی:
+//   • SUPPORT_ONLY=1 (استقرار پشتیبانی فروشنده): هدر X-Support-Token با توکن ENV —
+//     همان رفتار قبلی. بدون توکن → ۴۰۱؛ توکن غلط → ۴۰۱؛ سقف ۲۰۰ خط.
+//   • استقرار عادی مشتری (نسخه‌ی ادمین): نشست ادمین — همان JWT سراسری + نقش admin؛
+//     سقف کامل حلقه (۵۰۰) تا بسته‌ی کامل برای فرستادن به پشتیبانی ساخته شود.
+// هر دو no-store می‌شوند تا کشی لاگ را نگه ندارد؛ فیلد mode به کلاینت می‌گوید
+// با کدام جریان روبه‌روست (نمایش فرم توکن یا تکیه بر نشست ادمین).
+const logsHandler = (mode: 'admin' | 'support') => (req: Request, res: Response) => {
+  const cap = mode === 'admin' ? LOG_RING_MAX : 200;
+  const lines = Math.min(Math.max(parseInt(String(req.query.lines || ''), 10) || 100, 1), cap);
+  const entries = logRing.slice(-lines);
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({
+    mode,
+    support_only: SUPPORT_ONLY,
+    version: APP_VERSION,
+    server_version: SERVER_VERSION,
+    total: logRing.length,
+    entries,
+  });
+};
+
 if (SUPPORT_ONLY) {
   app.get('/api/logs', (req, res) => {
     const token = String(req.headers['x-support-token'] || '');
@@ -167,11 +188,11 @@ if (SUPPORT_ONLY) {
       res.status(401).json({ error: 'توکن پشتیبانی نامعتبر است.' });
       return;
     }
-    const lines = Math.min(Math.max(parseInt(String(req.query.lines || ''), 10) || 100, 1), 200);
-    const entries = logRing.slice(-lines);
-    res.setHeader('Cache-Control', 'no-store');
-    res.json({ support_only: true, version: APP_VERSION, total: logRing.length, entries });
+    logsHandler('support')(req, res);
   });
+} else {
+  // نسخه‌ی ادمین: با نشست کاربرِ واردشده — بدون هیچ توکن جداگانه‌ای
+  app.get('/api/logs', authRequired, requireRole('admin'), logsHandler('admin'));
 }
 
 // --- گیت حالت پشتیبانی — قبل از همه‌ی مسیرهای محافظت‌شده ---

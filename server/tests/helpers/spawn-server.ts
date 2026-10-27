@@ -5,6 +5,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { createServer } from 'node:net';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
