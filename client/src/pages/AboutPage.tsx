@@ -11,6 +11,30 @@ import { useAuth } from '../context/AuthContext';
 import Alert from '../components/Alert';
 import VendorContact from '../components/VendorContact';
 import { VENDOR_EMAIL } from '../lib/upgrade';
+import featuresJson from '../../../shared/features.json';
+
+/** فیچر از registry مرکزی shared/features.json — مخاطب: مشتری یا ادمین (تفکیک ۱.۲۹) */
+interface Feature { id: string; icon: string; title: string; desc: string; audience: 'customer' | 'admin' }
+const FEATURES = (featuresJson as { features: Feature[] }).features;
+const CUSTOMER_FEATURES = FEATURES.filter((f) => f.audience === 'customer');
+const ADMIN_FEATURES = FEATURES.filter((f) => f.audience === 'admin');
+
+/** کارت فیچر — برای هر دو بخش (مشتری/ادمین) */
+function FeatureCard({ f }: { f: Feature }) {
+  return (
+    <div className="card p-4">
+      <div className="flex items-start gap-3">
+        <span className="w-9 h-9 rounded-lg bg-brand-50 dark:bg-brand-900/40 flex items-center justify-center text-lg shrink-0">
+          {f.icon}
+        </span>
+        <div>
+          <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{f.title}</p>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-5">{f.desc}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface LicenseStatus {
   plan: string;
@@ -28,17 +52,6 @@ interface DeviceLimit {
   enforce: boolean;
   limit_reached?: boolean;
 }
-
-const FEATURES: { icon: string; title: string; desc: string }[] = [
-  { icon: '🖥️', title: 'مدیریت تجهیزات', desc: 'ثبت جامع دستگاه و قطعات، وضعیت، تاریخ انبار/تحویل با تقویم شمسی' },
-  { icon: '🧩', title: 'کاتالوگ قطعات', desc: 'مرجع واحد پارت‌نامبرها با sync و merge خودکار و گرید جدولی' },
-  { icon: '🔒', title: 'یکتایی سریال', desc: 'ایندکس یکتای سراسری، جست‌وجوی فوری و دیالوگ «صاحبان سریال»' },
-  { icon: '🛡️', title: 'گارانتی و تعویض', desc: 'جریان مرحله‌ای تعویض، درخواست‌های گارانتی و ردیابی زنجیره‌ای' },
-  { icon: '📊', title: 'گزارش‌ها و داشبورد', desc: 'روند ماهانه، پرخرابی‌ترین قطعات، خروجی اکسل و PNG' },
-  { icon: '📥', title: 'ورود سریال از اکسل', desc: 'آپلود مقصددار با پیش‌نمایش، Paste چندردیفی و قالب قابل دانلود' },
-  { icon: '🗄️', title: 'پشتیبان‌گیری خودکار', desc: 'بکاپ روزانه SQLite با نگهداری ۳۰ نسخه و push خارجی/S3' },
-  { icon: '👥', title: 'نقش‌های پنج‌گانه', desc: 'مدیر/انباردار/فروش/فنی/فقط‌مشاهده با اعمال کامل روی API و UI' },
-];
 
 export default function AboutPage() {
   const { role } = useAuth();
@@ -160,25 +173,25 @@ export default function AboutPage() {
         </section>
       )}
 
-      {/* امکانات */}
+      {/* امکانات — فقط فیچرهای مشتری از registry مرکزی (تفکیک مخاطب ۱.۲۹) */}
       <section>
         <h2 className="heading-display text-lg font-bold text-stone-900 dark:text-stone-50 mb-3">امکانات سامانه</h2>
         <div className="grid sm:grid-cols-2 gap-3">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="card p-4">
-              <div className="flex items-start gap-3">
-                <span className="w-9 h-9 rounded-lg bg-brand-50 dark:bg-brand-900/40 flex items-center justify-center text-lg shrink-0">
-                  {f.icon}
-                </span>
-                <div>
-                  <p className="text-sm font-bold text-stone-800 dark:text-stone-100">{f.title}</p>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-5">{f.desc}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+          {CUSTOMER_FEATURES.map((f) => <FeatureCard key={f.id} f={f} />)}
         </div>
       </section>
+
+      {/* امکانات مدیریتی — فقط برای فروشنده/ادمین؛ مشتری هرگز این‌ها را نمی‌بیند */}
+      {isAdmin && ADMIN_FEATURES.length > 0 && (
+        <section>
+          <h2 className="heading-display text-lg font-bold text-stone-900 dark:text-stone-50 mb-3">
+            🧰 امکانات مدیریتی (فقط شما)
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {ADMIN_FEATURES.map((f) => <FeatureCard key={f.id} f={f} />)}
+          </div>
+        </section>
+      )}
 
       {/* طراح + تماس */}
       <section className="card p-6">
