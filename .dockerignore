@@ -20,6 +20,9 @@ keys
 data
 desktop/src-tauri/resources
 
+# پیوست‌های چت/ایجنت — هیچ‌وقت وارد build context نشوند
+.cloud-attachments
+
 # ویرایشگرها و سیستم‌عامل
 .vscode
 .idea

@@ -26,6 +26,9 @@ RUN npm ci --workspaces --include-workspace-root
 COPY server ./server
 COPY client ./client
 COPY shared ./shared
+# بودجه‌ی باندل در اسکریپت build کلاینت اجرا می‌شود (npm run build -w client)؛
+# بدون این فایل، بیلد image با "Cannot find module /app/scripts/check-bundle-budget.mjs" شکست می‌خورد
+COPY scripts/check-bundle-budget.mjs ./scripts/
 RUN npm run build -w server \
  && npm run build -w client
 
