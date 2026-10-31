@@ -23,6 +23,8 @@ import { useSearchParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import { api, getWithHeaders } from '../api/api';
 import { useAuth } from '../context/AuthContext';
+import LastSyncedBadge from '../components/LastSyncedBadge';
+import { layoutKeyFor, readLastSynced } from '../lib/dashboardLayout';
 import { gregorianToJalali, stripLeadingZeros, toFa } from '../lib/date';
 
 interface LogEntry {
@@ -134,6 +136,8 @@ const exportFileName = (ext: 'txt' | 'json') =>
 
 export default function LogViewerPage() {
   const { user } = useAuth();
+  // زمان آخرین همگام‌سازی چیدمان — همان کلید per-user تخته‌ی داشبورد، برای قابل‌روایت‌ماندن زمان
+  const lastSynced = readLastSynced(layoutKeyFor(user?.id));
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '');
   const [showToken, setShowToken] = useState(false);
   const [mode, setMode] = useState<LogMode | null>(null); // null = هنوز تشخیص داده نشده
@@ -381,7 +385,10 @@ export default function LogViewerPage() {
             📜
           </span>
           <div className="min-w-0">
-            <h1 className="heading-display text-xl font-bold text-stone-900 dark:text-stone-50">لاگ سرور</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="heading-display text-xl font-bold text-stone-900 dark:text-stone-50">لاگ سرور</h1>
+              <LastSyncedBadge iso={lastSynced} />
+            </div>
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-5">
               {mode === 'support'
                 ? 'خواندن آخرین لاگ‌های سرور برای اشکال‌زدایی — استقرار پشتیبانی (SUPPORT_ONLY=1). توکن فقط در همین مرورگر ذخیره می‌شود و به هیچ‌جا فرستاده نمی‌شود.'

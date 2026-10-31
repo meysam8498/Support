@@ -45,3 +45,4 @@ desktop/src-tauri/static-dist/
 
 # Freebuff agent workspace
 .freebuff/
+.cloud-attachments/

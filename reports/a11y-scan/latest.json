@@ -8,7 +8,7 @@
       390
     ],
     "pageCount": 23,
-    "appVersion": "dev",
+    "appVersion": "1.28.0",
     "axeVersion": "4.14.0",
     "browser": "Chrome/155.0.8059.82"
   },
@@ -69,11 +69,11 @@
           "nodes": [
             {
               "target": ".chip-active > .opacity-70.fa-nums",
-              "html": "<span class=\"fa-nums opacity-70\">(۶)</span>"
+              "html": "<span class=\"fa-nums opacity-70\">(۱)</span>"
             },
             {
               "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(2) > .opacity-70.fa-nums",
-              "html": "<span class=\"fa-nums opacity-70\">(۶)</span>"
+              "html": "<span class=\"fa-nums opacity-70\">(۱)</span>"
             },
             {
               "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(3) > .opacity-70.fa-nums",
@@ -137,7 +137,7 @@
       "overflowX": false
     },
     {
-      "path": "/devices/26",
+      "path": "/devices/1",
       "label": "جزئیات تجهیز",
       "theme": "light",
       "width": 390,
@@ -164,7 +164,7 @@
       "overflowX": false
     },
     {
-      "path": "/devices/26/edit",
+      "path": "/devices/1/edit",
       "label": "ویرایش تجهیز",
       "theme": "light",
       "width": 390,
@@ -191,7 +191,7 @@
       "overflowX": false
     },
     {
-      "path": "/devices/26/parts-grid",
+      "path": "/devices/1/parts-grid",
       "label": "گرید قطعات تجهیز",
       "theme": "light",
       "width": 390,
@@ -213,10 +213,7 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
@@ -228,6 +225,31 @@
       "ok": true,
       "darkOk": true,
       "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".chip-active > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۱)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(2) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۱)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(3) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(4) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            }
+          ],
+          "nodeCount": 4
+        },
         {
           "id": "label-content-name-mismatch",
           "impact": "serious",
@@ -243,12 +265,9 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
+      "throttled": [],
       "pageErrors": [],
-      "overflowX": true
+      "overflowX": false
     },
     {
       "path": "/parts/new",
@@ -278,7 +297,7 @@
           "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
           "nodes": [
             {
-              "target": ".border",
+              "target": ".border-transparent",
               "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
             }
           ],
@@ -286,38 +305,18 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
     {
-      "path": "/parts/297",
+      "path": "/parts/1",
       "label": "جزئیات قطعه",
       "theme": "light",
       "width": 390,
       "ok": true,
       "darkOk": true,
       "violations": [
-        {
-          "id": "color-contrast",
-          "impact": "serious",
-          "help": "Elements must meet minimum color contrast ratio thresholds",
-          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
-          "nodes": [
-            {
-              "target": "span:nth-child(2) > .bg-sky\\/10.text-sky-dark.border-sky\\/40",
-              "html": "<span class=\"badge bg-sky/10 text-sky-dark border border-sky/40 dark:bg-sky/15 dark:text-sky-light\"><span class=\"inline-block w-1.5 h-1.5 rounded-full bg-curren"
-            },
-            {
-              "target": ".mx-2 > .bg-sky\\/10.text-sky-dark.border-sky\\/40",
-              "html": "<span class=\"badge bg-sky/10 text-sky-dark border border-sky/40 dark:bg-sky/15 dark:text-sky-light\"><span class=\"inline-block w-1.5 h-1.5 rounded-full bg-curren"
-            }
-          ],
-          "nodeCount": 2
-        },
         {
           "id": "label-content-name-mismatch",
           "impact": "serious",
@@ -333,15 +332,12 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
     {
-      "path": "/parts/297/edit",
+      "path": "/parts/1/edit",
       "label": "ویرایش قطعه",
       "theme": "light",
       "width": 390,
@@ -376,10 +372,7 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
@@ -406,10 +399,7 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
@@ -436,10 +426,7 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
@@ -458,7 +445,7 @@
           "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
           "nodes": [
             {
-              "target": ".border-transparent",
+              "target": ".px-2",
               "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
             }
           ],
@@ -467,7 +454,6 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license",
         "429 /api/license/device-limit"
       ],
       "pageErrors": [],
@@ -510,8 +496,8 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
+        "429 /api/license/device-limit",
+        "429 /api/license"
       ],
       "pageErrors": [],
       "overflowX": false
@@ -611,7 +597,7 @@
               "html": "<p class=\"text-stone-500 dark:text-stone-400\">غیرفعال (BACKUP_PUSH_TARGET تنظیم نشده)</p>"
             }
           ],
-          "nodeCount": 5
+          "nodeCount": 6
         },
         {
           "id": "label-content-name-mismatch",
@@ -629,8 +615,8 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
+        "429 /api/license",
+        "429 /api/license/device-limit"
       ],
       "pageErrors": [],
       "overflowX": false
@@ -723,11 +709,11 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license/issued",
-        "429 /api/license/keys/rotations",
         "429 /api/license",
-        "429 /api/license/keys/status"
+        "429 /api/license/issued",
+        "429 /api/license/device-limit",
+        "429 /api/license/keys/status",
+        "429 /api/license/keys/rotations"
       ],
       "pageErrors": [],
       "overflowX": false
@@ -756,8 +742,8 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
+        "429 /api/license",
+        "429 /api/license/device-limit"
       ],
       "pageErrors": [],
       "overflowX": false
@@ -777,19 +763,27 @@
           "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
           "nodes": [
             {
-              "target": ".max-w-4xl > p",
-              "html": "<p class=\"text-[11px] text-stone-400 leading-5\">سرور آخرین ۵۰۰ لاگ را در حافظه نگه می‌دارد و با «تعداد خطوط» بخش آخر برگردانده می‌شود. توکن پشتیبانی همان مقدار "
+              "target": ".flex-wrap.gap-2.text-xs > .text-stone-400.fa-nums",
+              "html": "<span class=\"text-stone-400 fa-nums\">آخرین خواندن: ۱۴۰۵/۸/۶ ۰۸:۲۵:۵۶</span>"
             },
             {
-              "target": "p > .font-mono[dir=\"ltr\"]:nth-child(1)",
-              "html": "<span dir=\"ltr\" class=\"font-mono\">SUPPORT_LOG_TOKEN</span>"
+              "target": ".chip-default.chip[type=\"button\"]:nth-child(2) > .opacity-80.fa-nums",
+              "html": "<span class=\"fa-nums opacity-80\">(۴)</span>"
             },
             {
-              "target": ".font-mono[dir=\"ltr\"]:nth-child(2)",
-              "html": "<span dir=\"ltr\" class=\"font-mono\">SUPPORT_TOKEN</span>"
+              "target": ".chip-default.chip[type=\"button\"]:nth-child(3) > .opacity-80.fa-nums",
+              "html": "<span class=\"fa-nums opacity-80\">(۰)</span>"
+            },
+            {
+              "target": "span[title=\"2026-10-28T04:45:44.491Z\"]",
+              "html": "<span class=\"shrink-0 text-stone-400 fa-nums\" title=\"2026-10-28T04:45:44.491Z\">۱۴۰۵/۸/۶ ۰۸:۱۵:۴۴</span>"
+            },
+            {
+              "target": "span[title=\"2026-10-28T04:45:44.500Z\"]",
+              "html": "<span class=\"shrink-0 text-stone-400 fa-nums\" title=\"2026-10-28T04:45:44.500Z\">۱۴۰۵/۸/۶ ۰۸:۱۵:۴۴</span>"
             }
           ],
-          "nodeCount": 3
+          "nodeCount": 5
         },
         {
           "id": "label-content-name-mismatch",
@@ -807,33 +801,20 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
+        "429 /api/license",
+        "429 /api/license/device-limit"
       ],
       "pageErrors": [],
       "overflowX": false
     },
     {
-      "path": "/dashboard/customer/8",
+      "path": "/dashboard/customer/1",
       "label": "نمای مشتری",
       "theme": "light",
       "width": 390,
       "ok": true,
       "darkOk": true,
       "violations": [
-        {
-          "id": "color-contrast",
-          "impact": "serious",
-          "help": "Elements must meet minimum color contrast ratio thresholds",
-          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
-          "nodes": [
-            {
-              "target": ".text-green-600",
-              "html": "<b class=\"text-green-600 dark:text-green-400\">HIST DIMM</b>"
-            }
-          ],
-          "nodeCount": 1
-        },
         {
           "id": "label-content-name-mismatch",
           "impact": "serious",
@@ -909,11 +890,11 @@
           "nodes": [
             {
               "target": ".chip-active > .opacity-70.fa-nums",
-              "html": "<span class=\"fa-nums opacity-70\">(۶)</span>"
+              "html": "<span class=\"fa-nums opacity-70\">(۱)</span>"
             },
             {
               "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(2) > .opacity-70.fa-nums",
-              "html": "<span class=\"fa-nums opacity-70\">(۶)</span>"
+              "html": "<span class=\"fa-nums opacity-70\">(۱)</span>"
             },
             {
               "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(3) > .opacity-70.fa-nums",
@@ -977,7 +958,7 @@
       "overflowX": false
     },
     {
-      "path": "/devices/26",
+      "path": "/devices/1",
       "label": "جزئیات تجهیز",
       "theme": "dark",
       "width": 390,
@@ -1004,7 +985,7 @@
       "overflowX": false
     },
     {
-      "path": "/devices/26/edit",
+      "path": "/devices/1/edit",
       "label": "ویرایش تجهیز",
       "theme": "dark",
       "width": 390,
@@ -1018,7 +999,7 @@
           "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
           "nodes": [
             {
-              "target": ".border",
+              "target": ".border-transparent",
               "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
             }
           ],
@@ -1026,15 +1007,12 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
     {
-      "path": "/devices/26/parts-grid",
+      "path": "/devices/1/parts-grid",
       "label": "گرید قطعات تجهیز",
       "theme": "dark",
       "width": 390,
@@ -1056,16 +1034,65 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
     {
       "path": "/parts",
       "label": "فهرست قطعات",
+      "theme": "dark",
+      "width": 390,
+      "ok": true,
+      "darkOk": true,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".chip-active > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۱)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(2) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۱)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(3) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            },
+            {
+              "target": ".chip-default.dark\\:hover\\:bg-stone-700.chip:nth-child(4) > .opacity-70.fa-nums",
+              "html": "<span class=\"fa-nums opacity-70\">(۰)</span>"
+            }
+          ],
+          "nodeCount": 4
+        },
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
+          "nodes": [
+            {
+              "target": ".border-transparent",
+              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
+            }
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "netFailures": [],
+      "throttled": [],
+      "pageErrors": [],
+      "overflowX": false
+    },
+    {
+      "path": "/parts/new",
+      "label": "ثبت قطعه جدید",
       "theme": "dark",
       "width": 390,
       "ok": true,
@@ -1086,45 +1113,12 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
-      "pageErrors": [],
-      "overflowX": true
-    },
-    {
-      "path": "/parts/new",
-      "label": "ثبت قطعه جدید",
-      "theme": "dark",
-      "width": 390,
-      "ok": true,
-      "darkOk": true,
-      "violations": [
-        {
-          "id": "label-content-name-mismatch",
-          "impact": "serious",
-          "help": "Elements must have their visible text as part of their accessible name",
-          "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
-          "nodes": [
-            {
-              "target": ".border",
-              "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
-            }
-          ],
-          "nodeCount": 1
-        }
-      ],
-      "netFailures": [],
-      "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
     {
-      "path": "/parts/297",
+      "path": "/parts/1",
       "label": "جزئیات قطعه",
       "theme": "dark",
       "width": 390,
@@ -1146,15 +1140,12 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
     {
-      "path": "/parts/297/edit",
+      "path": "/parts/1/edit",
       "label": "ویرایش قطعه",
       "theme": "dark",
       "width": 390,
@@ -1176,10 +1167,7 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license",
-        "429 /api/license/device-limit"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
@@ -1206,10 +1194,7 @@
         }
       ],
       "netFailures": [],
-      "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
-      ],
+      "throttled": [],
       "pageErrors": [],
       "overflowX": false
     },
@@ -1237,7 +1222,6 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license",
         "429 /api/license/device-limit"
       ],
       "pageErrors": [],
@@ -1258,7 +1242,7 @@
           "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
           "nodes": [
             {
-              "target": ".border-transparent",
+              "target": ".px-2",
               "html": "<button class=\"flex items-center gap-2 h-9 px-2 rounded-lg border transition-colors duration-150 border-transparent hover:bg-surface-raised dark:hover:bg-white/"
             }
           ],
@@ -1267,8 +1251,8 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
+        "429 /api/license",
+        "429 /api/license/device-limit"
       ],
       "pageErrors": [],
       "overflowX": false
@@ -1327,8 +1311,8 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license/device-limit",
-        "429 /api/license"
+        "429 /api/license",
+        "429 /api/license/device-limit"
       ],
       "pageErrors": [],
       "overflowX": false
@@ -1447,11 +1431,11 @@
       ],
       "netFailures": [],
       "throttled": [
-        "429 /api/license",
+        "429 /api/license/issued",
         "429 /api/license/device-limit",
-        "429 /api/license/keys/rotations",
+        "429 /api/license",
         "429 /api/license/keys/status",
-        "429 /api/license/issued"
+        "429 /api/license/keys/rotations"
       ],
       "pageErrors": [],
       "overflowX": false
@@ -1511,7 +1495,7 @@
       "overflowX": false
     },
     {
-      "path": "/dashboard/customer/8",
+      "path": "/dashboard/customer/1",
       "label": "نمای مشتری",
       "theme": "dark",
       "width": 390,

@@ -188,10 +188,28 @@ export function installApiMock(): void {
     const url = typeof input === 'string' ? input : String(input);
     const path = url.replace(/^https?:\/\/[^/]+/, '').replace(/^\/api/, '');
     const method = (init?.method || 'GET').toUpperCase();
-    const data = lookup(method, path);
+    const raw = lookup(method, path);
+    // وضعیت غیر ۲۰۰: override می‌تواند { __status: 403, ... } برگرداند تا مسیرهای
+    // بسته‌ی سرور (مثل GET /api/logs برای نقش غیرادمین) در تست شبیه‌سازی شوند
+    let status = 200;
+    let data: unknown = raw;
+    if (raw && typeof raw === 'object' && typeof (raw as { __status?: unknown }).__status === 'number') {
+      const { __status, ...rest } = raw as Record<string, unknown>;
+      status = __status as number;
+      data = rest;
+    }
+    // تأخیر مصنوعی: {__delay: ms} — پاسخ عمداً معطل می‌ماند تا وضعیت میانیِ «در حال ذخیره»
+    // (نشان لحظه‌ای بین فرستادن PUT و رسیدن پاسخ) در تست قابل‌ریپلیکا و قابل‌کلیک شود
+    const rawDelay = data && typeof data === 'object' ? (data as { __delay?: unknown }).__delay : undefined;
+    if (typeof rawDelay === 'number') {
+      const { __delay, ...rest } = data as Record<string, unknown>;
+      void __delay; // فقط برای حذف از بدنه‌ی پاسخ
+      data = rest;
+      await new Promise((r) => setTimeout(r, rawDelay));
+    }
     return {
-      ok: true,
-      status: 200,
+      ok: status >= 200 && status < 300,
+      status,
       json: async () => data,
     } as unknown as Response;
   });

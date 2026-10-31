@@ -1,0 +1,155 @@
+# ============================================================
+# اسکن زنده‌ی دسترس‌پذیری در CI — روی اپ «بیلدشده» نه روی dev-server
+# سامانه‌ی مدیریت تجهیزات و قطعات یدکی — طراح: میثم ایجادی / Meysam Ijadi
+# -------------------------------------------------------------------
+# جریان: بیلد production سرور و کلاینت → سرور همان فایل‌های client/dist را
+# روی پورت ۴۰۰۰ سرو می‌کند (همان رفتار Docker) → a11y:scan با axe و Chrome
+# واقعی رانر، ۲۳ صفحه را در تم روشن/تاریک اسکن می‌کند.
+# A11Y_CLIENT = A11Y_API = http://localhost:4000 یعنی اسکن بدون Vite dev،
+# دقیقاً روی چانک‌های هش‌دار production — همان چیزی که کاربر واقعی می‌بیند.
+#
+# خروجی: reports/a11y-scan/REPORT.md + latest.json به‌عنوان artifact بارگذاری
+# می‌شود (حتی اگر اسکن مشکل پیدا کند) — گزارش همیشه در دسترس است.
+#
+# حساسیت: به‌طور پیش‌فرض گزارش‌دهی است (نقض → job قرمز نمی‌شود) چون هنوز
+# نقض‌های شناخته‌شده وجود دارد. با workflow_dispatch گزینه‌ی strict را می‌توان
+# روشن کرد تا هر نقض → exit 1 → قرمز؛ بعد از صفر شدن نقض‌ها در REPORT.md
+# می‌توانید strict را پیش‌فرض کنید و این کار را در merge گیت کنید.
+#
+# محیط ایزوله: دیتابیس/بکاپ/کلیدهای لایسنس همه در tmp/repos — DB واقعی و
+# keys/ پروژه هرگز لمس نمی‌شود (همان الگوی server/tests/helpers/spawn-server.ts).
+# admin/admin123 از seed اولیه می‌آید و فقط داخل همین environment ایزوله معتبر است.
+# ============================================================
+name: A11y live scan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'نقض دسترس‌پذیری → job قرمز شود (exit 1)؟'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a11y-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a11y-scan:
+    name: اسکن axe روی بیلد production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build (سرور + کلاینت production)
+        run: npm run build
+
+      - name: پیدا کردن Chrome پری‌نصبِ رانر
+        run: |
+          BROWSER="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          if [ -z "$BROWSER" ]; then
+            echo "مرورگری روی رانر پیدا نشد — نصب stable:" >&2
+            sudo apt-get update -qq && sudo apt-get install -y -qq google-chrome-stable
+            BROWSER="$(command -v google-chrome-stable)"
+          fi
+          echo "A11Y_CHROME=$BROWSER" >> "$GITHUB_ENV"
+
+      # جفت‌کلید لایسنس تنها چون صفحه‌ی /issue و کارت لایسنس /api را صدا می‌زنند —
+      # ایزوله در tmp؛ keys/ واقعی پروژه هرگز خوانده/چرخانده نمی‌شود.
+      - name: ساخت جفت‌کلید لایسنس آزمایشی (tmp)
+        run: |
+          mkdir -p /tmp/a11y-e2e/keys /tmp/a11y-e2e/bk
+          node -e "
+            const { generateKeyPairSync } = require('node:crypto');
+            const { writeFileSync } = require('node:fs');
+            const d = '/tmp/a11y-e2e/keys';
+            const kp = generateKeyPairSync('rsa', {
+              modulusLength: 2048,
+              publicKeyEncoding: { type: 'spki', format: 'pem' },
+              privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+            });
+            writeFileSync(d + '/license_public.pem', kp.publicKey);
+            writeFileSync(d + '/license_private.pem', kp.privateKey);
+          "
+
+      # سرور مستقیم (node، بدون npm لایه‌ی میانی) تا PID آن مستقیماً قابل خاموشی باشد؛
+      # مسیر استاتیک پیش‌فرض server/dist → ../../client/dist یعنی همان خروجی بیلد بالا.
+      - name: اجرای سرور روی خروجی بیلد (پورت 4000)
+        env:
+          PORT: '4000'
+          DB_PATH: /tmp/a11y-e2e/app.db
+          BACKUP_DIR: /tmp/a11y-e2e/bk
+          BACKUP_AT: '23:59'
+          JWT_SECRET: ci-a11y-secret-not-for-production-32chars!
+          LICENSE_KEYS_DIR: /tmp/a11y-e2e/keys
+          LICENSE_ISSUE_KEY: /tmp/a11y-e2e/keys/license_private.pem
+        run: |
+          node server/dist/index.js > /tmp/a11y-server.log 2>&1 &
+          echo $! > /tmp/a11y-server.pid
+          up=0
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:4000/api/health > /dev/null 2>&1; then up=1; break; fi
+            if ! kill -0 "$(cat /tmp/a11y-server.pid)" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$up" != 1 ]; then
+            echo "✗ سرور بالا نیامد — لاگ:" >&2
+            tail -80 /tmp/a11y-server.log >&2 || true
+            exit 1
+          fi
+          echo "✓ سرور production (client/dist روی ۴۰۰۰) بالا است"
+
+      # در DB تازهٔ CI، صفحه‌های جزئیات دست خالی 404 می‌گیرند و گزارش پر از نویز شبکه
+      # می‌شود. سبم idempotent (فقط اگر خالی است) یک تجهیز و یک قطعه‌ی نمونه می‌سازد تا
+      # شناسه‌کشفِ اسکنر حقیقی و گزارش واقعی باشد.
+      - name: سبم داده‌ی نمونه برای اسکن (فقط در DB خالی)
+        env:
+          A11Y_API: http://localhost:4000
+        run: node scripts/a11y-seed.mjs
+
+      - name: اسکن دسترس‌پذیری (۲۳ صفحه × تم روشن/تاریک)
+        env:
+          A11Y_CLIENT: http://localhost:4000
+          A11Y_API: http://localhost:4000
+          STRICT: ${{ inputs.strict || false }}
+        run: |
+          if [ "$STRICT" = "true" ]; then
+            node scripts/a11y-scan.mjs --strict
+          else
+            node scripts/a11y-scan.mjs
+          fi
+
+      - name: بارگذاری گزارش (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-scan-report
+          path: reports/a11y-scan/
+          retention-days: 14
+
+      - name: نشان‌دادن خلاصه در GitHub summary
+        if: always()
+        run: cat reports/a11y-scan/REPORT.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: خاموشی سرور
+        if: always()
+        run: |
+          if [ -f /tmp/a11y-server.pid ]; then kill "$(cat /tmp/a11y-server.pid)" 2>/dev/null || true; fi
+        # لاگ سرور فقط در صورت شکست دیباگ مفید است — چاپ کوتاه:
+          tail -20 /tmp/a11y-server.log 2>/dev/null || true

@@ -95,6 +95,25 @@ export function formatJalaliLong(jalali: string | null | undefined): string {
   return `${toFa(jd)} ${month} ${toFa(jy)}`;
 }
 
+// ───── نشان «آخرین همگام‌سازی» — مشترک میان تخته‌ی داشبورد و صفحات بکاپ/لاگ/گزارش ─────
+
+/** نمایش «آخرین همگام‌سازی» — فقط ساعت:دقیقه:ثانیه با اعداد فارسی */
+const syncedTimeFmt = new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+export function formatSyncedTime(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : syncedTimeFmt.format(d);
+}
+
+/** نمایش کاملِ تاریخ/ساعت برای حالت بازِ نشان: شمسی با نام ماه + میلادی با رقم لاتین */
+const syncedGregFmt = new Intl.DateTimeFormat('fa-IR-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'medium' });
+export function formatSyncedDetails(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const j = gregorianToJalali(d); // فیلدهای محلی — همان روزِ ساعتِ نمایش‌داده‌شده
+  const jalaliPart = j ? `${formatJalaliLong(j)}، ${syncedTimeFmt.format(d)}` : syncedTimeFmt.format(d);
+  return `${jalaliPart} — میلادی: ${syncedGregFmt.format(d)}`;
+}
+
 /** اعداد انگلیسی → فارسی */
 export function toFa(n: string | number | null | undefined): string {
   if (n == null) return '—';

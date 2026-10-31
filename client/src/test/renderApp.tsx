@@ -13,10 +13,11 @@ import { AuthProvider } from '../context/AuthContext';
 import { AppRoutes } from '../App';
 import { adminUser } from './apiMock';
 
-/** رندر یک مسیر با shell واقعی — خروجی RTL برای axe/اسنپ‌شات DOM */
-export function renderApp(path: string) {
+/** رندر یک مسیر با shell واقعی — خروجی RTL برای axe/اسنپ‌شات DOM
+ * کاربر پیش‌فرض ادمین است؛ برای تست گیت‌های نقش کاربر دیگری بدهید (مثل viewer). */
+export function renderApp(path: string, user: typeof adminUser = adminUser) {
   localStorage.setItem('token', 'test-token');
-  localStorage.setItem('user', JSON.stringify(adminUser));
+  localStorage.setItem('user', JSON.stringify(user));
   localStorage.setItem('theme', 'light');
   return render(
     <ThemeProvider>

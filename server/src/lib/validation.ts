@@ -22,13 +22,13 @@ export const MSG_PASSWORD_SHORT = C.msgPasswordShort;
 
 /** نام کاربری — فاصله‌های ابتدا/انتها حذف می‌شود؛ حداقل طول همگام با کلاینت */
 export const usernameSchema = z
-  .string({ required_error: 'نام کاربری الزامی است.' })
+  .string({ error: 'نام کاربری الزامی است.' }) // zod v4: جایگزین required_error (فقط برای نوع نامعتبر/غایب)
   .trim()
   .min(MIN_USERNAME_LENGTH, MSG_USERNAME_SHORT);
 
 /** رمز عبور — حداقل طول همگام با کلاینت */
 export const passwordSchema = z
-  .string({ required_error: 'رمز عبور الزامی است.' })
+  .string({ error: 'رمز عبور الزامی است.' }) // zod v4: جایگزین required_error (فقط برای نوع نامعتبر/غایب)
   .min(MIN_PASSWORD_LENGTH, MSG_PASSWORD_SHORT);
 
 /** اولین پیام خطای zod (فارسی) — برای پاسخ ۴۰۰ خوانا برای کاربر */

@@ -10,7 +10,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from './renderApp';
-import { overrideRoute, clearRouteOverrides } from './apiMock';
+import { adminUser, overrideRoute, clearRouteOverrides } from './apiMock';
 
 /** ۳ سطر لاگ نمونه — عمداً ۲ خطا + ۱ اطلاع تا فیلتر سطح قابل تست باشد */
 const ENTRIES = [
@@ -152,5 +152,32 @@ describe('لاگ سرور — جریان ادمین (نشست، بدون توک�
     // و گزینه‌های تعداد خط سقف ۲۰۰ حالت پشتیبانی را دارد
     const select = screen.getByLabelText('تعداد خطوط') as HTMLSelectElement;
     expect(Array.from(select.options).map((o) => o.value)).toEqual(['50', '100', '150', '200']);
+  });
+});
+
+describe('جریان غیرادمین — صفحه‌ی /logs', () => {
+  afterEach(() => {
+    clearRouteOverrides();
+    cleanup();
+  });
+
+  const viewerUser = { ...adminUser, role: 'viewer' };
+
+  it('نقش غیرادمین: سرور ۴۰۳ → پیام روشن، هیچ لاگی نمایش داده نمی‌شود، منوی لاگ هم نیست', async () => {
+    // سرور واقعی برای غیرادمین ۴۰۳ برمی‌گرداند (requireRole('admin') در سمت سرور —
+    // پوشش همین رفتار اینجا: صفحه باید پیام بدهد و هیچ داده‌ای نیاورد)
+    overrideRoute('GET', /^\/logs/, () => ({ __status: 403, error: 'دسترسی برای نقش شما مجاز نیست.' }));
+    renderApp('/logs', viewerUser);
+
+    // خواندن خودکار (جریان admin) انجام و پیام ۴۰۳ نشان داده می‌شود
+    await screen.findByText(/خواندن لاگ فقط برای نقش ادمین مجاز است/);
+
+    // هیچ ورودی‌ای از لاگ روی صفحه نیست
+    expect(screen.queryByText(/اتصال دیتابیس قطع شد/)).toBeNull();
+    expect(screen.queryByText(/بکاپ روزانه با موفقیت اجرا شد/)).toBeNull();
+
+    // منوی کاربر: آیتم «لاگ سرور» برای نقش غیرادمین فیلتر شده است
+    await userEvent.setup().click(screen.getByRole('button', { name: 'منوی کاربر' }));
+    expect(screen.queryByRole('link', { name: 'لاگ سرور' })).toBeNull();
   });
 });

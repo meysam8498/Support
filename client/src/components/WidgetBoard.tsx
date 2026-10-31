@@ -11,6 +11,15 @@
 // • کشیدن با HTML5 Drag & Drop — بدون وابستگی خارجی؛ جابه‌جایی شاخص آرایه‌ای
 //   پس برای RTL هم درست است (جهت فیزیکی را CSS می‌سازد).
 // • چیدمان هر کاربر در localStorage (layoutKeyFor) + دکمه‌ی بازگشت به پیش‌فرض.
+// • ذخیره‌ی سروری با debounce — درگ‌های پشت‌سرهم به‌جای n تا PUT، یک PUT نهایی می‌شوند.
+// • تداخل ۴۰۹ (نشست دیگر زودتر نوشته) → نسخه‌ی سرور خوانده و اعمال می‌شود.
+// • «آخرین همگام‌سازی: HH:MM:SS» کنار نشان‌گر وضعیت — قابل‌کلیک؛ با کلیک، تاریخِ کامل
+//   (شمسی با نام ماه + ساعت؛ و نمایش میلادی) باز/بسته می‌شود. زمان در localStorage
+//   هم می‌ماند تا صفحات بکاپ/لاگ/گزارش همان نشان را نشان دهند (LastSyncedBadge).
+// • گزارشِ PUTهای ناموفق (شبکه/سرور یا تداخل ۴۰۹) — نشان «n ذخیره ناموفق» قابل‌کلیک
+//   با جزئیات دلیل و ساعت هر مورد (تاریخچه‌ی همین نشست، سقف ۱۰ مورد).
+// • در حالت آفلاین، نشان «n تغییر ثبت‌نشده در صف»؛ با رویداد online مرورگر، همه‌ی
+//   تغییرهای معلق در یک PUT جمع و یک‌جا ارسال می‌شوند.
 // • بیرون از حالت ویرایش، ویجت‌ها بدون کادر/دسته رندر می‌شوند (ظاهر تمیز).
 // ============================================================
 import React, { Children, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -29,6 +38,7 @@ import {
   resolveInitialLayout,
   saveLayout,
   toggleHidden,
+  writeLastSynced,
   writeLocalStamp,
 } from '../lib/dashboardLayout';
 import {
@@ -37,6 +47,8 @@ import {
   saveDashboardLayout,
   type ApiError,
 } from '../api/api';
+import { formatSyncedTime, toFa } from '../lib/date';
+import LastSyncedBadge from './LastSyncedBadge';
 
 /** props یک ویجت — id پایدار + عنوان کنترلی + عرض در شبکه */
 export interface WidgetProps {
@@ -70,6 +82,9 @@ interface BoardState {
   serverUpdatedAt?: string;
 }
 
+/** فاصله‌ی debounce ذخیره‌ی سروری — تغیرات پشت‌سرهم در این مهلت یک PUT می‌شوند */
+export const SAVE_DEBOUNCE_MS = 650;
+
 /** استخراج defs + نگاشت element از فرزندان <Widget> (بدون لمس بقیه‌ی گره‌ها) */
 function collectWidgets(children: React.ReactNode): { defs: WidgetDef[]; byId: Map<string, React.ReactElement> } {
   const defs: WidgetDef[] = [];
@@ -94,6 +109,26 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
   const [live, setLive] = useState('');
   // وضعیت همگام‌سازی سرور — برای نشان‌گر بصری در نوار ابزار
   const [sync, setSync] = useState<SyncStatus>('synced');
+  // زمان آخرین همگام‌سازی موفق (ISO) — برای نشان «آخرین همگام‌سازی: HH:MM:SS»
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  // ثبت زمانِ موفق + ماندگاری در localStorage — صفحات بکاپ/لاگ/گزارش همان را می‌خوانند
+  const markSynced = useCallback((iso: string) => {
+    setLastSyncedAt(iso);
+    writeLastSynced(storageKey, iso);
+  }, [storageKey]);
+  // حالت باز/بسته‌ی نشان وضعیت (آفلاین/در حال ذخیره) — همان رفتار قابل‌کلیک، زنجیره‌ی یکنواخت با دو نشان دیگر
+  const [statusDetailOpen, setStatusDetailOpen] = useState(false);
+  // گزارشِ PUTهای ناموفقِ این نشست — {at: زمان شکست، kind: خطای شبکه/سرور یا تداخل ۴۰۹}
+  const [failedPuts, setFailedPuts] = useState<{ at: string; kind: 'network' | 'conflict' }[]>([]);
+  const [failedOpen, setFailedOpen] = useState(false);
+  // تغییرهای محلی که هنوز سرور تأییدشان نکرده — در حالت آفلاین به‌صورت «صف» نمایش داده می‌شود
+  const [unsynced, setUnsynced] = useState(0);
+  const unsyncedRef = useRef(0);
+  unsyncedRef.current = unsynced;
+
+  // صف debounce ذخیره‌ی سروری — آخرین وضعیت سدانده می‌شود و یک تایمر فعال نگه داشته می‌شود
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<BoardState | null>(null);
 
   // اگر کاربر عوض شد (یا کلید عوض شد)، چیدمان همان را بخوان
   useEffect(() => {
@@ -117,11 +152,19 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
       // فقط اگر هنوز همان کلید/نشستیم updated_at را بنویس — جلوی race با تعویض کاربر
       if (keyRef.current === keyAtStart) {
         setState((cur) => ({ ...cur, serverUpdatedAt: saved.updated_at }));
+        markSynced(saved.updated_at); // زمان موفق‌ترین ذخیره برای نشان + صفحات دیگر
+        setUnsynced(0); // همه‌ی تغییرهای معلق با این PUT رسیدند — صف خالی شد
       }
       setSync('synced');
     } catch (e) {
       if (keyRef.current !== keyAtStart) return; // کاربر عوض شده — دخالت نکن
       const err = e as ApiError;
+      // گزارش PUT ناموفق (ادامه‌ی تاریخچه‌ی این نشست، سقف ۱۰ مورد) — هر دو شاخه:
+      // شکست شبکه/سرور و ردِ ۴۰۹ هر دو «ذخیره‌ی ناموفق» محسوب می‌شوند
+      setFailedPuts((arr) => [
+        ...arr.slice(-9),
+        { at: new Date().toISOString(), kind: err.status === 409 ? 'conflict' : 'network' },
+      ]);
       if (err.status === 409) {
         // تداخل: نشست دیگری زودتر نوشته — نسخه‌ی سرور را بگیر و به کاربر اطلاع بده
         setSync('synced');
@@ -131,6 +174,8 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
             const srv = normalizeLayout(fresh);
             setState({ ...srv, serverUpdatedAt: fresh.updated_at });
             saveLayout(keyRef.current, srv);
+            markSynced(fresh.updated_at); // نسخه‌ی سرور اعمال شد — این هم یک همگام‌سازی موفق است
+            setUnsynced(0); // نسخه‌ی سرور جایگزین شد — تغییر محلی پذیرفته نشد، پس چیزی در صف نماند
             setLive('چیدمان روی دستگاه دیگری تغییر کرده بود — نسخه‌ی تازه اعمال شد.');
           }
         } catch { /* سرور در دسترس نیست — همان محلی بماند */ }
@@ -148,8 +193,48 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
     setState(nextBoard);
     saveLayout(storageKey, norm);
     writeLocalStamp(storageKey);
-    void pushToServer(nextBoard); // همگام‌سازی بی‌درنگ با سرور (شکست → حالت آفلاین)
+    setUnsynced((n) => n + 1); // هر ویرایش محلی تا تأیید سرور در صف می‌ماند (نمایش در آفلاین)
+    // debounce ذخیره‌ی سروری: UI فوری است (localStorage/آرایه‌ی state)، ولی شبکه
+    // با مکث کوتاه جمع می‌شود تا درگ‌های پشت‌سرهم به‌جای n تا PUT، یک PUT با چیدمان نهایی بروند.
+    pendingSaveRef.current = nextBoard;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      const pending = pendingSaveRef.current;
+      pendingSaveRef.current = null;
+      if (!pending) return;
+      // پایه‌ی تداخل (base_updated_at) را «هنگام ارسال» بخوان، نه هنگام commit —
+      // اگر PUT قبلی در پرواز موفق شده بود، پایه‌ی قدیمی ۴۰۹ غلط می‌ساخت.
+      void pushToServer({ ...pending, serverUpdatedAt: stateRef.current.serverUpdatedAt });
+    }, SAVE_DEBOUNCE_MS);
   }, [storageKey, pushToServer]);
+
+  // بدون‌تخلیه در unmount — هیچ PUT ای بعد از جدا شدن مؤلفه به سرور شلیک نشود؛
+  // تغییر ثبت‌نشده در localStorage می‌ماند و در ورود بعدی با مسیر push-local بازیابی می‌شود.
+  useEffect(() => () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+  }, []);
+
+  // ───── وصل‌شدن دوباره‌ی شبکه: همه‌ی تغییرهای معلق در «یک» PUT به سرور می‌روند ─────
+  useEffect(() => {
+    const onOnline = () => {
+      if (unsyncedRef.current === 0) return; // چیزی در صف نیست — PUT بی‌دلیل نزن
+      // صفِ debounce همین حالا جمع می‌شود — نه منتظر تایمر؛ ارسال با آخرین وضعیتِ محلی
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      pendingSaveRef.current = null;
+      setSync('saving');
+      void pushToServer({ ...stateRef.current });
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [pushToServer]);
 
   // ───── همگام‌سازی آغازین: سرور منبع حقیقت، localStorage نمایش فوری/آفلاین ─────
   useEffect(() => {
@@ -170,6 +255,8 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
         const chosenNorm = normalizeLayout(chosen);
         setState({ ...chosenNorm, serverUpdatedAt: server?.updated_at });
         saveLayout(key, chosenNorm);
+        // خواندن موفقِ آغازین هم یک «همگام‌سازی» است — مبنای نشان «آخرین همگام‌سازی»
+        if (server?.updated_at) markSynced(server.updated_at);
         if (decision === 'push-local') {
           // تغییری که فقط اینجا ثبت شده — به سرور ببر تا بقیه‌ی دستگاه‌ها ببینند
           await pushToServer({ ...chosenNorm, serverUpdatedAt: server?.updated_at });
@@ -225,11 +312,19 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
     writeLocalStamp(storageKey);
     setLive('چیدمان به حالت پیش‌فرض بازگشت — روی همه‌ی دستگاه‌ها.');
     // حذف ردیف سرور (به‌جای ذخیره‌ی «پیش‌فرض» به‌عنوان داده) تا همه‌ی نشست‌ها پیش‌فرض را ببینند
+    // هر ذخیره‌ی معلقِ debounce را لغو کن — PUT بعد از DELETE، چیدمان را برمی‌گرداند
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    setUnsynced((n) => n + 1); // بازگشت به پیش‌فرض هم تغییر است — اگر DELETE شکست بخورد، در صف می‌ماند
     setSync('saving');
     const keyAtStart = storageKey;
     resetDashboardLayout()
       .then((r) => {
         if (keyRef.current === keyAtStart) setState((cur) => ({ ...cur, serverUpdatedAt: r.updated_at }));
+        setUnsynced(0); // سرور ردیف را حذف کرد — محلی و سرور هر دو پیش‌فرض‌اند
         setSync('synced');
       })
       .catch(() => {
@@ -290,19 +385,73 @@ export default function WidgetBoard({ children, userId }: WidgetBoardProps) {
               ↺ بازگشت به پیش‌فرض
             </button>
           )}
-          {/* نشان‌گر همگام‌سازی — فقط وقتی «در حال ذخیره» یا «آفلاین» است تا چشم‌گیر بماند */}
+          {/* نشان‌گر همگام‌سازی — فقط وقتی «در حال ذخیره» یا «آفلاین» است تا چشم‌گیر بماند؛
+              قابل‌کلیک با همان الگوی دو نشان دیگر: aria-expanded + جزئیات زیر همان نشان.
+              role="status" قبلی با aria-live جایگزین شد تا هم اعلان صفحه‌خوان بماند هم نقش دکمه */}
           {sync !== 'synced' && (
-            <span
-              role="status"
-              className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border ${
+            <button
+              type="button"
+              data-testid="sync-status"
+              aria-expanded={statusDetailOpen}
+              aria-live="polite"
+              aria-atomic="true"
+              title="جزئیات وضعیت همگام‌سازی"
+              onClick={() => setStatusDetailOpen((o) => !o)}
+              className={`inline-flex flex-col items-start gap-0.5 text-[11px] px-2 py-1 rounded-lg border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
                 sync === 'saving'
                   ? 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-800'
                   : 'bg-gold/15 text-gold-dark dark:text-gold-light border-gold/40'
               }`}
             >
-              {sync === 'saving' ? '⏳ در حال ذخیره روی سرور…' : '⚠ آفلاین — تغییرات روی همین دستگاه می‌ماند و بعداً همگام می‌شود'}
+              <span className="inline-flex items-center gap-1">
+                {sync === 'saving' ? '⏳ در حال ذخیره روی سرور…' : '⚠ آفلاین — تغییرات روی همین دستگاه می‌ماند و بعداً همگام می‌شود'}
+              </span>
+              {statusDetailOpen && (
+                <span data-testid="sync-status-detail" className="block text-stone-500 dark:text-stone-400">
+                  {sync === 'saving'
+                    ? 'در حال ارسال تغییرات چیدمان به سرور؛ تا پایانِ پاسخ صبر کنید.'
+                    : 'ذخیره‌ی سرور در دسترس نیست؛ تغییرها در همین دستگاه مانده و با وصل شدن شبکه همه در یک PUT ارسال می‌شوند.'}
+                  {unsynced > 0 && ` — 📥 ${toFa(unsynced)} تغییر در صف`}
+                </span>
+              )}
+            </button>
+          )}
+          {/* صفِ تغییرهای معلق در حالت آفلاین — با وصل‌شدن شبکه در یک PUT جمع می‌شوند */}
+          {sync === 'offline' && unsynced > 0 && (
+            <span
+              data-testid="unsynced-queue"
+              role="status"
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-dashed bg-gold/15 text-gold-dark dark:text-gold-light border-gold/40"
+              title="با وصل‌شدن شبکه، همه‌ی این تغییرها یک‌جا ارسال می‌شوند"
+            >
+              📥 {toFa(unsynced)} تغییر ثبت‌نشده در صف
             </span>
           )}
+          {/* گزارشِ PUTهای ناموفق — قابل‌کلیک: شمارش کل + جزئیات دلیل/ساعت (چند مورد آخر) */}
+          {failedPuts.length > 0 && (
+            <button
+              type="button"
+              data-testid="failed-puts"
+              aria-expanded={failedOpen}
+              title="گزارش ذخیره‌های ناموفق چیدمان در این نشست"
+              onClick={() => setFailedOpen((o) => !o)}
+              className="inline-flex flex-col items-start gap-0.5 text-[11px] text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded-lg px-1.5 -mx-1.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <span className="inline-flex items-center gap-1">⚠ {toFa(failedPuts.length)} ذخیره ناموفق</span>
+              {failedOpen && (
+                <span data-testid="failed-puts-detail" className="block text-stone-500 dark:text-stone-400">
+                  {failedPuts.slice(-5).map((f, i) => (
+                    <span key={`${f.at}-${i}`} className="block">
+                      {f.kind === 'conflict' ? 'تداخل ۴۰۹' : 'شبکه/سرور'} — {formatSyncedTime(f.at)}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </button>
+          )}
+          {/* زمان آخرین همگام‌سازی موفق — قطعه‌ی مشترک LastSyncedBadge: همان رفتار قابل‌کلیک،
+              همان نشان‌ها در صفحات بکاپ/لاگ/گزارش (زمان قابل‌روایت فراتر از داشبورد) */}
+          {sync === 'synced' && <LastSyncedBadge iso={lastSyncedAt} />}
         </div>
         {editing && (
           <p className="text-[11px] text-stone-500 dark:text-stone-400">

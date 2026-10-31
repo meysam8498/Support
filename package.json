@@ -17,6 +17,7 @@
     "db:reset": "npm run db:reset -w server",
     "build": "npm run build -w server && npm run build -w client",
     "a11y:scan": "node scripts/a11y-scan.mjs",
+    "a11y:seed": "node scripts/a11y-seed.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:smoke:full": "node scripts/smoke-test.mjs --issue",
     "test:logs": "node scripts/logs-test.mjs",

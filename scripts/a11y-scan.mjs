@@ -176,6 +176,10 @@ async function scanPage(ctx, spec, theme, width) {
     if (status < 400) return;
     const u = r.url();
     if (isNoise(u)) return;
+    // ۴۰۴ِ GET /api/dashboard/layout رفتِ سالمِ نقطه‌شروع است (سد مسیری):
+    // تا وقتی کاربر چیدمانی ذخیره نکرده، سرور عمداً ۴۰۴ می‌دهد و کلاینت DEFAULT_ORDER می‌آورد.
+    // هر ۴۰۴ دیگری همچنان خطای واقعی است.
+    if (status === 404 && u.includes('/api/dashboard/layout')) return;
     const path = u.replace(CLIENT, '');
     // 429 با هدر draft-7 خودِ سرور (RateLimit-*) = محدودیت نرخِ ذاتی سرور که اسکنِ سریع آن را
     // می‌شکند؛ عیب اپ نیست. جدا نگه داشته می‌شود تا گزارش دروغ نگوید. بدون هدر = 429 واقعی.

@@ -103,6 +103,31 @@ export function saveLayout(key: string, state: LayoutState): void {
   }
 }
 
+// ───── زمان آخرین همگام‌سازی موفق — ماندگار بیرون از تخته، برای صفحات بکاپ/لاگ/گزارش ─────
+
+/** کلید ذخیره‌ی زمان — هم‌خانواده‌ی کلید چیدمان، پس همان تفکیک per-user */
+export function lastSyncedKeyFor(layoutKey: string): string {
+  return `${layoutKey}:last-synced`;
+}
+
+/** ثبت زمان آخرین همگام‌سازی موفق (ISO) — شکست ذخیره‌سازی بی‌صدا نادیده گرفته می‌شود */
+export function writeLastSynced(layoutKey: string, iso: string): void {
+  try {
+    globalThis.localStorage?.setItem(lastSyncedKeyFor(layoutKey), iso);
+  } catch {
+    /* ذخیره‌سازی در دسترس نیست — زمان فقط برای همین نشست می‌ماند */
+  }
+}
+
+/** خواندن زمان آخرین همگام‌سازی — هرگز همگام نشده → null و نشان پنهان می‌ماند */
+export function readLastSynced(layoutKey: string): string | null {
+  try {
+    return globalThis.localStorage?.getItem(lastSyncedKeyFor(layoutKey)) || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * اعمال چیدمان روی ویجت‌های «موجود» (نقش/داده): خروجی = ویجت‌های قابل‌نمایش
  * به‌ترتیب چیدمان. ویجت مخفی حذف؛ ویجت ناشناخته (نقش دیگر) نادیده گرفته می‌شود.

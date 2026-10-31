@@ -8,6 +8,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/api';
+import { useAuth } from '../context/AuthContext';
+import LastSyncedBadge from '../components/LastSyncedBadge';
+import { layoutKeyFor, readLastSynced } from '../lib/dashboardLayout';
 import { t } from '../i18n/fa';
 import { toFa, formatJalaliLong, jalaliRangePreset } from '../lib/date';
 import ExportColumnsDialog from '../components/ExportColumnsDialog';
@@ -81,6 +84,9 @@ function normJ(s: string): string {
 }
 
 export default function ReportsPage() {
+  const { user } = useAuth();
+  // زمان آخرین همگام‌سازی چیدمان — همان کلید per-user تخته‌ی داشبورد، برای قابل‌روایت‌ماندن زمان
+  const lastSynced = readLastSynced(layoutKeyFor(user?.id));
   const [failed, setFailed] = useState<FailedPart[]>([]);
   const [byCust, setByCust] = useState<FailureByCustomer[]>([]);
   const [byReason, setByReason] = useState<FailureByReason[]>([]);
@@ -213,7 +219,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold dark:text-stone-50">{t.navReports}</h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <LastSyncedBadge iso={lastSynced} />
           <button
             type="button"
             onClick={() => setPeriodicOpen(true)}

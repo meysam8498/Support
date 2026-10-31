@@ -100,11 +100,11 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // tailwind inline style که در بیلد فرانت تولید می‌شود
-      fontSrc: ["'self'", 'data:'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], // tailwind inline style که در بیلد فرانت تولید می‌شود؛ و فونت‌هایگوگل که index.html لینک می‌کند
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:'],
       scriptSrc: ["'self'", "'unsafe-inline'"], // vite build با chunk inline کار می‌کند
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'], // preconnect فونت‌هایگوگل در index.html
     },
   },
   crossOriginResourcePolicy: { policy: 'same-site' },

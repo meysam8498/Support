@@ -15,6 +15,8 @@ import Modal from '../components/Modal';
 import Alert from '../components/Alert';
 import BackupSizeChart, { BACKUP_SOURCE_LABEL, type BackupHistoryMeta, type BackupHistoryRow } from '../components/BackupSizeChart';
 import { useAuth } from '../context/AuthContext';
+import LastSyncedBadge from '../components/LastSyncedBadge';
+import { layoutKeyFor, readLastSynced } from '../lib/dashboardLayout';
 
 interface BackupInfo {
   file: string;
@@ -57,7 +59,9 @@ function fmtStamp(fileName: string): string {
 }
 
 export default function BackupsPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  // زمان آخرین همگام‌سازی چیدمان — همان کلید per-user تخته‌ی داشبورد، برای قابل‌روایت‌ماندن زمان
+  const lastSynced = readLastSynced(layoutKeyFor(user?.id));
   const [status, setStatus] = useState<BackupStatus | null>(null);
   const [items, setItems] = useState<BackupInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,6 +194,7 @@ export default function BackupsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <LastSyncedBadge iso={lastSynced} />
           <button type="button" onClick={load} className="btn-ghost min-h-[34px] text-xs" title="به‌روزرسانی فهرست">⟳</button>
           <button type="button" onClick={runNow} disabled={busy} className="btn-primary min-h-[34px] text-xs">
             {busy ? '...' : '🗄️ بکاپ دستی الان'}

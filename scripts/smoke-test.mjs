@@ -188,9 +188,11 @@ try {
   ok('هدرهای کش فایل‌های استاتیک', false, e.message);
 }
 
-// ─────────── ۱.۵) endpoint لاگ سرور /api/logs — تطبیقی (۱.۲۷) ───────────
+// ─────────── لاگ سرور /api/logs — تطبیقی (۱.۲۷؛ دو سطح دسترسی ۱.۳۰) ───────────
 // smoke-test ممکن است به سرور SUPPORT_ONLY یا سرور عادی وصل شود — هر دو مسیر درست چک می‌شود.
 // توکن لاگ: SUPPORT_LOG_TOKEN یا SUPPORT_TOKEN (همان که سرور با آن مقایسه می‌کند).
+// از ۱.۳۰ مسیر همیشه mount است: در SUPPORT_ONLY با توکن پشتیبانی، در استقرار عادی با نشست ادمین؛
+// بدون اعتبارنامه در هر دو حالت ۴۰۱ می‌دهد و هدر توکن پشتیبانی در استقرار عادی بی‌اثر است
 console.log('\n— لاگ سرور /api/logs');
 const LOG_TOKEN = process.env.SUPPORT_LOG_TOKEN || process.env.SUPPORT_TOKEN || '';
 const isSupportOnly = version.data?.support_only === true;
@@ -207,8 +209,13 @@ if (isSupportOnly) {
     ok('لاگ: حداکثر ۵ سطر با lines=5', logOk.data?.entries?.length <= 5, `n=${logOk.data?.entries?.length}`);
   }
 } else {
+  // ۱.۳۰: مسیر در استقرار عادی هم mount است ولی گیت JWT دارد — بدون نشست ۴۰۱ می‌دهد
+  // (نه ۴۰۴) و هدر توکن پشتیبانی بی‌اثر است. نشست ادمین → 200 با mode=admin
+  // (همان انتظارهای logs-admin.test سرور).
   const logStd = await api('GET', '/api/logs', { headers: { 'X-Support-Token': 'whatever' } });
-  ok('لاگ: سرور عادی → 404 (endpoint mount نشده)', logStd.status === 404, `status=${logStd.status}`);
+  ok('لاگ: سرور عادی، بدون نشست → 401 (توکن پشتیبانی بی‌اثر)', logStd.status === 401, `status=${logStd.status}`);
+  const logAdm = await api('GET', '/api/logs', { token: TOKEN });
+  ok('لاگ: نشست ادمین → 200 با mode=admin و entries آرایه', logAdm.status === 200 && logAdm.data?.mode === 'admin' && Array.isArray(logAdm.data?.entries), `status=${logAdm.status} mode=${logAdm.data?.mode}`);
 }
 
 // ─────────── ۱.۳) تاریخچه‌ی بکاپ + سقف نگهداری (۱.۳۰) ───────────
