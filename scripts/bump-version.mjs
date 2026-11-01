@@ -48,6 +48,9 @@ const isNewer =
 if (!isRecommit && !isNewer) { console.error(`ورژن جدید (${NEW}) باید بالاتر از فعلی (${current}) باشد.`); process.exit(1); }
 
 const TODAY = new Date().toISOString().slice(0, 10);
+/** سقف واقعی Docker Hub برای full_description (بایت) */
+const HUB_DESC_MAX = 25000;
+const HUB_DESC = 'مدیریت تجهیزات، قطعات یدکی، گارانتی و تأمین — فارسی RTL';
 const replaced = [];
 const patch = isRecommit
   ? () => {}
@@ -143,24 +146,29 @@ if (OPT.tag) {
 }
 if (OPT.hub) {
   try {
-    // توکن هاب فقط در حافظه می‌ماند و چاپ نمی‌شود
+    // توکن هاب فقط در حافظه می‌ماند و چاپ نمی‌شود؛ ارسال با fetch داخلی Node انجام می‌شود
+    // (نسخه‌ی قبلی با curl و فایل موقت کار می‌کرد و روی ویندوز به‌خاطر مسیر backslash شکست می‌خورد)
     const cred = execSync('printf "https://index.docker.io/v1/" | docker-credential-desktop get', { encoding: 'utf8', shell: 'bash' });
-    const dpass = JSON.parse(cred).Secret;
-    const login = execSync(
-      `curl -s -H "Content-Type: application/json" -d "{\\"username\\":\\"meysam8498\\",\\"password\\":\\"$DPASS\\"}" https://hub.docker.com/v2/users/login/`,
-      { encoding: 'utf8', env: { ...process.env, DPASS: dpass } }
-    );
-    const jwt = JSON.parse(login).token;
-    const payload = `${process.env.TEMP}/hub_bump_payload.json`;
-    execSync(
-      `node -e "const fs=require('fs');const md=fs.readFileSync('DOCKER_HUB_OVERVIEW.md','utf8');fs.writeFileSync(process.env.TEMP+'/hub_bump_payload.json',JSON.stringify({description:'مدیریت تجهیزات، قطعات یدکی، گارانتی و تأمین — فارسی RTL',full_description:md}))"`,
-      { stdio: 'ignore' }
-    );
-    const resp = execSync(
-      `curl -s -o /dev/null -w "%{http_code}" -X PATCH "https://hub.docker.com/v2/repositories/meysam8498/support-equipment-management/" -H "Authorization: JWT $HUBJWT" -H "Content-Type: application/json" --data-binary "@${payload}"`,
-      { encoding: 'utf8', env: { ...process.env, HUBJWT: jwt } }
-    );
-    console.log(resp === '200' ? '✓ Overview هاب Docker Hub همگام شد.' : `⚠ PATCH هاب: HTTP ${resp}`);
+    const { Username, Secret } = JSON.parse(cred);
+    const md = read('DOCKER_HUB_OVERVIEW.md');
+    const bytes = Buffer.byteLength(md, "utf8");
+    if (bytes > HUB_DESC_MAX) {
+      console.log(`⚠ Overview هاب ارسال نشد: ${bytes} بایت از سقف ${HUB_DESC_MAX} بایتی Docker Hub بیشتر است — جدول تگ‌های قدیمی را خلاصه کنید.`);
+    } else {
+      const loginRes = await fetch('https://hub.docker.com/v2/users/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: Username, password: Secret }),
+      });
+      if (!loginRes.ok) throw new Error(`login هاب: HTTP ${loginRes.status}`);
+      const { token } = await loginRes.json();
+      const resp = await fetch('https://hub.docker.com/v2/repositories/meysam8498/support-equipment-management/', {
+        method: 'PATCH',
+        headers: { Authorization: `JWT ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: HUB_DESC, full_description: md }),
+      });
+      console.log(resp.ok ? '✓ Overview هاب Docker Hub همگام شد.' : `⚠ PATCH هاب: HTTP ${resp.status}`);
+    }
   } catch (e) {
     console.log('⚠ آپدیت خودکار هاب ناموفق بود — دستی همگام کنید:', String(e.message).split('\n')[0]);
   }
