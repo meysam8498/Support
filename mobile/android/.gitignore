@@ -1,0 +1,13 @@
+# Android build artifacts / local config — نباید در گیت باشند
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.keystore
+!debug.keystore
+*.jks

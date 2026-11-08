@@ -61,6 +61,8 @@ export default function Layout() {
   const burgerRef = useRef<HTMLButtonElement>(null);
   // سرور پشتیبانی (SUPPORT_ONLY=1) — بنر ثابت زیر هدر (۱.۲۵)
   const [supportOnly, setSupportOnly] = useState(false);
+  // نسخه‌ی نصب (EDITION): buyer = خریدار — پنل ساخت لایسنس فقط در نسخه‌ی فروشنده هست
+  const [edition, setEdition] = useState<'seller' | 'buyer'>('seller');
 
   useEffect(() => {
     api.get<{ support_only?: boolean }>('/version')
@@ -68,8 +70,16 @@ export default function Layout() {
       .catch(() => { /* بی‌صدا */ });
   }, []);
 
+  useEffect(() => {
+    api.get<{ edition?: string }>('/license')
+      .then((r) => setEdition(r.edition === 'buyer' ? 'buyer' : 'seller'))
+      .catch(() => { /* endpoint در دسترس نیست — پیش‌فرض seller */ });
+  }, []);
+
   const mainItems = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
-  const userItems = USER_MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+  const userItems = USER_MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(role))
+    // نسخه‌ی خریدار مسیر /issue را ندارد (سرور ۴۰۴ می‌دهد) — دکمه هم پنهان می‌شود
+    .filter((item) => !(item.to === '/issue' && edition === 'buyer'));
 
   // بستن منوی کاربر و منوی تم با کلیک بیرون
   useEffect(() => {

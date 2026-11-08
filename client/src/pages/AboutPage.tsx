@@ -38,6 +38,8 @@ function FeatureCard({ f }: { f: Feature }) {
 
 interface LicenseStatus {
   plan: string;
+  /** seller = نصب فروشنده، buyer = نصب خریدار (پنل صدور لایسنس ندارد) */
+  edition?: 'seller' | 'buyer';
   plan_label: string;
   days_left: number | null;
   expired: boolean;
@@ -75,6 +77,8 @@ export default function AboutPage() {
   const used = deviceLimit?.used ?? 0;
   const remaining = deviceLimit?.remaining ?? null;
   const enforce = !!deviceLimit?.enforce;
+  // نسخه‌ی خریدار پنل ساخت لایسنس ندارد — لینک‌ها نمایش داده نمی‌شوند
+  const sellerEdition = license?.edition !== 'buyer';
   const nearLimit = isTrial && enforce && limit !== null && remaining !== null && remaining <= 3;
   const reached = isTrial && enforce && limit !== null && remaining !== null && remaining <= 0;
   const usedPct = limit !== null ? Math.min(100, Math.round((used / limit) * 100)) : 0;
@@ -161,13 +165,13 @@ export default function AboutPage() {
           {reached && (
             <Alert variant="danger" className="mt-3">
               سقف نسخه‌ی آزمایشی پر شده است{enforce ? ' — افزودن تجهیز جدید با ۴۰۲ رد می‌شود' : ''}.
-              {isAdmin ? <> برای ارتقا، <Link to="/issue" className="underline font-semibold">کد لایسنس بسازید</Link> یا فعال کنید: <Link to="/license" className="underline font-semibold">ورود کد لایسنس</Link></> : <VendorContact suffix="." />}
+              {isAdmin && sellerEdition ? <> برای ارتقا، <Link to="/issue" className="underline font-semibold">کد لایسنس بسازید</Link> یا فعال کنید: <Link to="/license" className="underline font-semibold">ورود کد لایسنس</Link></> : <VendorContact suffix="." />}
             </Alert>
           )}
           {!reached && nearLimit && (
             <Alert variant="warning" className="mt-3">
               فقط <b className="fa-nums">{toFa(remaining ?? 0)}</b> تجهیز تا سقف باقی مانده —
-              {isAdmin ? <> <Link to="/issue" className="underline font-semibold">ساخت کد لایسنس</Link> (پنل فروشنده) یا <Link to="/license" className="underline font-semibold">ورود کد</Link></> : <VendorContact prefix=" " suffix="." />}
+              {isAdmin && sellerEdition ? <> <Link to="/issue" className="underline font-semibold">ساخت کد لایسنس</Link> (پنل فروشنده) یا <Link to="/license" className="underline font-semibold">ورود کد</Link></> : <VendorContact prefix=" " suffix="." />}
             </Alert>
           )}
         </section>
@@ -227,7 +231,7 @@ export default function AboutPage() {
           >
             🐙 گیت‌هاب
           </a>
-          {isAdmin && (
+          {isAdmin && sellerEdition && (
             <>
               <Link to="/issue" className="btn-secondary min-h-[34px] text-xs">
                 🧾 پنل ساخت لایسنس

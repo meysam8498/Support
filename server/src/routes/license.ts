@@ -9,7 +9,7 @@
 // نسخه‌ی فعلی: رایگان/آزمایشی بدون محدودیت (enforce = false در محیط) —
 // زیرساخت آماده است؛ فعال‌سازی محدودسازی با LICENSE_ENFORCE=1 در آینده.
 // ============================================================
-import { Router, type Request, type Response } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
 import type { DatabaseSync } from 'node:sqlite';
 import { getDb } from '../db/db.js';
@@ -24,6 +24,26 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const router = Router();
+
+// ============================================================
+// تفکیک نسخه (EDITION) — یک کدبیس، دو بسته‌ی نصبی مجزا
+//   • seller = فروشنده (پیش‌فرض): پنل صدور/ابطال/چرخش کلید فعال است — استقرارهای
+//     موجود، سرور پشتیبانی و محیط توسعه بدون تغییر کار می‌کنند
+//   • buyer = خریدار: مسیرهای فروشنده ۴۰۴ می‌شوند. خریدار روی نصب خودش ادمین است؛
+//     اگر به چرخش/بازیابی کلید دسترسی داشت می‌توانست جفت‌کلید خودش را جایگزین کند،
+//     لایسنس خودش را صادر کند و سقف نسخه‌ی آزمایشی را دور بزند.
+// نصب‌کننده‌ی مشتری (desktop، پروفایل customer) خودش LICENSE_EDITION=buyer می‌گذارد.
+// ============================================================
+export const LICENSE_EDITION: 'seller' | 'buyer' = process.env.LICENSE_EDITION === 'buyer' ? 'buyer' : 'seller';
+
+/** مسیرهای مخصوص فروشنده — در نسخه‌ی خریدار اصلاً وجود ندارند (۴۰۴) */
+const sellerOnly = (_req: Request, res: Response, next: NextFunction): void => {
+  if (LICENSE_EDITION === 'seller') {
+    next();
+    return;
+  }
+  res.status(404).json({ error: 'این بخش فقط در نسخه‌ی فروشنده فعال است (EDITION=seller).' });
+};
 
 export type LicensePlan = 'trial' | 'month' | 'quarter' | 'half-year' | 'year' | 'lifetime';
 
@@ -102,7 +122,8 @@ export function licenseStatus() {
 }
 
 router.get('/', (_req: Request, res: Response) => {
-  res.json(licenseStatus());
+  // edition را کلاینت برای پنهان‌کردن ورودی پنل فروشنده می‌خواند
+  res.json({ ...licenseStatus(), edition: LICENSE_EDITION });
 });
 
 // ============================================================
@@ -385,7 +406,7 @@ const issueSchema = z.object({
   grouped: z.boolean().optional(),
 });
 
-router.post('/issue', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/issue', sellerOnly, requireRole('admin'), (req: Request, res: Response) => {
   const parsed = issueSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'ورودی صدور نامعتبر است.', detail: parsed.error.flatten() });
   const b = parsed.data;
@@ -461,7 +482,7 @@ router.post('/issue', requireRole('admin'), (req: Request, res: Response) => {
 //   راستی‌آزمایی و kid هدر را برمی‌گرداند تا UI تطبیق با کلید جدیدِ
 //   چرخش (new_kid) را نشان دهد.
 // ============================================================
-router.post('/issue-test', requireRole('admin'), (_req: Request, res: Response) => {
+router.post('/issue-test', sellerOnly, requireRole('admin'), (_req: Request, res: Response) => {
   const priv = loadIssuePrivateKey();
   if (!priv) {
     const tried = issueKeyCandidates().join(' و ');
@@ -507,7 +528,7 @@ const extendSchema = z.object({
   from_expiry: z.boolean().optional(), // true = از پایان فعلی تمدید (نه از امروز)
 });
 
-router.post('/revoke', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/revoke', sellerOnly, requireRole('admin'), (req: Request, res: Response) => {
   const parsed = revokeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
   let jti: string | undefined = parsed.data.jti?.trim();
@@ -542,7 +563,7 @@ router.post('/revoke', requireRole('admin'), (req: Request, res: Response) => {
   res.json({ ok: true, jti, known, revoked_count: revoked.length, revoked: true, license_stripped });
 });
 
-router.post('/unrevoke', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/unrevoke', sellerOnly, requireRole('admin'), (req: Request, res: Response) => {
   const parsed = revokeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'شناسه‌ی کد (jti) یا خودِ کد را وارد کنید.' });
   let jti = (parsed.data.jti ?? '').trim();
@@ -578,12 +599,12 @@ router.post('/unrevoke', requireRole('admin'), (req: Request, res: Response) => 
   res.json({ ok: true, jti, revoked_count: revoked.length, revoked: false, license_restored });
 });
 
-router.get('/revoked', requireRole('admin'), (_req: Request, res: Response) => {
+router.get('/revoked', sellerOnly, requireRole('admin'), (_req: Request, res: Response) => {
   res.json({ jtis: getRevokedJtis(getDb()) });
 });
 
 /** GET /api/license/sales-export.csv — خروجی CSV صدور/فعال‌سازی/ابطال برای حسابداری (فقط ادمین) */
-router.get('/sales-export.csv', requireRole('admin'), (_req: Request, res: Response) => {
+router.get('/sales-export.csv', sellerOnly, requireRole('admin'), (_req: Request, res: Response) => {
   const db = getDb();
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS license_issued (
@@ -637,7 +658,7 @@ router.get('/sales-export.csv', requireRole('admin'), (_req: Request, res: Respo
 });
 
 /** GET /api/license/issued — رجیستری کدهای صادرشده از پنل (فقط ادمین) */
-router.get('/issued', requireRole('admin'), (_req: Request, res: Response) => {
+router.get('/issued', sellerOnly, requireRole('admin'), (_req: Request, res: Response) => {
   const db = getDb();
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS license_issued (
@@ -665,7 +686,7 @@ router.get('/issued', requireRole('admin'), (_req: Request, res: Response) => {
   res.json(rows.map((r) => ({ ...r, revoked: revokedSet.has(String(r.jti)) })));
 });
 
-router.post('/extend', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/extend', sellerOnly, requireRole('admin'), (req: Request, res: Response) => {
   const parsed = extendSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'ورودی نامعتبر است.' });
   const { months, from_expiry } = parsed.data;
@@ -697,7 +718,7 @@ router.post('/extend', requireRole('admin'), (req: Request, res: Response) => {
 // ============================================================
 import { keyStatus, rotateSigningKeys, rotationHistory, verifyArchivedKey, restoreSigningKey, KeyRotationError } from '../lib/keyRotation.js';
 
-router.get('/keys/status', requireRole('admin'), (_req: Request, res: Response) => {
+router.get('/keys/status', sellerOnly, requireRole('admin'), (_req: Request, res: Response) => {
   try {
     res.json(keyStatus());
   } catch (e) {
@@ -706,7 +727,7 @@ router.get('/keys/status', requireRole('admin'), (_req: Request, res: Response) 
   }
 });
 
-router.get('/keys/rotations', requireRole('admin'), (_req: Request, res: Response) => {
+router.get('/keys/rotations', sellerOnly, requireRole('admin'), (_req: Request, res: Response) => {
   try {
     res.json(rotationHistory());
   } catch (e) {
@@ -715,7 +736,7 @@ router.get('/keys/rotations', requireRole('admin'), (_req: Request, res: Respons
   }
 });
 
-router.post('/keys/rotate', requireRole('admin'), (_req: Request, res: Response) => {
+router.post('/keys/rotate', sellerOnly, requireRole('admin'), (_req: Request, res: Response) => {
   try {
     const result = rotateSigningKeys();
     console.warn(`🔑 چرخش کلید امضای لایسنس از پنل ادمین: ${result.old_kid} → ${result.new_kid}`);
@@ -739,7 +760,7 @@ router.post('/keys/rotate', requireRole('admin'), (_req: Request, res: Response)
 // GET /api/license/keys/rotations/:kid/verify — تأیید کلید قبلی از رجیستری/بایگانی (ادمین):
 //   فایل موجود؟ kid محاسبه‌شده برابر؟ کلید خصوصی با عمومی تطابق رمزنگاری دارد؟
 //   در rotations.jsonl ثبت شده؟ — فقط‌خواندنی؛ ۴۰۰ قالب نادرست · ۴۰۴ ناموجود
-router.get('/keys/rotations/:kid/verify', requireRole('admin'), (req: Request, res: Response) => {
+router.get('/keys/rotations/:kid/verify', sellerOnly, requireRole('admin'), (req: Request, res: Response) => {
   try {
     res.json(verifyArchivedKey(String(req.params.kid)));
   } catch (e) {
@@ -751,7 +772,7 @@ router.get('/keys/rotations/:kid/verify', requireRole('admin'), (req: Request, r
 // POST /api/license/keys/restore { kid } — بازیابی جفت‌کلید قبلی از بایگانی به جایگاه
 //   جاری (برگرداندن چرخش)؛ فقط با جفت‌کلید کامل، با بایگانیِ کلیدهای جاری و
 //   راستی‌آزماییِ نوشتن + نوسازی حافظه‌ی تأیید بدون ری‌استارت. غیرادمین: ۴۰۳
-router.post('/keys/restore', requireRole('admin'), (req: Request, res: Response) => {
+router.post('/keys/restore', sellerOnly, requireRole('admin'), (req: Request, res: Response) => {
   const kid = String((req.body as { kid?: unknown })?.kid ?? '').trim().toLowerCase();
   try {
     const result = restoreSigningKey(kid);

@@ -1,0 +1,25 @@
+buildscript {
+    ext {
+        buildToolsVersion = "34.0.0"
+        minSdkVersion = 21
+        compileSdkVersion = 35
+        targetSdkVersion = 35
+        ndkVersion = "25.1.8937393"
+        kotlinVersion = "2.0.21"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // AGP صریح: 8.1.1 (نسخه‌ی پیش‌فرض RN 0.73) با JDK 21 سازگار نیست و
+        // JdkImageTransform با شکست jlink از کار می‌افتد؛ 8.5.2 هم JDK 21 و هم compileSdk 35 را پشتیبانی می‌کند.
+        classpath("com.android.tools.build:gradle:8.5.2")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        // برخی کتابخانه‌ها (kotlinx-coroutines 2.0) متادیتای Kotlin 2.0 دارند؛ کامپایلر 1.8.0 نمی‌تواند بخواند.
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+

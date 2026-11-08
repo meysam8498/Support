@@ -142,6 +142,8 @@ fn spawn_server(debug: bool) -> std::io::Result<Child> {
     if is_support {
         // سرور پشتیبانی: DB نمونه‌ی موقت + کلید صدور کنار اجرایی + بنر SUPPORT_ONLY
         envs.push(("SUPPORT_ONLY", "1".into()));
+        // نسخه‌ی فروشنده: پنل صدور/ابطال/چرخش کلید فعال
+        envs.push(("LICENSE_EDITION", "seller".into()));
         let tmp_db = std::env::temp_dir().join(format!("support-server-sample-{}.db", std::process::id()));
         envs.push(("DB_PATH", tmp_db.display().to_string()));
         envs.push(("BACKUP_DIR", std::env::temp_dir().join("support-server-backups").display().to_string()));
@@ -153,6 +155,8 @@ fn spawn_server(debug: bool) -> std::io::Result<Child> {
     } else {
         // مشتری: اجرای لایسنس + داده‌ی پایدار محلی
         envs.push(("LICENSE_ENFORCE", "1".into()));
+        // نسخه‌ی خریدار: مسیرهای فروشنده (صدور/چرخش کلید) ۴۰۴ می‌شوند
+        envs.push(("LICENSE_EDITION", "buyer".into()));
         envs.push(("DB_PATH", paths::data_dir().join("app.db").display().to_string()));
         envs.push(("BACKUP_DIR", paths::data_dir().join("backups").display().to_string()));
     }

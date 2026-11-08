@@ -132,7 +132,7 @@ if (!checkOk || hasPlaceholder) {
 }
 
 // --- ۶) کامیت / تگ / هاب (فقط وقتی چک سبز و شرح‌ها واقعی است) ---
-const FILES = ['package.json', 'server/package.json', 'client/package.json', 'package-lock.json', 'README.md', 'DOCKER_HUB_OVERVIEW.md', 'Dockerfile', 'docker-compose.yml', 'desktop/package.json', 'desktop/src-tauri/Cargo.toml', 'desktop/src-tauri/tauri.conf.json', 'desktop/src-tauri/tauri.support.conf.json'];
+const FILES = ['package.json', 'server/package.json', 'client/package.json', 'package-lock.json', 'README.md', 'DOCKER_HUB_OVERVIEW.md', 'Dockerfile', 'docker-compose.yml', 'desktop/package.json', 'desktop/src-tauri/Cargo.toml', 'desktop/src-tauri/tauri.conf.json', 'desktop/src-tauri/tauri.support.conf.json', 'mobile/package.json'];
 const summary = `ورژن ${NEW}`;
 if (OPT.commit) {
   const allFiles = [...FILES, ...EXTRA_PATHS];

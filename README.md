@@ -3,7 +3,7 @@
 
 > رابط کاربری فارسی (RTL) با سیستم طراحی Ember Studio (تراکوتا/کهربا)، تقویم شمسی، کاتالوگ قطعات، یکتایی سریال، جست‌وجوی پیشرفته، مدیریت گارانتی، تأمین قطعات، ورود سریال از اکسل یا Paste، و پشتیبانی از تم دارک/لات.
 >
-> **نسخه‌ی فعلی: `1.33.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
+> **نسخه‌ی فعلی: `1.34.0`** — تاریخچه‌ی تغییرات نسخه‌ها در انتهای همین فایل.
 >
 > **طراح و توسعه‌دهنده:** میثم ایجادی / Meysam Ijadi — [M.Ijadi@Hotmail.com](mailto:M.Ijadi@Hotmail.com) — +98 902 296 4006
 
@@ -154,9 +154,9 @@ curl http://localhost:4000/api/health
 
 ```bash
 docker compose build
-docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.33.0
+docker tag meysam8498/support-equipment-management:latest meysam8498/support-equipment-management:1.34.0
 docker push meysam8498/support-equipment-management:latest
-docker push meysam8498/support-equipment-management:1.33.0
+docker push meysam8498/support-equipment-management:1.34.0
 ```
 
 > توضیحات کامل image (Overview فارسی) در [`DOCKER_HUB_OVERVIEW.md`](DOCKER_HUB_OVERVIEW.md) نگهداری می‌شود.
@@ -359,6 +359,7 @@ Support/
 
 | نسخه | تاریخ | تغییرات اصلی |
 |------|------|--------------|
+| **1.34.0** | 2026-11-02 | نسخه‌های نصبی خریدار/فروشنده (EDITION) + قفل مسیرهای صدور/چرخش کلید لایسنس در نصب خریدار + نصب‌کننده‌ی ویندوز و APK اندروید |
 | **1.33.0** | 2026-10-31 | 🔄 داشبورد: نشان «آخرین همگام‌سازی» مشترک بین تخته و صفحات بکاپ/لاگ/گزارش — گزارش شمارش PUTهای ناموفق (شبکه یا ۴۰۹) با جزئیات هر مورد · 📶 صف تغییرهای آفلاین + همگام‌سازی خودکار با رویداد online و نشان زمان ذخیره · 🐞 تشخیص تداخل ۴۰۹ چیدمان با `base_updated_at` (نسخه‌ی تازه‌ی سرور اعمال می‌شود، نه بازنویسی) + تست سرور و کلاینت · ♿ اسکریپت `a11y:seed` و workflow اسکنر دسترس‌پذیری در CI · ⚙️ zod v4 در سرور، مجوز فونت‌های گوگل در CSP، smoke هم‌گام با مسیر لاگ ادمین (۴۰۱ بدون نشست) |
 | **1.32.0** | 2026-10-27 | 🔄 همگام‌سازی چیدمان داشبورد بین دستگاه‌ها — سفارشی‌سازی (درگ‌وان‌دراپ، مخفی، بازنشانی) با منبع حقیقتِ سرور: جدول `user_dashboard_layouts` + `GET/PUT/DELETE /api/dashboard/layout` با حفاظت تداخل ۴۰۹؛ در نشست همزمانِ دو دستگاه نسخه‌ی تازه‌ی سرور بالا می‌آید (آخرین-نویسنده با هشدار، نه بازنویسی بی‌صدا) · تست درگ واقعی با `@testing-library/user-event` و تست سرور تفکیک کاربران/۴۰۹/حذف |
 | **1.31.0** | 2026-10-27 | ♿ دسترس‌پذیری: منوی ناوبری با الگوی WAI-ARIA (فوکوس اولین آیتم، Arrow/Home/End حلقه‌ای، Escape + بازگشت فوکوس)، Modal با `role=dialog`/`aria-modal` و تله‌ی Tab، کنتراست متن‌های کم‌برجسته به سطح WCAG AA، جدول‌های اسکرول‌پذیر `role=region` · اسکنر زنده‌ی `npm run a11y:scan` (puppeteer-core + axe-core) روی ۲۳ صفحه × تم روشن/تاریک با گزارش در `reports/a11y-scan/` |
