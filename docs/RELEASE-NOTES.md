@@ -21,6 +21,8 @@
 - **پیش‌فرض سازگار:** بدون متغیر، نسخه `seller` است — استقرارهای موجود و محیط توسعه تغییر نمی‌کنند؛ فقط نصب‌کننده‌ی خریدار `buyer` می‌گذارد (داکر مشتری: `-e LICENSE_EDITION=buyer`).
 - **نصب‌کننده‌های ویندوز:** `Support Equipment Management_1.34.0_x64-setup.exe` (خریدار) و `Support Support Server_1.34.0_x64-setup.exe` (فروشنده) — Tauri/NSIS، حدود ۲۵ مگابایت.
 - **APK اندروید:** `mobile/android` در مخزن؛ بیلد با `./gradlew assembleRelease` (امضای فعلی debug — نصب مستقیم روی گوشی، نه Google Play).
+- **📥 Release عمومی:** هر سه فایل با توضیحات فارسی، راهنمای نصب و SHA-256 در [Release v1.34.0](https://github.com/meysam8498/Support/releases/tag/v1.34.0) منتشر شد
+  (`Support-Equipment-Management-1.34.0-x64-setup.exe` خریدار، `Support-Server-1.34.0-x64-setup.exe` فروشنده، `support-mobile-1.34.0.apk`).
 - ⚙️ **رفع بیلد داکر:** از ۱.۲۸ هر بیلد image با «Cannot find module /app/scripts/check-bundle-budget.mjs» شکست می‌خورد — Dockerfile همان اسکریپت را در stage بیلد کپی نمی‌کرد.
 - ⚙️ **همگام‌سازی خودکار Overview هاب:** `bump-version --hub` با `fetch` بازنویسی شد (curl با مسیر ویندوزی کار نمی‌کرد) و سقف ۲۵۰۰۰ بایتی Docker Hub را چک می‌کند.
 

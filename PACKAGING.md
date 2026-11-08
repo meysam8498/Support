@@ -96,6 +96,7 @@
 - [ ] نسخه در هر سه `package.json` + lock یکسان
 - [ ] ردیف تاریخچه‌ی README و Overview (برای ریلیزهای عمومی — مشتری و اندروید)
 - [ ] تگ `vX.Y.Z` پابلیش داکر؛ تگ `win-vX.Y.Z` بیلد ویندوز؛ APK در Release گیت‌هاب
+      (۱.۳۴.۰ انجام شد: [Release v1.34.0](https://github.com/meysam8498/Support/releases/tag/v1.34.0) — سه فایل + SHA-256)
 - [ ] `cd desktop && npm run build:customer` و `npm run build:support` (دو نصب‌کننده‌ی خریدار/فروشنده)
 - [ ] `cd mobile/android && ./gradlew assembleRelease` (APK) + تست نصب روی گوشی واقعی
 - [ ] `SUPPORT_ONLY=1` در نصب پشتیبانی تست شود (403 روی `/api/devices`)
