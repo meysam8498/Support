@@ -17,7 +17,7 @@ import { requireRole } from '../middleware/auth.js';
 import { todayGregorian, todayJalali, addMonthsToJalali, jalaliToGregorianISO, gregorianToJalali } from '../lib/date.js';
 import { verifyLicenseCode } from '../lib/licenseCode.js';
 import { SHARED_STRINGS } from '../lib/sharedStrings.js';
-import { createSign, randomUUID, createHash } from 'node:crypto';
+import { createSign, createPublicKey, randomUUID, createHash } from 'node:crypto';
 import { publicKid } from '../lib/licenseCode.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -367,6 +367,13 @@ function loadIssuePrivateKey(): string | null {
  * کد بدون kid صادر می‌شود (تأیید fallback با کلید جاری همچنان کار می‌کند).
  */
 function loadIssuePublicPem(privPem: string): string | null {
+  // ۰) عمومی را از خود کلید خصوصی مشتق کن — در نصب‌کننده، کلید خصوصی به‌صورت محتوا در ENV
+  //    است و کلید عمومیِ متناظر روی دیسک نیست؛ بدون این ردیف، kid در هدر کد نمی‌نشست
+  //    (و کد بدون kid صادر می‌شد).
+  try {
+    const derived = createPublicKey(privPem).export({ type: 'spki', format: 'pem' });
+    if (typeof derived === 'string' && derived.includes('BEGIN PUBLIC KEY')) return derived;
+  } catch { /* کلید نامعتبر — مسیرهای فایل را امتحان کن */ }
   const env = process.env.LICENSE_ISSUE_PUB?.trim();
   if (env?.includes('BEGIN PUBLIC KEY')) return env.replace(/\\n/g, '\n');
   const tryPaths: string[] = [];

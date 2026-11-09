@@ -6,12 +6,12 @@
 //   client/            ← client/dist (سرور آن را سرو می‌کند — CLIENT_DIST)
 //   runtime/node.exe   ← کپی node محلی (اجرای باندل بدون نیاز به نصب Node)
 //   static/            ← صفحات «در حال آماده‌سازی» و «خطا» (از static-src)
-//   keys/license_private.pem ← فقط پروفایل support (هرگز در نصب مشتری!)
+//   (کلید خصوصی هرگز کپی نمی‌شود — نصب support آن را از %LOCALAPPDATA% می‌خواند)
 // استفاده: node scripts/prepare-resources.mjs [customer|support]
 // ============================================================
 import { build } from 'esbuild';
 import { execSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +28,20 @@ console.log(`— prepare-resources [${PROFILE}] v${VERSION}`);
 // ۰) پیش‌نیازها: بیلد سرور و کلاینت باید موجود باشد
 if (!existsSync(join(ROOT, 'server', 'dist', 'index.js'))) die('server/dist/index.js نیست — اول «npm run build -w server» را اجرا کنید.');
 if (!existsSync(join(ROOT, 'client', 'dist', 'index.html'))) die('client/dist/index.html نیست — اول «npm run build -w client» را اجرا کنید.');
+
+// dist کهنه = نصب‌کننده‌ای که کد قدیمی سرور را حمل می‌کند (۱.۳۴.۰: kid در هدر از همین راه غایب شد)
+const newest = (dir, ext) => {
+  let t = 0;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) t = Math.max(t, newest(p, ext));
+    else if (e.name.endsWith(ext)) t = Math.max(t, statSync(p).mtimeMs);
+  }
+  return t;
+};
+const distTime = statSync(join(ROOT, 'server', 'dist', 'index.js')).mtimeMs;
+const srcTime = Math.max(newest(join(ROOT, 'server', 'src'), '.ts'), distTime);
+if (srcTime > distTime + 1000) die('server/dist از سورس قدیمی‌تر است — اول «npm run build -w server» را اجرا کنید.');
 
 rmSync(RES, { recursive: true, force: true });
 mkdirSync(join(RES, 'server'), { recursive: true });
