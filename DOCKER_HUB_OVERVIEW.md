@@ -76,7 +76,7 @@ services:
       - "${APP_PORT:-4000}:4000"
     environment:
       - NODE_ENV=production
-      - JWT_SECRET=${JWT_SECRET:-please-change-this-secret-in-production}
+      - JWT_SECRET=${JWT_SECRET:-}
       - JWT_EXPIRES_HOURS=${JWT_EXPIRES_HOURS:-12}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}

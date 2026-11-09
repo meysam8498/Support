@@ -32,8 +32,34 @@ export const WRITE_ROLES: Role[] = ['admin', 'warehouse', 'tech'];
 //   ۳) LICENSE_ENFORCE=1 (نصب تجاری) بدون ENV قوی اصلاً بالا نمی‌آید —
 //      توکن جعل‌پذیر در نصبِ مشتری پولی یعنی دور زدن کامل احراز هویت.
 // ─────────────────────────────────────────────────────────────
+/**
+ * مقادیر نمونه‌ای که در `.env.example` / docker-compose / مستندات تکرار می‌شوند و
+ * «secret واقعی» نیستند — اگر کسی همان‌ها را بگذارد، هر خواننده‌ی مخزن می‌تواند
+ * توکن جعل کند.
+ */
+const PLACEHOLDER_SECRETS = [
+  'please-change-this-secret-in-production',
+  'please-change-this-secret-in-production-9f2a4c7e1b8d',
+];
+function isPlaceholderSecret(secret: string): boolean {
+  const s = secret.trim().toLowerCase();
+  return s.startsWith('please-change') || s.startsWith('change-me') || PLACEHOLDER_SECRETS.includes(s);
+}
+
 function loadJwtSecret(): { secret: string; regenerated: boolean } {
   const fromEnv = process.env.JWT_SECRET?.trim() || '';
+  if (fromEnv && isPlaceholderSecret(fromEnv)) {
+    if (process.env.LICENSE_ENFORCE === '1') {
+      throw new Error(
+        'JWT_SECRET همان مقدار نمونه‌ی مستندات است — در نصب تجاری (LICENSE_ENFORCE=1) سرور بالا نمی‌آید. ' +
+        'یک secret واقعی بسازید: openssl rand -hex 32'
+      );
+    }
+    console.warn(
+      '⚠🔐 JWT_SECRET همان مقدار نمونه‌ی مستندات است و برای همه شناخته‌شده — توکن‌ها قابل جعل‌اند! ' +
+      'عوضش کنید: openssl rand -hex 32 (تا آن موقع، هر کسی می‌تواند نشست ادمین بسازد).'
+    );
+  }
   if (fromEnv) {
     if (process.env.LICENSE_ENFORCE === '1' && fromEnv.length < 32) {
       throw new Error('LICENSE_ENFORCE=1: JWT_SECRET باید حداقل ۳۲ کاراکتر باشد (بدون ENV قوی، سرور بالا نمی‌آید).');
