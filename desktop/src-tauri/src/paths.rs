@@ -66,8 +66,14 @@ pub fn resource_path(rel: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join(rel)
 }
 
-/// کلید خصوصی صدور لایسنس — فقط در نصب پشتیبانی بسته‌بندی می‌شود (PACKAGING.md:
-/// هرگز داخل نصب‌کننده‌ی مشتری نباشد). در نصب مشتری این مسیر وجود ندارد.
+/// پوشه‌ی کلید امضای لایسنس روی دستگاه شما — عمداً بیرون از بسته‌ی نصبی.
+/// دلیل (PACKAGING.md): اگر کلید داخل نصب‌کننده باشد، هر کسی با باز کردن
+/// فایل نصب و Extract می‌تواند کلید امضا را بردارد و لایسنس جعل کند.
+pub fn key_dir() -> PathBuf {
+    local_root().join(app_folder_name()).join("keys")
+}
+
+/// کلید خصوصی صدور لایسنس — فقط در نصب پشتیبانی و از مسیر محلی خوانده می‌شود.
 pub fn license_issue_key() -> PathBuf {
-    resource_path("keys/license_private.pem")
+    key_dir().join("license_private.pem")
 }

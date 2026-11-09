@@ -51,7 +51,12 @@ await build({
 });
 cpSync(join(ROOT, 'server', 'dist', 'db', 'schema.sql'), join(RES, 'server', 'schema.sql'));
 // کلید عمومی لایسنس — کاندیدای دوم licenseCode.ts همین‌جا را می‌خواند (import.meta.url باندل)
-cpSync(join(ROOT, 'server', 'dist', 'lib', 'license_public_key.pem'), join(RES, 'server', 'license_public_key.pem'));
+// منبع حقیقت keys/license_public.pem است (بعد از چرخش کلید هم‌گام می‌ماند)؛ اگر نبود، نسخه‌ی مخزن.
+const rootPub = join(ROOT, 'keys', 'license_public.pem');
+cpSync(
+  existsSync(rootPub) ? rootPub : join(ROOT, 'server', 'dist', 'lib', 'license_public_key.pem'),
+  join(RES, 'server', 'license_public_key.pem')
+);
 step(`server.mjs (${(readFileSync(join(RES, 'server', 'server.mjs'), 'utf8').length / 1024 / 1024).toFixed(1)}MB) + schema.sql + کلید عمومی`);
 
 // ۲) فرانت بیلدشده — سرور با CLIENT_DIST همین پوشه را سرو می‌کند
@@ -78,15 +83,13 @@ cpSync(join(ROOT, 'desktop', 'src-tauri', 'static-src'), join(ROOT, 'desktop', '
 // ۵) فایل نسخه + پروفایل — برای نمایش/دیباگ
 writeFileSync(join(RES, 'server', 'app-info.json'), JSON.stringify({ version: VERSION, profile: PROFILE }, null, 2));
 
-// ۶) کلید صدور — فقط پروفایل پشتیبانی (PACKAGING.md: هرگز در نصب‌کننده‌ی مشتری)
-if (PROFILE === 'support') {
-  const keyPath = join(ROOT, 'keys', 'license_private.pem');
-  if (!existsSync(keyPath)) die('keys/license_private.pem نیست — صدور لایسنس در نصب پشتیبانی کار نمی‌کند.');
-  mkdirSync(join(RES, 'keys'), { recursive: true });
-  cpSync(keyPath, join(RES, 'keys', 'license_private.pem'));
-  step('کلید صدور لایسنس کپی شد (فقط support).');
+// ۶) کلید خصوصی صدور — عمداً هیچ‌وقت داخل بسته نمی‌رود (نه مشتری، نه پشتیبانی).
+// دلیل: فایل نصب قابل استخراج است و کلید داخل آن یعنی جعل لایسنس توسط هر دارنده‌ی فایل.
+// نصب پشتیبانی کلید را از %LOCALAPPDATA%\SupportSupportServer\keys\license_private.pem می‌خواند.
+if (existsSync(join(ROOT, 'keys', 'license_private.pem'))) {
+  step('کلید خصوصی عمداً بسته‌بندی نشد — نصب پشتیبانی آن را از پوشه‌ی محلی می‌خواند. ✓');
 } else {
-  step('پروفایل مشتری — کلید خصوصی کپی نمی‌شود. ✓');
+  step('هشدار: keys/license_private.pem روی این سیستم نیست — صدور لایسنس کار نمی‌کند.');
 }
 
 console.log(`✔ رزورس‌ها آماده است: ${RES}`);

@@ -12,7 +12,10 @@ const root = join(__dirname, '..');
 /** فایل‌های (src → dist) که باید کپی شوند. */
 const assets = [
   ['src/db/schema.sql', 'dist/db/schema.sql'],
-  ['src/lib/license_public_key.pem', 'dist/lib/license_public_key.pem'],
+  // کلید عمومی: پس از چرخش کلید، نسخه‌ی ریشه (keys/license_public.pem) منبع حقیقت است.
+  // اگر نبود (مثل CI بدون پوشه‌ی keys) نسخه‌ی کامیت‌شده‌ی src استفاده می‌شود —
+  // همین باعث شده بود کلید بسته‌بندی‌شده از کلید جاری عقب بماند و کدهای نو تأیید نشوند.
+  [existsSync(join(root, '..', 'keys', 'license_public.pem')) ? '../keys/license_public.pem' : 'src/lib/license_public_key.pem', 'dist/lib/license_public_key.pem'],
 ];
 
 let copied = 0;

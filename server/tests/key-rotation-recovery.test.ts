@@ -50,6 +50,23 @@ function readRegistry(file: string): RotationEntry[] {
     });
 }
 
+/**
+ * کلیدهای باطل‌شده (keys/revoked_keys.jsonl) — kidهایی که عمداً از فهرست پذیرفته‌شده حذف
+ * شده‌اند (مثلاً نشت کلید). برای این kidها نبودِ فایل بایگانی درست است، نه رگرسیون.
+ */
+function revokedKids(): Set<string> {
+  const file = join(REAL_KEYS_DIR, 'revoked_keys.jsonl');
+  if (!existsSync(file)) return new Set();
+  return new Set(
+    readFileSync(file, 'utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => (JSON.parse(l) as { kid?: string }).kid ?? '')
+      .filter((k) => /^[0-9a-f]{8}$/.test(k)),
+  );
+}
+
 /** کد JWT امضاشده — همان ساختار کد واقعی لایسنس (header با kid) */
 function makeToken(privPem: string, pubPem: string, jti: string, plan = 'year'): string {
   const kid = kidOf(pubPem);
@@ -192,12 +209,22 @@ const hasRealRegistry = existsSync(REAL_REGISTRY);
 describe('رجیستری واقعی keys/rotations.jsonl — بازسازی و تأیید کلید قبلی', () => {
   it.skipIf(!hasRealRegistry)('هر سطر: فایل بایگانی عمومی موجود و kid == old_kid', () => {
     const entries = readRegistry(REAL_REGISTRY);
+    const revoked = revokedKids();
     expect(entries.length).toBeGreaterThan(0);
     for (const [i, e] of entries.entries()) {
       expect(e.old_kid, `سطر ${i + 1}: old_kid`).toMatch(/^[0-9a-f]{8}$/);
       expect(e.new_kid, `سطر ${i + 1}: new_kid`).toMatch(/^[0-9a-f]{8}$/);
       expect(e.old_kid, `سطر ${i + 1}`).not.toBe(e.new_kid);
       expect(Date.parse(e.rotated_at), `سطر ${i + 1}: rotated_at`).not.toBeNaN();
+
+      // kid باطل‌شده: فایل عمومی باید از پذیرش حذف شده باشد و فقط در keys/revoked/ بماند
+      if (revoked.has(e.old_kid)) {
+        expect(
+          existsSync(join(REAL_KEYS_DIR, 'accepted_license_public_keys', `license_public_${e.old_kid}.pem`)),
+          `سطر ${i + 1}: کلید باطل‌شده ${e.old_kid} نباید در فهرست پذیرفته‌شده باشد`,
+        ).toBe(false);
+        continue;
+      }
 
       // archived_pub ممکن است مسیر مطلق ماشین صادرکننده باشد — fallback به نام kid در پوشه‌ی بایگانی
       const candidates = [
