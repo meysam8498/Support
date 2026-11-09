@@ -27,6 +27,13 @@ const kidOf = (pem: string) => createHash('sha256').update(pem.replace(/\r/g, ''
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const REAL_REGISTRY = join(ROOT, 'keys', 'rotations.jsonl');
 const REAL_KEYS_DIR = join(ROOT, 'keys');
+// کلیدهای خصوصیِ بازنشسته از keys/ بیرون برده شده‌اند (فقط کلید جاری کنار پروژه می‌ماند)؛
+// اگر پوشه‌ی آرشیو با LICENSE_KEY_ARCHIVE_DIR معرفی شود، تست زوج‌بودن آن‌ها هم اجرا می‌شود.
+const REAL_ARCHIVE = process.env.LICENSE_KEY_ARCHIVE_DIR?.trim() || '';
+const archivedPrivPath = (kid: string): string | null =>
+  [join(REAL_KEYS_DIR, `license_private_${kid}.pem`),
+    ...(REAL_ARCHIVE ? [join(REAL_ARCHIVE, `license_private_${kid}.pem`)] : [])]
+    .find((p) => existsSync(p)) ?? null;
 
 interface RotationEntry {
   rotated_at: string;
@@ -243,8 +250,8 @@ describe('رجیستری واقعی keys/rotations.jsonl — بازسازی و �
     const entries = readRegistry(REAL_REGISTRY);
     let checked = 0;
     for (const e of entries) {
-      const privPath = join(REAL_KEYS_DIR, `license_private_${e.old_kid}.pem`);
-      if (!existsSync(privPath)) continue; // بایگانی خصوصی ممکن است فقط نزد صادرکننده باشد
+      const privPath = archivedPrivPath(e.old_kid);
+      if (!privPath) continue; // بایگانی خصوصی ممکن است فقط نزد صادرکننده/در آرشیو باشد
       const pubPath = [
         e.archived_pub,
         join(REAL_KEYS_DIR, 'accepted_license_public_keys', `license_public_${e.old_kid}.pem`),
@@ -263,6 +270,10 @@ describe('رجیستری واقعی keys/rotations.jsonl — بازسازی و �
       expect(v.verify(pub, sig), `round-trip امضا ${e.old_kid}`).toBe(true);
       checked++;
     }
+    if (entries.every((e) => !archivedPrivPath(e.old_kid))) {
+      // کلیدهای بازنشسته در آرشیو بیرون از پروژه‌اند — با LICENSE_KEY_ARCHIVE_DIR اجرا می‌شود
+      return;
+    }
     expect(checked, 'دست‌کم یک زوج کامل خصوصی/عمومی در بایگانی بازیابی شد').toBeGreaterThan(0);
   });
 
@@ -278,13 +289,13 @@ describe('رجیستری واقعی keys/rotations.jsonl — بازسازی و �
     // بدون سرور و بدون لمس DB: فقط راستی‌آزمایی رمزنگاریِ زوج بازیابی‌شده
     const entries = readRegistry(REAL_REGISTRY);
     const e = entries[0];
-    const privPath = join(REAL_KEYS_DIR, `license_private_${e.old_kid}.pem`);
+    const privPath = archivedPrivPath(e.old_kid);
+    if (!privPath) return; // آرشیو خصوصی در دسترس نیست (LICENSE_KEY_ARCHIVE_DIR تنظیم نشده)
     const pubPath = [
       e.archived_pub,
       join(REAL_KEYS_DIR, 'accepted_license_public_keys', `license_public_${e.old_kid}.pem`),
       join(REAL_KEYS_DIR, `license_public_${e.old_kid}.pem`),
     ].find((p) => existsSync(p));
-    expect(existsSync(privPath), `بایگانی خصوصی ${e.old_kid}`).toBe(true);
     expect(pubPath).toBeTruthy();
 
     const code = makeToken(readFileSync(privPath, 'utf8'), readFileSync(pubPath!, 'utf8'), 'REALRECOVER');

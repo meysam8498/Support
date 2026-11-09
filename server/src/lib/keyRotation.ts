@@ -293,11 +293,19 @@ function archivedPublicPath(kid: string): string | null {
   return candidates.find((p) => existsSync(p)) ?? null;
 }
 
-/** مسیر فایل خصوصیِ بایگانی‌شده برای یک kid (همان license_private_<kid>.pem چرخش) */
+/**
+ * مسیر فایل خصوصیِ بایگانی‌شده برای یک kid (همان license_private_<kid>.pem چرخش).
+ * اول پوشه‌ی کلیدها (keys/)؛ سپس پوشه‌ی آرشیو خارج از پروژه اگر LICENSE_KEY_ARCHIVE_DIR
+ * تنظیم شده باشد — کلیدهای بازنشسته عمداً از keys/ بیرون برده می‌شوند تا فقط کلید جاری
+ * کنار پروژه بماند، ولی بازیابی/بازچرخش‌شان از آرشیو ممکن بماند.
+ */
 function archivedPrivatePath(kid: string): string | null {
-  const dir = keysDir();
-  const p = join(dir, `license_private_${kid}.pem`);
-  return existsSync(p) ? p : null;
+  const archive = process.env.LICENSE_KEY_ARCHIVE_DIR?.trim();
+  const candidates = [
+    join(keysDir(), `license_private_${kid}.pem`),
+    ...(archive ? [join(archive, `license_private_${kid}.pem`)] : []),
+  ];
+  return candidates.find((p) => existsSync(p)) ?? null;
 }
 
 function assertKidShape(kid: string): void {
