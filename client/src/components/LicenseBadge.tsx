@@ -48,16 +48,28 @@ export default function LicenseBadge() {
     ? `لایسنس سامانه — ثبت‌شده برای: ${license.licensed_to}`
     : 'وضعیت لایسنس سامانه';
 
+  // خلاصه‌ی کوتاه برای عرض‌های کوچک: فقط آیکون + روز (طرح در title و aria-label می‌ماند)
+  const shortDays = license.expired
+    ? 'منقضی'
+    : license.days_left !== null
+      ? `${toFa(license.days_left)} روز`
+      : '';
+
   return (
     <button
       type="button"
       onClick={() => { if (user?.role === 'admin') navigate('/license'); }}
       className={`badge text-[10px] shrink-0 border cursor-pointer hover:opacity-80 transition-opacity ${cls} ${user?.role === 'admin' ? '' : 'cursor-default'}`}
-      title={title}
+      title={`${title} — ${license.plan_label}`}
+      aria-label={`وضعیت لایسنس: ${license.plan_label}${shortDays ? '، ' + shortDays : ''}`}
     >
-      📄 {license.plan_label}
-      {license.days_left !== null && !license.expired && <> · <span className="fa-nums">{toFa(license.days_left)}</span> روز</>}
-      {license.expired && ' · منقضی'}
+      <span aria-hidden>📄</span>
+      {/* تا ۱۲۸۰px جمع‌وجور (فقط روز/وضعیت)؛ از آن به بعد متن کامل */}
+      <span className="hidden xl:inline"> {license.plan_label}
+        {license.days_left !== null && !license.expired && <> · <span className="fa-nums">{toFa(license.days_left)}</span> روز</>}
+        {license.expired && ' · منقضی'}
+      </span>
+      {shortDays && <span className="xl:hidden"> <span className="fa-nums">{shortDays}</span></span>}
     </button>
   );
 }

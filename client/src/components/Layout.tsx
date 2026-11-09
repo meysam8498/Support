@@ -115,7 +115,7 @@ export default function Layout() {
   };
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-1.5 px-2.5 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
+  `flex items-center gap-1.5 px-2 min-[1700px]:px-2.5 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
     isActive
       ? 'bg-brand-500 text-white font-semibold shadow-glow'
       : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-white/5'
@@ -151,11 +151,12 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
             </span>
           </NavLink>
 
-          {/* لینک‌های اصلی — از xl (۱۲۸۰) به بالا و فقط آیکون تا ۱۷۰۰ (برچسب‌ها از آن‌جا).
-              قبلاً برچسب‌ها همیشه باز بودند: در ۱۲۸۰–۱۵۰۰ هفت آیتم جا نمی‌شد و هدر
-              سرریز می‌کرد، دکمه‌های تم/کاربر بیرون از کادر می‌افتادند. زیر ۱۲۸۰ همبرگر است.
+          {/* لینک‌های اصلی — از lg (۱۰۲۴) به بالا و فقط آیکون تا ۱۷۰۰ (برچسب‌ها از آن‌جا).
+              قبلاً برچسب‌ها همیشه باز بودند: در ۱۰۲۴–۱۵۰۰ هفت آیتم جا نمی‌شد و هدر
+              سرریز می‌کرد، دکمه‌های تم/کاربر بیرون از کادر می‌افتادند. برای جا شدن
+              آیکون‌ها در ۱۰۲۴، بج لایسنس زیر ۱۲۸۰ جمع‌وجور می‌شود. زیر ۱۰۲۴ همبرگر است.
               min-w-0 + overflow-x-auto نگهبان نهایی در برابر سرریز است. */}
-          <nav className="hidden xl:flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
+          <nav className="hidden lg:flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
             {/* hover/focus روی هر آیتم → prefetch چانک lazy مقصد (صفحات ایستا no-op) */}
             {mainItems.map((item) => (
               <NavLink
@@ -177,7 +178,7 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
           <button
             ref={burgerRef}
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="xl:hidden btn-ghost min-h-[36px] px-2.5 shrink-0"
+            className="lg:hidden btn-ghost min-h-[36px] px-2.5 shrink-0"
             aria-label="منو"
             aria-expanded={mobileOpen}
           >
@@ -185,7 +186,8 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
           </button>
 
           {/* جست‌وجوی سراسری */}
-          <div className="flex-1 lg:flex-none lg:max-w-md min-w-0">
+          {/* در ۱۰۲۴–۱۲۷۹ جست‌وجو باریک‌تر تا هفت آیکون منو کامل جا شوند */}
+          <div className="flex-1 lg:flex-none lg:max-w-[180px] xl:max-w-md min-w-0">
             <GlobalSearchBox compact />
           </div>
 
@@ -309,7 +311,7 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
 
         {/* منوی موبایل — کشویی زیر هدر */}
         {mobileOpen && (
-          <nav id="mobile-nav" aria-label="منوی اصلی (موبایل)" className="xl:hidden border-t border-stone-200 dark:border-indigo-500/20 px-3 py-2 grid grid-cols-2 sm:grid-cols-3 gap-1">
+          <nav id="mobile-nav" aria-label="منوی اصلی (موبایل)" className="lg:hidden border-t border-stone-200 dark:border-indigo-500/20 px-3 py-2 grid grid-cols-2 sm:grid-cols-3 gap-1">
             {mainItems.map((item) => (
               <NavLink
                 key={item.to}
