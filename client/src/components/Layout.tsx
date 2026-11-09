@@ -151,18 +151,29 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
             </span>
           </NavLink>
 
-          {/* لینک‌های اصلی — فقط نمایشگر پهن (xl+)؛ در عرض‌های ۱۰۲۴–۱۲۸۰ منوی ۷گانه جا نمی‌شود و سرریز می‌کرد */}
-          <nav className="hidden xl:flex items-center gap-1 flex-1">
+          {/* لینک‌های اصلی — از xl (۱۲۸۰) به بالا و فقط آیکون تا ۱۷۰۰ (برچسب‌ها از آن‌جا).
+              قبلاً برچسب‌ها همیشه باز بودند: در ۱۲۸۰–۱۵۰۰ هفت آیتم جا نمی‌شد و هدر
+              سرریز می‌کرد، دکمه‌های تم/کاربر بیرون از کادر می‌افتادند. زیر ۱۲۸۰ همبرگر است.
+              min-w-0 + overflow-x-auto نگهبان نهایی در برابر سرریز است. */}
+          <nav className="hidden xl:flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
             {/* hover/focus روی هر آیتم → prefetch چانک lazy مقصد (صفحات ایستا no-op) */}
             {mainItems.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.to === '/'} className={linkCls} title={item.label} {...prefetchProps(item.to)}>
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                className={linkCls}
+                title={item.label}
+                aria-label={item.label}
+                {...prefetchProps(item.to)}
+              >
                 <span className="text-base leading-none">{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="hidden min-[1700px]:inline">{item.label}</span>
               </NavLink>
             ))}
           </nav>
 
-          {/* همبرگر — موبایل/تبلت/لپ‌تاپ متوسط (تا زیر xl) */}
+          {/* همبرگر — موبایل/تبلت و نمایشگرهای باریک‌تر از ۱۰۲۴ */}
           <button
             ref={burgerRef}
             onClick={() => setMobileOpen(!mobileOpen)}

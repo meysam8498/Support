@@ -46,3 +46,6 @@ desktop/src-tauri/static-dist/
 # Freebuff agent workspace
 .freebuff/
 .cloud-attachments/
+
+# اسکرین‌شات‌های بررسی چشمی (تولید محلی)
+screenshots/

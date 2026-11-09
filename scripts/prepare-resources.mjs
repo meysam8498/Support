@@ -43,6 +43,10 @@ const distTime = statSync(join(ROOT, 'server', 'dist', 'index.js')).mtimeMs;
 const srcTime = Math.max(newest(join(ROOT, 'server', 'src'), '.ts'), distTime);
 if (srcTime > distTime + 1000) die('server/dist از سورس قدیمی‌تر است — اول «npm run build -w server» را اجرا کنید.');
 
+const clientDistTime = statSync(join(ROOT, 'client', 'dist', 'index.html')).mtimeMs;
+const clientSrcTime = Math.max(newest(join(ROOT, 'client', 'src'), ''), clientDistTime);
+if (clientSrcTime > clientDistTime + 1000) die('client/dist از سورس قدیمی‌تر است — اول «npm run build -w client» را اجرا کنید.');
+
 rmSync(RES, { recursive: true, force: true });
 mkdirSync(join(RES, 'server'), { recursive: true });
 mkdirSync(join(RES, 'static'), { recursive: true });
