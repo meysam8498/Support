@@ -21,6 +21,8 @@ interface NavItem {
   to: string;
   icon: string;
   label: string;
+  /** برچسب کوتاه برای ۱۱۰۰–۱۶۹۹px (جای آیکون‌های بی‌راهنما) */
+  short?: string;
   /** نقش‌های مجاز — خالی = همه */
   roles?: string[];
 }
@@ -29,10 +31,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/', icon: '🏠', label: t.navDashboard },
   { to: '/devices', icon: '🖥️', label: t.navDevices },
   { to: '/parts', icon: '🔩', label: t.navParts },
-  { to: '/warranty', icon: '🛡️', label: t.navWarranty },
-  { to: '/reports', icon: '📊', label: t.navReports },
-  { to: '/lists', icon: '📋', label: t.navLists, roles: ['admin', 'warehouse', 'tech'] },
-  { to: '/serial-import', icon: '📥', label: t.navSerialImport, roles: ['admin', 'warehouse', 'tech'] },
+  { to: '/warranty', icon: '🛡️', label: t.navWarranty, short: 'گارانتی' },
+  { to: '/reports', icon: '📊', label: t.navReports, short: 'گزارش' },
+  { to: '/lists', icon: '📋', label: t.navLists, short: 'لیست', roles: ['admin', 'warehouse', 'tech'] },
+  { to: '/serial-import', icon: '📥', label: t.navSerialImport, short: 'سریال', roles: ['admin', 'warehouse', 'tech'] },
 ];
 
 /** آیتم‌های منوی کاربر — ابزارهای مدیریتی و اطلاعاتی */
@@ -115,7 +117,7 @@ export default function Layout() {
   };
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-1.5 px-2 min-[1700px]:px-2.5 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap ${
+  `flex items-center gap-1.5 px-1.5 wide:px-2.5 h-9 rounded-lg text-sm transition-colors duration-150 whitespace-nowrap nav:text-[13px] wide:text-sm ${
     isActive
       ? 'bg-brand-500 text-white font-semibold shadow-glow'
       : 'text-stone-600 dark:text-stone-300 hover:bg-surface-raised dark:hover:bg-white/5'
@@ -146,15 +148,17 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
             <span className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center text-white text-sm font-bold shadow-glow">
               م
             </span>
-            <span className="hidden md:block text-stone-900 dark:text-stone-100 font-display font-bold text-sm tracking-wide">
+            {/* نام اپ: ۱۱۰۰–۱۲۷۹ پنهان تا جای برچسب‌های کوتاه باز شود (نشان «م» می‌ماند) */}
+            <span className="hidden md:block nav:hidden navwide:block text-stone-900 dark:text-stone-100 font-display font-bold text-sm tracking-wide">
               {t.appName}
             </span>
           </NavLink>
 
-          {/* لینک‌های اصلی — از lg (۱۰۲۴) به بالا و فقط آیکون تا ۱۷۰۰ (برچسب‌ها از آن‌جا).
+          {/* لینک‌های اصلی — از lg (۱۰۲۴) به بالا؛ ۱۰۲۴–۱۰۹۹ فقط آیکون، از ۱۱۰۰ برچسب
+              کوتاه (تا آیکون‌ها بی‌راهنما نمانند) و از ۱۷۰۰ برچسب کامل.
               قبلاً برچسب‌ها همیشه باز بودند: در ۱۰۲۴–۱۵۰۰ هفت آیتم جا نمی‌شد و هدر
-              سرریز می‌کرد، دکمه‌های تم/کاربر بیرون از کادر می‌افتادند. برای جا شدن
-              آیکون‌ها در ۱۰۲۴، بج لایسنس زیر ۱۲۸۰ جمع‌وجور می‌شود. زیر ۱۰۲۴ همبرگر است.
+              سرریز می‌کرد، دکمه‌های تم/کاربر بیرون از کادر می‌افتادند. برای جا شدن،
+              بج لایسنس زیر ۱۲۸۰ جمع‌وجور می‌شود. زیر ۱۰۲۴ همبرگر است.
               min-w-0 + overflow-x-auto نگهبان نهایی در برابر سرریز است. */}
           <nav className="hidden lg:flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
             {/* hover/focus روی هر آیتم → prefetch چانک lazy مقصد (صفحات ایستا no-op) */}
@@ -169,7 +173,8 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
                 {...prefetchProps(item.to)}
               >
                 <span className="text-base leading-none">{item.icon}</span>
-                <span className="hidden min-[1700px]:inline">{item.label}</span>
+                <span className="hidden nav:inline wide:hidden">{item.short ?? item.label}</span>
+                <span className="hidden wide:inline">{item.label}</span>
               </NavLink>
             ))}
           </nav>
@@ -187,7 +192,8 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
 
           {/* جست‌وجوی سراسری */}
           {/* در ۱۰۲۴–۱۲۷۹ جست‌وجو باریک‌تر تا هفت آیکون منو کامل جا شوند */}
-          <div className="flex-1 lg:flex-none lg:max-w-[180px] xl:max-w-md min-w-0">
+          {/* جست‌وجو در ۱۱۰۰–۱۲۷۹ باریک‌تر تا هفت آیتمِ برچسب‌دار جا شوند */}
+          <div className="flex-1 lg:flex-none lg:max-w-[180px] nav:max-w-[130px] wide:max-w-[180px] min-w-0">
             <GlobalSearchBox compact />
           </div>
 

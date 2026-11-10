@@ -2,6 +2,16 @@
 /* Tailwind v4 — config JS قدیمی با @config حفظ شد (تم PipelinePro + keyframes) */
 @config '../tailwind.config.js';
 
+/* variantهای دامنه‌ای هدر (به‌جای breakpoint تا `.container` و بقیه‌ی
+   بریک‌پوینت‌های پروژه دست نخورند). به ترتیب صعودی ثبت می‌شوند تا
+   overrideها (مثلاً nav:hidden + wide:block) در ترتیب درست بیایند:
+   nav = 1100px (برچسب کوتاه منو) · navwide = 1280px (بازگشت نام اپ) ·
+   badge = 1440px (متن کامل لایسنس) · wide = 1700px (برچسب کامل منو) */
+@custom-variant nav (@media (width >= 68.75rem));
+@custom-variant navwide (@media (width >= 80rem));
+@custom-variant badge (@media (width >= 90rem));
+@custom-variant wide (@media (width >= 106.25rem));
+
 /* ============================================================
    سیستم طراحی PipelinePro — ایندیگو/فیروزه‌ای/نارنجی (RTL فارسی)
    طراح و توسعه‌دهنده: میثم ایجادی / Meysam Ijadi — M.Ijadi@Hotmail.com

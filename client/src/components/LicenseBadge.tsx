@@ -64,12 +64,13 @@ export default function LicenseBadge() {
       aria-label={`وضعیت لایسنس: ${license.plan_label}${shortDays ? '، ' + shortDays : ''}`}
     >
       <span aria-hidden>📄</span>
-      {/* تا ۱۲۸۰px جمع‌وجور (فقط روز/وضعیت)؛ از آن به بعد متن کامل */}
-      <span className="hidden xl:inline"> {license.plan_label}
+      {/* تا ۱۴۴۰px جمع‌وجور (فقط روز/وضعیت)؛ از آن به بعد متن کامل —
+          ۱۲۸۰–۱۴۳۹ جا برای برچسب‌های کوتاه منو لازم است */}
+      <span className="hidden badge:inline"> {license.plan_label}
         {license.days_left !== null && !license.expired && <> · <span className="fa-nums">{toFa(license.days_left)}</span> روز</>}
         {license.expired && ' · منقضی'}
       </span>
-      {shortDays && <span className="xl:hidden"> <span className="fa-nums">{shortDays}</span></span>}
+      {shortDays && <span className="badge:hidden"> <span className="fa-nums">{shortDays}</span></span>}
     </button>
   );
 }
