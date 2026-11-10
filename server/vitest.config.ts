@@ -18,6 +18,5 @@ export default {
     fileParallelism: false,
     sequence: { concurrent: false },
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
   },
 };

@@ -58,6 +58,19 @@ export class KeyRotationError extends Error {
   }
 }
 
+/**
+ * هم‌گام‌سازی ENV کلید صدور با فایل تازه‌نوشته‌شده.
+ * نصب دسکتاپ محتوای PEM را در LICENSE_ISSUE_KEY می‌گذارد (نه مسیر)؛ بدون این کار،
+ * پس از چرخش/بازیابی از پنل، صدور تا ری‌استارت اپ با کلید کهنه امضا می‌شد و هدر کد
+ * kidِ کلید قبلی را نشان می‌داد (خریدارِ دارای کلید جدید آن را رد می‌کرد).
+ * وقتی ENV مسیر فایل است کاری لازم نیست — خواندن بعدی خودش فایل تازه را می‌بیند.
+ */
+function syncIssueKeyEnv(privatePem: string): void {
+  const env = process.env.LICENSE_ISSUE_KEY?.trim();
+  if (!env || !env.includes('PRIVATE KEY')) return;
+  process.env.LICENSE_ISSUE_KEY = privatePem;
+}
+
 /** وضعیت فعلی کلیدها برای GET (بدون انجام هیچ عملیاتی) */
 export function keyStatus(): {
   current_kid: string;
@@ -157,6 +170,9 @@ export function rotateSigningKeys(): KeyRotationResult {
   writeFileSync(archivedPriv, oldPriv);
   writeFileSync(pubPath, String(publicKey));
   writeFileSync(privPath, String(privateKey));
+  // کلید صدور در ENV (نصب دسکتاپ: محتوا) هم باید فوری عوض شود، وگرنه صدور بعدی
+  // تا ری‌استارت با کلید قبلی امضا می‌کند.
+  syncIssueKeyEnv(String(privateKey));
 
   // ۴) رجیستری چرخش
   const registry = join(dir, 'rotations.jsonl');
@@ -466,6 +482,9 @@ export function restoreSigningKey(kid: string): RestoreKeyResult {
   // ۲) جایگزینی
   writeFileSync(privPath, restoredPriv);
   writeFileSync(pubPath, restoredPub);
+  // ENV کلید صدور (محتوایی) هم عوض شود — وگرنه بعد از بازیابی تا ری‌استارت
+  // با کلید قبلی امضا می‌شد، در حالی که status کلید بازیابی‌شده را نشان می‌داد.
+  syncIssueKeyEnv(restoredPriv);
 
   // ۳) راستی‌آزماییِ نوشته‌شده — در صورت خرابی، بازگرداندن از همان بایگانی تازه‌ساخته
   const writtenPub = readFileSync(pubPath, 'utf8');
