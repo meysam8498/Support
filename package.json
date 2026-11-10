@@ -27,7 +27,8 @@
     "license:gen-keys": "node scripts/make-license-code.mjs --gen-keys",
     "license:issue": "node scripts/make-license-code.mjs",
     "license:verify": "node scripts/make-license-code.mjs --verify",
-    "license:ledger": "node scripts/make-license-code.mjs --ledger"
+    "license:ledger": "node scripts/make-license-code.mjs --ledger",
+    "license:rotate": "node scripts/rotate-license-key.mjs"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

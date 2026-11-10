@@ -144,6 +144,12 @@ docker compose up -d --build
 
 > 🛒 فرآیند صدور کد برای فروشندگان (فاکتور تا ارسال): [docs/sales-guide.md](docs/sales-guide.md)
 
+> 🔄 **چرخش کلید امضا در یک دستور:** `npm run license:rotate` (پیش‌نمایش بدون تغییر: `node scripts/rotate-license-key.mjs --dry-run`)
+> کلید عمومی جاری را به فهرست **پذیرفته‌شده‌ها** می‌برد (کدهای قبلی معتبر می‌مانند)، کلید خصوصی قدیمی را
+> در `keys/private-archive/` بایگانی می‌کند، جفت‌کلید جدید می‌سازد و کلید عمومی را در سرور
+> (`server/src/lib` و `server/dist/lib`) و پوشه‌ی کلید نصب (`%LOCALAPPDATA%\SupportSupportServer\keys`) هم‌گام
+> می‌کند؛ رجیستری در `keys/rotations.jsonl`. با `--build` بیلد سرور و `prepare-resources` هم اجرا می‌شود.
+
 ### ۵) بازسازی کامل دیتابیس
 
 ```bash
