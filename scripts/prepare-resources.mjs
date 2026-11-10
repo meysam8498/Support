@@ -75,7 +75,18 @@ cpSync(
   existsSync(rootPub) ? rootPub : join(ROOT, 'server', 'dist', 'lib', 'license_public_key.pem'),
   join(RES, 'server', 'license_public_key.pem')
 );
-step(`server.mjs (${(readFileSync(join(RES, 'server', 'server.mjs'), 'utf8').length / 1024 / 1024).toFixed(1)}MB) + schema.sql + کلید عمومی`);
+// کلیدهای عمومیِ قبولی (بعد از چرخش) — کنار باندل کپی می‌شوند تا نصب خریدار،
+// که پوشه‌ی keys ندارد، کدهای صادرشده‌ی پیش از چرخش را هم تأیید کند.
+const acceptedDir = join(ROOT, 'keys', 'accepted_license_public_keys');
+let acceptedCount = 0;
+if (existsSync(acceptedDir)) {
+  for (const f of readdirSync(acceptedDir)) {
+    if (!f.startsWith('license_public') || !f.endsWith('.pem')) continue;
+    cpSync(join(acceptedDir, f), join(RES, 'server', f));
+    acceptedCount++;
+  }
+}
+step(`server.mjs (${(readFileSync(join(RES, 'server', 'server.mjs'), 'utf8').length / 1024 / 1024).toFixed(1)}MB) + schema.sql + کلید عمومی + ${acceptedCount} کلید قبولی`);
 
 // ۲) فرانت بیلدشده — سرور با CLIENT_DIST همین پوشه را سرو می‌کند
 step('کپی فرانت (client/dist → resources/client)…');

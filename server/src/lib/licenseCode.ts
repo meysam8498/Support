@@ -71,6 +71,9 @@ function loadAcceptedKeys(): Map<string, string> {
       // ریشه‌ی پروژه — کلیدهای بایگانی‌شده در dev با cwd غیر از ریشه (نگاه کن به ROOT_KEYS_DIR)
       ROOT_KEYS_DIR,
       join(ROOT_KEYS_DIR, 'accepted_license_public_keys'),
+      // کنار باندل — کلیدهای قبولی که هنگام بسته‌بندی کنار license_public_key.pem می‌نشینند
+      // (نصب خریدار پوشه‌ی keys ندارد؛ بدون این، کدهای صادرشده‌ی قبل از چرخش باطل می‌شدند)
+      __dirname,
     ]),
   ];
   for (const dir of dirs) {
@@ -79,6 +82,7 @@ function loadAcceptedKeys(): Map<string, string> {
       for (const f of readdirSync(dir)) {
         if (!f.startsWith('license_public') || !f.endsWith('.pem')) continue;
         if (f === 'license_public.pem') continue; // جاری است
+        if (f === 'license_public_key.pem') continue; // همان جاریِ کنار باندل است
         const pem = readFileSync(join(dir, f), 'utf8');
         if (!pem.includes('BEGIN PUBLIC KEY')) continue;
         // نام فایل license_public_XXXX.pem → kid = XXXX؛ در نبود الگو، از fingerprint

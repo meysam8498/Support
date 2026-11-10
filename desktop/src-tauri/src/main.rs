@@ -135,9 +135,19 @@ fn spawn_server(debug: bool) -> std::io::Result<Child> {
         ("PORT", port.to_string()),
         ("APP_VERSION", paths::app_version().to_string()),
         ("NODE_ENV", "production".to_string()),
+        // اپ دسکتاپ: حساب اولیه با رمز پیش‌فرض ساخته می‌شود (ورود اولیه‌ی مشتری)؛
+        // بدون این پرچم، گارد رمزهای پیش‌فرض در حالت production جلوی seed را می‌گیرد.
+        ("DESKTOP_SHELL", "1".to_string()),
         // فرانت بیلدشده داخل رزورس‌ها — سرور همان را سرو می‌کند (پنجره به localhost ناوبری می‌کند)
         ("CLIENT_DIST", paths::resource_path("client").display().to_string()),
     ];
+
+    // پوشه‌ی کلیدها = همان پوشه‌ای که کلید صدور از آن خوانده می‌شود.
+    // بدون این، چرخش کلید از پنل در cwd اپ (مثلاً Program Files یا پوشه‌ی دیگری که اپ از آن
+    // اجرا شده) می‌نوشت و کلیدی که پنل واقعاً با آن امضا می‌کند عوض نمی‌شد.
+    if let Some(keys_dir) = paths::license_issue_key().parent() {
+        envs.push(("LICENSE_KEYS_DIR", keys_dir.display().to_string()));
+    }
 
     if is_support {
         // سرور پشتیبانی: DB نمونه‌ی موقت + کلید صدور کنار اجرایی + بنر SUPPORT_ONLY
