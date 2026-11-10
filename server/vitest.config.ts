@@ -7,12 +7,17 @@ import path from 'node:path';
 
 export default {
   root: import.meta.dirname,
-  include: ['tests/**/*.test.ts'],
-  environment: 'node',
-  testTimeout: 60_000,
-  // هر فایل سرور موقت خودش را بالا می‌آورد — سریالی تا پورت‌ها تداخل نکنند
-  fileParallelism: false,
-  sequence: { concurrent: false },
-  pool: 'forks',
-  poolOptions: { forks: { singleFork: true } },
+  // گزینه‌های تست باید زیر کلید test باشند؛ در نسخهٔ فعلی vitest کلیدهای
+  // سطح‌بالا نادیده گرفته می‌شوند و همه چیز با سقف پیش‌فرض ۵ ثانیه اجرا می‌شد
+  // (تست‌هایی که سرور موقت بالا می‌آورند در اجرای کامل مجموعه تایم‌اوت می‌خوردند).
+  test: {
+    include: ['tests/**/*.test.ts'],
+    environment: 'node',
+    testTimeout: 60_000,
+    // هر فایل سرور موقت خودش را بالا می‌آورد — سریالی تا پورت‌ها تداخل نکنند
+    fileParallelism: false,
+    sequence: { concurrent: false },
+    pool: 'forks',
+    poolOptions: { forks: { singleFork: true } },
+  },
 };

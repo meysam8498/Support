@@ -67,7 +67,14 @@ describe('فعال‌سازی (خریدار) و ضد-replay', () => {
   });
 
   it('کد جعلی (امضای غلط) → 400', async () => {
-    const forged = code.replace(/.$/, (c) => (c === 'a' ? 'b' : 'a'));
+    // تغییر کاراکتر آخر base64url همیشه امضا را عوض نمی‌کند (بیت‌های کم‌ارزش/پدینگ
+    // ممکن است همان بایت‌ها را بدهند) و آن‌وقت کدِ دست‌نخورده به replay می‌خورد (409).
+    // پس یک بایت واقعی از امضا را عوض می‌کنیم.
+    const [h, p, sg] = code.split('.');
+    const sig = Buffer.from(sg, 'base64url');
+    sig[0] ^= 0xff;
+    const forged = `${h}.${p}.${sig.toString('base64url')}`;
+    expect(forged).not.toBe(code);
     const r = await s.api('POST', '/api/license/activate', { token, body: { code: forged } });
     expect(r.status).toBe(400);
   });
