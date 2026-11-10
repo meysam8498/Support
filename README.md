@@ -96,8 +96,14 @@
 
 ```bash
 cp .env.example .env
-# سپس JWT_SECRET و رمزهای کاربران را در .env ویرایش کنید
+# سپس JWT_SECRET و ADMIN_PASSWORD را در .env ویرایش کنید (اجباری)
 ```
+
+> 🔐 **رمز اجباری:** از ۱.۳۴.۰ `ADMIN_PASSWORD` اجباری است — `docker compose up` بدون آن با پیام روشن
+> متوقف می‌شود و رمز پیش‌فرض `admin123` ساخته نمی‌شود. رمز قوی: `openssl rand -base64 18`.
+> در سرور واقعی (`NODE_ENV=production`) رمز ضعیف/پیش‌فرض رد می‌شود و سایر نقش‌ها فقط با رمز قویِ
+> خودشان ساخته می‌شوند (بعداً از UI هم قابل ساخت‌اند). اپ دسکتاپ (`DESKTOP_SHELL=1`) برای
+> ورود اولیه‌ی مشتری رفتار قبلی را دارد.
 
 > متغیرهای لایسنس (`LICENSE_ENFORCE`، `TRIAL_DEVICE_LIMIT`، `TRIAL_LIMIT_ENFORCE`) هم در `.env.example` مستند شده‌اند — در نسخه‌ی فعلی هر سه خاموش‌اند (رایگان، بدون محدودیت).
 > 🛟 **سرور پشتیبانی**: اجرا با `SUPPORT_ONLY=1` مسیرهای داده‌ی مشتری (devices/parts/warranty/serial-import/backups/procurement) را ۴۰۳ می‌کند — نسخه‌ای فقط برای بررسی ایراد با لاگ مشتری؛ ابزار صدور لایسنس (`/issue`) فقط همین‌جاست. خواندن لاگ سرور: endpoint `GET /api/logs` با هدر `X-Support-Token` (مقدار `SUPPORT_LOG_TOKEN` یا `SUPPORT_TOKEN`) و صفحه‌ی «📜 لاگ سرور» در منوی ادمین. تست خودکار این endpoint در هر دو حالت سرور: `npm run test:logs`. جزئیات بسته‌بندی ویندوز/اندروید: [PACKAGING.md](PACKAGING.md).
@@ -110,11 +116,15 @@ docker compose up -d --build
 
 سپس مرورگر را باز کنید: **http://localhost:4000**
 
-**حساب‌های پیش‌فرض:**
+**حساب‌های اولیه:**
 | نقش | نام کاربری | رمز عبور |
 |------|-----------|----------|
-| مدیر (Admin) | `admin` | `admin123` |
-| کاربر (User) | `user` | `user123` |
+| مدیر (Admin) | `ADMIN_USERNAME` (پیش‌فرض `admin`) | همان `ADMIN_PASSWORD` که در `.env` گذاشتید |
+| کاربر (User) | `USER_USERNAME` (پیش‌فرض `user`) | فقط اگر `USER_PASSWORD` بدهید ساخته می‌شود |
+| انباردار / فروش / فنی | `WAREHOUSE_` / `SALES_` / `TECH_USERNAME` | فقط اگر رمز همان نقش را بدهید |
+
+> رمزهای پیش‌فرض `admin123`/`user123`/… دیگر در استقرار واقعی ساخته نمی‌شوند؛ فقط در
+> `npm run dev` و اپ دسکتاپ کار می‌کنند.
 
 ### ۴) فعال‌سازی با کد لایسنس (پس از خرید)
 

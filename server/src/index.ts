@@ -317,5 +317,10 @@ startBackupScheduler(getDb());
 
 app.listen(PORT, () => {
   console.log(`✓ سرور در حال اجراست: http://localhost:${PORT}`);
-  console.log(`  حساب پیش‌فرض: admin / admin123`);
+  // رمز پیش‌فرض فقط در توسعه/اپ دسکتاپ وجود دارد — در استقرار واقعی از ENV می‌آید
+  if (process.env.NODE_ENV !== 'production' || process.env.DESKTOP_SHELL === '1') {
+    console.log(`  حساب پیش‌فرض: ${process.env.ADMIN_USERNAME || 'admin'} / ${process.env.ADMIN_PASSWORD || 'admin123'}`);
+  } else {
+    console.log(`  حساب ادمین: ${process.env.ADMIN_USERNAME || 'admin'} (رمز از ADMIN_PASSWORD)`);
+  }
 });

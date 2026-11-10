@@ -44,10 +44,11 @@ docker run -d \
 
 | نقش | نام کاربری | رمز عبور |
 |------|-----------|----------|
-| مدیر | `admin` | `admin123` |
-| کاربر | `user` | `user123` |
+| مدیر | `admin` | همان `ADMIN_PASSWORD` که در `.env` گذاشتید (**اجباری**) |
+| سایر نقش‌ها | `user` / `warehouse` / `sales` / `tech` | فقط اگر رمز همان نقش را در `.env` بدهید ساخته می‌شوند |
 
-> ⚠️ **هشدار امنیتی:** حتماً قبل از استفاده‌ی واقعی، رمزهای عبور پیش‌فرض و `JWT_SECRET` را تغییر دهید (پایین را ببینید).
+> 🔐 از نسخه‌ی ۱.۳۴.۰ هیچ رمز پیش‌فرضی ساخته نمی‌شود: بدون `ADMIN_PASSWORD` دستور `docker compose up`
+> با پیام روشن متوقف می‌شود. رمز قوی: `openssl rand -base64 18`. در سرور واقعی رمز ضعیف/پیش‌فرض رد می‌شود.
 
 ---
 
@@ -79,9 +80,9 @@ services:
       - JWT_SECRET=${JWT_SECRET:-}
       - JWT_EXPIRES_HOURS=${JWT_EXPIRES_HOURS:-12}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD را در .env بگذارید}
       - USER_USERNAME=${USER_USERNAME:-user}
-      - USER_PASSWORD=${USER_PASSWORD:-user123}
+      - USER_PASSWORD=${USER_PASSWORD:-}
       - LICENSE_ENFORCE=${LICENSE_ENFORCE:-0}
       - TRIAL_DEVICE_LIMIT=${TRIAL_DEVICE_LIMIT:-25}
       - TRIAL_LIMIT_ENFORCE=${TRIAL_LIMIT_ENFORCE:-0}
@@ -108,12 +109,12 @@ volumes:
 | `JWT_SECRET` | ⚠️ مقدار نمونه | کلید امضای توکن — در تولید حتماً تصادفی و طولانی باشد (`openssl rand -hex 32`) |
 | `JWT_EXPIRES_HOURS` | `12` | مدت اعتبار توکن ورود (ساعت) |
 | `ADMIN_USERNAME` | `admin` | نام کاربری مدیر (فقط در راه‌اندازی اولیه) |
-| `ADMIN_PASSWORD` | `admin123` | رمز مدیر (فقط در راه‌اندازی اولیه) |
+| `ADMIN_PASSWORD` | **اجباری** | رمز مدیر (فقط راه‌اندازی اولیه؛ بدون آن کانتینر بالا نمی‌آید) |
 | `USER_USERNAME` | `user` | نام کاربری کاربر عادی (فقط در راه‌اندازی اولیه) |
-| `USER_PASSWORD` | `user123` | رمز کاربر عادی (فقط در راه‌اندازی اولیه) |
-| `WAREHOUSE_USERNAME` / `WAREHOUSE_PASSWORD` | `warehouse` / `warehouse123` | کاربر انباردار (نقش warehouse — فقط راه‌اندازی اولیه) |
-| `SALES_USERNAME` / `SALES_PASSWORD` | `sales` / `sales123` | کاربر کارشناس فروش (نقش sales — فقط راه‌اندازی اولیه) |
-| `TECH_USERNAME` / `TECH_PASSWORD` | `tech` / `tech123` | کاربر کارشناس فنی (نقش tech — فقط راه‌اندازی اولیه) |
+| `USER_PASSWORD` | خالی | رمز کاربر عادی — خالی = ساخته نمی‌شود (بعداً از UI) |
+| `WAREHOUSE_USERNAME` / `WAREHOUSE_PASSWORD` | `warehouse` / خالی | کاربر انباردار (نقش warehouse — فقط راه‌اندازی اولیه) |
+| `SALES_USERNAME` / `SALES_PASSWORD` | `sales` / خالی | کاربر کارشناس فروش (نقش sales — فقط راه‌اندازی اولیه) |
+| `TECH_USERNAME` / `TECH_PASSWORD` | `tech` / خالی | کاربر کارشناس فنی (نقش tech — فقط راه‌اندازی اولیه) |
 | `LICENSE_ENFORCE` | `0` | `1` = اعمال انقضای لایسنس (پس از پایان اعتبار سامانه بلاک می‌شود)؛ `0` = فقط هشدار |
 | `TRIAL_DEVICE_LIMIT` | `25` | سقف تعداد تجهیزات در طرح آزمایشی (trial) |
 | `TRIAL_LIMIT_ENFORCE` | `0` | `1` = بلاک افزودن تجهیز/سریال پس از رسیدن به سقف آزمایشی (خطای ۴۰۲ + پیام ارتقا)؛ `0` = فقط گزارش در داشبورد |

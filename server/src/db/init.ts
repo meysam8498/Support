@@ -53,18 +53,57 @@ export function seedDatabase() {
 
   console.log('→ وارد کردن داده‌های اولیه (seed)...');
 
-  // --- کاربران پیش‌فرض (پنج نقش) ----------------------------------------------
-  const defaults: { u: string; p: string; name: string; role: 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer' }[] = [
-    { u: process.env.ADMIN_USERNAME || 'admin',           p: process.env.ADMIN_PASSWORD || 'admin123',      name: 'مدیر سیستم',                    role: 'admin' },
-    { u: process.env.WAREHOUSE_USERNAME || 'warehouse',   p: process.env.WAREHOUSE_PASSWORD || 'warehouse123', name: 'انباردار (پیش‌فرض)',           role: 'warehouse' },
-    { u: process.env.SALES_USERNAME || 'sales',           p: process.env.SALES_PASSWORD || 'sales123',      name: 'کارشناس فروش (پیش‌فرض)',          role: 'sales' },
-    { u: process.env.TECH_USERNAME || 'tech',             p: process.env.TECH_PASSWORD || 'tech123',        name: 'کارشناس فنی (پیش‌فرض)',           role: 'tech' },
-    { u: process.env.USER_USERNAME || 'user',             p: process.env.USER_PASSWORD || 'user123',        name: 'کاربر فقط‌مشاهده',                role: 'viewer' },
+  // --- کاربران اولیه (پنج نقش) ------------------------------------------------
+  // رمزها هرگز به مقدار پیش‌فرضِ معلوم برنمی‌گردند مگر در حالت توسعه/اپ دسکتاپ:
+  //   • استقرار واقعی (NODE_ENV=production بدون DESKTOP_SHELL):
+  //       - ادمین: نبود/رمز ضعیف → استثنا (سرور بالا نمی‌آید، پیام روشن)
+  //       - بقیه‌ی نقش‌ها: نبود/رمز ضعیف → آن حساب ساخته نمی‌شود (بعداً از UI)
+  //   • توسعه یا اپ دسکتاپ: همان پیش‌فرض‌های قبلی با هشدار (ورود اولیه‌ی مشتری)
+  const desktopShell = process.env.DESKTOP_SHELL === '1';
+  const strict = process.env.NODE_ENV === 'production' && !desktopShell;
+  const WEAK = new Set(['admin123', 'user123', 'warehouse123', 'sales123', 'tech123', 'password', '12345678']);
+  const readPw = (name: string) => (process.env[name] ?? '').trim();
+
+  const roles: { u: string; env: string; fallback: string; name: string; role: 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer' }[] = [
+    { u: process.env.ADMIN_USERNAME || 'admin',         env: 'ADMIN_PASSWORD',     fallback: 'admin123',     name: 'مدیر سیستم',           role: 'admin' },
+    { u: process.env.WAREHOUSE_USERNAME || 'warehouse', env: 'WAREHOUSE_PASSWORD', fallback: 'warehouse123', name: 'انباردار (پیش‌فرض)',   role: 'warehouse' },
+    { u: process.env.SALES_USERNAME || 'sales',         env: 'SALES_PASSWORD',     fallback: 'sales123',     name: 'کارشناس فروش (پیش‌فرض)', role: 'sales' },
+    { u: process.env.TECH_USERNAME || 'tech',           env: 'TECH_PASSWORD',      fallback: 'tech123',      name: 'کارشناس فنی (پیش‌فرض)',  role: 'tech' },
+    { u: process.env.USER_USERNAME || 'user',           env: 'USER_PASSWORD',      fallback: 'user123',      name: 'کاربر فقط‌مشاهده',       role: 'viewer' },
   ];
+
+  const defaults: typeof roles = [];
+  for (const r of roles) {
+    const provided = readPw(r.env);
+    const weak =
+      !provided ||
+      WEAK.has(provided) ||
+      provided.length < 8 ||
+      // مقادیر نمونه‌ای که کاربر فراموش می‌کند عوض کند (please-set…، change-me…)
+      /^(please|change[-_]?me|your[-_ ]?password)/i.test(provided);
+    if (!weak) { defaults.push({ ...r, fallback: provided }); continue; }
+    if (r.role === 'admin' && strict) {
+      throw new Error(
+        `${r.env} تنظیم نشده یا رمز پیش‌فرض/کوتاه است — در استقرار واقعی (NODE_ENV=production) سرور بالا نمی‌آید. ` +
+        `یک رمز قوی بگذارید: openssl rand -base64 18`
+      );
+    }
+    if (strict) {
+      console.warn(`⚠ حساب «${r.u}» ساخته نشد: ${r.env} تنظیم نشده یا رمز پیش‌فرض است (از UI می‌توانید بسازید).`);
+      continue;
+    }
+    if (provided) {
+      console.warn(`⚠ ${r.env} کوتاه/پیش‌فرض است («${r.u}») — در توسعه پذیرفته شد؛ برای استقرار رمز قوی بگذارید.`);
+      defaults.push({ ...r, fallback: provided });
+    } else {
+      console.warn(`⚠ ${r.env} تنظیم نشده — رمز پیش‌فرض «${r.fallback}» برای حساب «${r.u}» استفاده شد (فقط توسعه/اپ دسکتاپ).`);
+      defaults.push(r);
+    }
+  }
   for (const d of defaults) {
     db.prepare(
       `INSERT INTO users (username, password_hash, full_name, email, role) VALUES (?, ?, ?, ?, ?)`
-    ).run(d.u, hashPassword(d.p), d.name, `${d.u}@example.com`, d.role);
+    ).run(d.u, hashPassword(d.fallback), d.name, `${d.u}@example.com`, d.role);
   }
 
   // ------------------------------------------------------------------
