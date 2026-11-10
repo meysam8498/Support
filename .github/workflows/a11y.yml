@@ -147,9 +147,11 @@ jobs:
         if: always()
         run: cat reports/a11y-scan/REPORT.md >> "$GITHUB_STEP_SUMMARY"
 
+      # لاگ سرور فقط در صورت شکست دیباگ مفید است — چاپ کوتاه (باید داخل خودِ
+      # بلوک run باشد: خط توضیحِ کم‌تورفتگی وسط بلوک، YAML را نامعتبر می‌کرد و
+      # GitHub کل workflow را با «startup failure» رد می‌کرد).
       - name: خاموشی سرور
         if: always()
         run: |
           if [ -f /tmp/a11y-server.pid ]; then kill "$(cat /tmp/a11y-server.pid)" 2>/dev/null || true; fi
-        # لاگ سرور فقط در صورت شکست دیباگ مفید است — چاپ کوتاه:
           tail -20 /tmp/a11y-server.log 2>/dev/null || true
