@@ -235,7 +235,7 @@ export default function BackupsPage() {
                 <>
                   <p className="font-bold text-stone-700 dark:text-stone-200 truncate" dir="ltr" title={status.push.target}>{status.push.target}</p>
                   {status.push.last && (
-                    <p className={status.push.last.ok ? 'text-success mt-1' : 'text-coral-dark dark:text-coral-light mt-1'}>
+                    <p className={status.push.last.ok ? 'text-green-700 dark:text-green-400 mt-1' : 'text-coral-dark dark:text-coral-light mt-1'}>
                       {status.push.last.ok ? 'آخرین push موفق' : `آخرین push ناموفق: ${status.push.last.error ?? '?'}`}
                     </p>
                   )}
@@ -327,7 +327,7 @@ export default function BackupsPage() {
                   <tr key={`${h.ranAt}-${i}`} className="border-t border-dashed border-stone-200 dark:border-stone-700 hover:bg-brand-50/40 dark:hover:bg-brand-900/15 transition-colors">
                     <td className="px-3 py-2 fa-nums text-stone-700 dark:text-stone-200" dir="ltr">{new Date(h.ranAt).toLocaleString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' })}</td>
                     <td className="px-3 py-2 text-stone-600 dark:text-stone-300">{BACKUP_SOURCE_LABEL[h.source] ?? h.source}</td>
-                    <td className={`px-3 py-2 ${h.ok ? 'text-success' : 'text-coral-dark dark:text-coral-light'}`}>
+                    <td className={`px-3 py-2 ${h.ok ? 'text-green-700 dark:text-green-400' : 'text-coral-dark dark:text-coral-light'}`}>
                       {h.ok ? '✓ سالم' : `✗ ناموفق${h.error ? ` — ${h.error}` : ''}`}
                     </td>
                     <td className="px-3 py-2 text-stone-600 dark:text-stone-300">{h.sizeBytes != null ? fmtSize(h.sizeBytes) : '—'}</td>
