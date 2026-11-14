@@ -35,6 +35,6 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
-    "puppeteer-core": "^25.14.0"
+    "puppeteer-core": "^25.17.0"
   }
 }
