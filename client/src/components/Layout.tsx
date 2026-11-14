@@ -209,10 +209,12 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
               onClick={() => setThemeMenuOpen(!themeMenuOpen)}
               className={`btn-ghost min-h-[36px] px-2.5 text-base shrink-0 ${themeMenuOpen ? 'bg-brand-50 dark:bg-brand-900/30' : ''}`}
               title={t.toggleTheme}
-              aria-label={t.toggleTheme}
               aria-haspopup="menu"
               aria-expanded={themeMenuOpen}
             >
+              {/* نام دسترس‌پذیر از محتوای دکمه ساخته می‌شود؛ aria-label جداگانه
+                  باعث label-content-name-mismatch در axe می‌شد. */}
+              <span className="sr-only">{t.toggleTheme}</span>
               {themeMode === 'system' ? '🖥️' : isDark ? '☀️' : '🌙'}
               <span className="text-[10px] text-stone-400 mr-0.5">{themeMenuOpen ? '▴' : '▾'}</span>
             </button>
@@ -261,8 +263,10 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
               }`}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              aria-label="منوی کاربر"
             >
+              {/* «منوی کاربر:» بخشی از محتوای دکمه است تا نام دسترس‌پذیر شامل
+                  متن دیده‌شدنی (نام کاربر و فلش) باشد. */}
+              <span className="sr-only">منوی کاربر: </span>
               <span className="w-6.5 h-6.5 w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-[11px] font-bold text-white">
                 {user?.fullName?.charAt(0) ?? '؟'}
               </span>
