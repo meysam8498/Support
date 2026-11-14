@@ -194,7 +194,8 @@ body {
     @apply mt-1.5 flex items-center gap-1 text-xs text-error;
   }
   .form-banner-error {
-    @apply flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-error dark:border-red-900/60 dark:bg-red-900/20 dark:text-coral-light;
+    /* text-red-700 روی red-50 = ۵.۹:۱ (text-error #EF4444 فقط ۳.۶:۱ بود) */
+    @apply flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/20 dark:text-coral-light;
   }
   .form-banner-success {
     @apply flex items-start gap-2 rounded-lg border border-green-200 bg-success/10 px-3 py-2.5 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300;

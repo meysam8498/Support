@@ -127,35 +127,35 @@ export default function DevicesPage() {
             onClick={() => setStatusFilter('')}
             className={statusFilter === '' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
-            همه <span className="fa-nums opacity-70">({toFa(devices.length)})</span>
+            همه <span className="fa-nums">({toFa(devices.length)})</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter('active')}
             className={statusFilter === 'active' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
-            فعال <span className="fa-nums opacity-70">({toFa(statusCounts.active)})</span>
+            فعال <span className="fa-nums">({toFa(statusCounts.active)})</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter('defective')}
             className={statusFilter === 'defective' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
-            معیوب <span className="fa-nums opacity-70">({toFa(statusCounts.defective)})</span>
+            معیوب <span className="fa-nums">({toFa(statusCounts.defective)})</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter('replacing')}
             className={statusFilter === 'replacing' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
-            در حال تعویض <span className="fa-nums opacity-70">({toFa(statusCounts.replacing)})</span>
+            در حال تعویض <span className="fa-nums">({toFa(statusCounts.replacing)})</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter('replaced')}
             className={statusFilter === 'replaced' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
-            تعویض‌شده <span className="fa-nums opacity-70">({toFa(statusCounts.replaced)})</span>
+            تعویض‌شده <span className="fa-nums">({toFa(statusCounts.replaced)})</span>
           </button>
         </div>
       </div>

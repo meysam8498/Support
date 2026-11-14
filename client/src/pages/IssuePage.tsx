@@ -294,7 +294,7 @@ export default function IssuePage() {
       {/* ─────────── فرم صدور ─────────── */}
       <section className="card card-elevated card-accent p-5">
         <h1 className="heading-display text-lg font-bold text-stone-900 dark:text-stone-50 mb-1">🧾 پنل ساخت لایسنس (فروشنده)</h1>
-        <p className="text-xs text-stone-400 mb-4 leading-6">
+        <p className="text-xs text-stone-600 dark:text-stone-400 mb-4 leading-6">
           کد فعال‌سازی مشتری را اینجا بسازید — جدای از صفحه‌ی «ورود کد لایسنس» مشتری.
           کد فقط یک‌بار نمایش داده می‌شود؛ کپی/دانلود و نگهداری کنید. کلید خصوصی باید روی این سرور باشد
           (<code className="font-mono" dir="ltr">keys/license_private.pem</code> یا ENV <code className="font-mono" dir="ltr">LICENSE_ISSUE_KEY</code>).
@@ -306,7 +306,7 @@ export default function IssuePage() {
             <select value={plan} onChange={(e) => setPlan(e.target.value)} className="input" aria-label="طرح">
               {PLANS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
-            <p className="text-[11px] text-stone-400 mt-1">
+            <p className="text-[11px] text-stone-600 dark:text-stone-400 mt-1">
               قیمت: {PLAN_PRICES[plan]} تومان — مدت خریداری‌شده: {PLANS.find((p) => p.value === plan)?.months ? `${toFa(PLANS.find((p) => p.value === plan)!.months!)} ماه` : 'دائمی'}
             </p>
           </div>
@@ -347,7 +347,7 @@ export default function IssuePage() {
                 {' '}· اعتبار ورود کد: <b className="fa-nums">{toFa(issued.code_days)} روز</b>
               </span>
             </div>
-            <p className="text-[11px] text-stone-400">شناسه‌ی کد: <code className="font-mono" dir="ltr">{issued.jti}</code></p>
+            <p className="text-[11px] text-stone-600 dark:text-stone-400">شناسه‌ی کد: <code className="font-mono" dir="ltr">{issued.jti}</code></p>
             <textarea readOnly value={issued.code} rows={5} dir="ltr" className="input w-full font-mono text-xs leading-5 bg-white/60 dark:bg-black/20" />
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => copyText(issued.code, 'code')} className="btn-secondary text-sm">
@@ -396,7 +396,7 @@ export default function IssuePage() {
             </div>
           )}
         </div>
-        <p className="text-xs text-stone-400 mb-3 leading-6">
+        <p className="text-xs text-stone-600 dark:text-stone-400 mb-3 leading-6">
           اگر کلید خصوصی امضا لو رفته باشد یا برای شیفت دوره‌ای امنیتی، از همین پنل بدون SSH چرخش کنید:
           کلید جدید جایگزین و کلید قبلی بایگانی می‌شود؛ <b className="text-stone-500 dark:text-stone-300">کدهای قبلی تا پایان اعتبارشان معتبر می‌مانند</b>
           و صدور از این پنل بلافاصله با کلید جدید ادامه می‌یابد.
@@ -427,7 +427,7 @@ export default function IssuePage() {
             {testBusy ? '… در حال صدور' : '🧪 صدور کد آزمایشی با کلید جدید'}
           </button>
           {rotResult && !testIssue && (
-            <span className="block mt-1.5 text-[11px] text-stone-400 leading-5">
+            <span className="block mt-1.5 text-[11px] text-stone-600 dark:text-stone-400 leading-5">
               چرخش انجام شد — برای اطمینان از اینکه صدور با کلید جدید (kid={rotResult.new_kid}) انجام می‌شود، این دکمه را بزنید.
             </span>
           )}
@@ -459,7 +459,7 @@ export default function IssuePage() {
             <button type="button" onClick={() => copyText(testIssue.code, 'code')} className="btn-ghost text-xs">
               {copied === 'code' ? '✓ کپی شد' : '📋 کپی کد آزمایشی'}
             </button>
-            {testIssue.note && <p className="text-[11px] text-stone-400 leading-5">{testIssue.note}</p>}
+            {testIssue.note && <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-5">{testIssue.note}</p>}
           </div>
         )}
 
@@ -474,7 +474,7 @@ export default function IssuePage() {
             )}
           </div>
           {!rotHistory || rotHistory.count === 0 ? (
-            <p className="text-xs text-stone-400 leading-6">
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-6">
               {rotHistory && !rotHistory.exists
                 ? 'رجیستری چرخش هنوز ساخته نشده است (keys/rotations.jsonl) — با اولین چرخش از همین پنل ثبت می‌شود.'
                 : 'هنوز چرخشی ثبت نشده است.'}
@@ -484,7 +484,7 @@ export default function IssuePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-stone-400 border-b border-stone-200 dark:border-stone-700">
+                    <tr className="text-stone-600 dark:text-stone-400 border-b border-stone-200 dark:border-stone-700">
                       <th className="text-right py-2 px-2">تاریخ چرخش</th>
                       <th className="text-right py-2 px-2">کلید قدیمی</th>
                       <th className="text-right py-2 px-2">کلید جدید</th>
@@ -525,7 +525,7 @@ export default function IssuePage() {
                   ⚠ {toFa(rotHistory.invalid_lines)} سطر خراب/ناقص در رجیستری نادیده گرفته شد.
                 </p>
               )}
-              <p className="text-[10px] text-stone-400 mt-2 font-mono truncate" dir="ltr" title="مسیر رجیستری روی سرور">{rotHistory.path}</p>
+              <p className="text-[10px] text-stone-600 dark:text-stone-400 mt-2 font-mono truncate" dir="ltr" title="مسیر رجیستری روی سرور">{rotHistory.path}</p>
             </>
           )}
         </div>
@@ -538,12 +538,12 @@ export default function IssuePage() {
           <a href="/api/license/sales-export.csv" className="btn-secondary text-xs" title="خروجی CSV صدور/فعال‌سازی/ابطال برای حسابداری">📤 خروجی CSV فروش</a>
         </div>
         {ledger.length === 0 ? (
-          <p className="text-sm text-stone-400">هنوز کدی از این پنل صادر نشده است.</p>
+          <p className="text-sm text-stone-600 dark:text-stone-400">هنوز کدی از این پنل صادر نشده است.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs text-stone-400 border-b border-stone-200 dark:border-stone-700">
+                <tr className="text-xs text-stone-600 dark:text-stone-400 border-b border-stone-200 dark:border-stone-700">
                   <th className="text-right py-2 px-2">تاریخ صدور</th>
                   <th className="text-right py-2 px-2">طرح</th>
                   <th className="text-right py-2 px-2">دارنده</th>

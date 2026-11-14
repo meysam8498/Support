@@ -509,7 +509,7 @@ export default function LogViewerPage() {
                 </span>
               )}
               {lastAt && (
-                <span className="text-stone-400 fa-nums">
+                <span className="text-stone-600 dark:text-stone-400 fa-nums">
                   آخرین خواندن: {formatLogTime(new Date(lastAt).toISOString())}
                 </span>
               )}
@@ -573,7 +573,7 @@ export default function LogViewerPage() {
                         : 'chip-default'
                     }`}
                   >
-                    {f.label} <span className="fa-nums opacity-80">({toFa(countOf(f.value))})</span>
+                    {f.label} <span className="fa-nums">({toFa(countOf(f.value))})</span>
                   </button>
                 ))}
               </div>
@@ -621,7 +621,7 @@ export default function LogViewerPage() {
             <ul className="divide-y divide-stone-100 dark:divide-stone-800">
               {visible.map((e, i) => (
                 <li key={i} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-1.5 text-xs leading-6">
-                  <span className="shrink-0 text-stone-400 fa-nums" title={e.t}>
+                  <span className="shrink-0 text-stone-600 dark:text-stone-400 fa-nums" title={e.t}>
                     {formatLogTime(e.t)}
                   </span>
                   <span
@@ -644,7 +644,7 @@ export default function LogViewerPage() {
       )}
 
       {/* توضیح فنی */}
-      <p className="text-[11px] text-stone-400 leading-5">
+      <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-5">
         سرور آخرین {toFa(500)} لاگ را در حافظه نگه می‌دارد. در نسخه‌ی ادمین تا {toFa(500)} خط آخر با نشست خوانده
         می‌شود؛ در استقرار پشتیبانی سقف {toFa(200)} خط است و توکن همان مقدار{' '}
         <span dir="ltr" className="font-mono">SUPPORT_LOG_TOKEN</span> یا{' '}

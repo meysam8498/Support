@@ -134,7 +134,7 @@ export default function PartFormPage() {
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="label">{t.partNumber1} <span className="text-[10px] text-stone-400">(از کاتالوگ — عنوان و مشخصات خودکار پر می‌شود)</span></label>
+            <label className="label">{t.partNumber1} <span className="text-[10px] text-stone-600 dark:text-stone-400">(از کاتالوگ — عنوان و مشخصات خودکار پر می‌شود)</span></label>
             <CatalogAutocomplete
               value={form.part_number_1}
               placeholder="پارت‌نامبر… (۲+ نویسه)"

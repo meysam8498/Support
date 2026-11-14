@@ -183,7 +183,7 @@ export default function ListsPage() {
         ))}
         <button
           onClick={() => setShowCatalog(true)}
-          className={`px-3 py-1.5 rounded-lg text-sm transition ${showCatalog ? 'bg-brand-600 text-white' : 'bg-gold/15 text-[#8a6d00] dark:text-gold-light border border-gold/40 hover:bg-gold/25'}`}
+          className={`px-3 py-1.5 rounded-lg text-sm transition ${showCatalog ? 'bg-brand-600 text-white' : 'bg-gold/15 text-[#6b5200] dark:text-gold-light border border-gold/40 hover:bg-gold/25'}`}
           title="تعریف مرجع قطعات — ویرایش و ادغام"
         >
           🧩 کاتالوگ قطعات

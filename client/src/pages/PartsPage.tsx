@@ -247,7 +247,7 @@ export default function PartsPage() {
                   : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'
               }
             >
-              {label} <span className="fa-nums opacity-70">({toFa(count)})</span>
+              {label} <span className="fa-nums">({toFa(count)})</span>
             </button>
           ))}
         </div>

@@ -177,7 +177,7 @@ export default function BackupsPage() {
   if (!isAdmin) {
     return (
       <div className="card text-center py-12">
-        <p className="text-stone-500 dark:text-stone-400">دسترسی به مدیریت بکاپ‌ها فقط برای کارشناس مجاز (ادمین) امکان‌پذیر است.</p>
+        <p className="text-stone-600 dark:text-stone-400">دسترسی به مدیریت بکاپ‌ها فقط برای کارشناس مجاز (ادمین) امکان‌پذیر است.</p>
       </div>
     );
   }
@@ -190,7 +190,7 @@ export default function BackupsPage() {
           <span className="text-3xl">🗄️</span>
           <div>
             <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">مدیریت پشتیبان‌ها</h1>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">بکاپ روزانه خودکار + بکاپ دستی + بازیابی با تأیید دو مرحله‌ای</p>
+            <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">بکاپ روزانه خودکار + بکاپ دستی + بازیابی با تأیید دو مرحله‌ای</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -209,19 +209,19 @@ export default function BackupsPage() {
       <div className="card">
         <h2 className="text-sm font-bold text-stone-800 dark:text-stone-100 mb-2.5">وضعیت زمان‌بند خودکار</h2>
         {loading && !status ? (
-          <p className="text-sm text-stone-500 dark:text-stone-400">{t.loading}</p>
+          <p className="text-sm text-stone-600 dark:text-stone-400">{t.loading}</p>
         ) : status ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
             <div className="rounded-lg bg-surface-raised dark:bg-stone-800/60 p-2.5">
-              <p className="text-stone-500 dark:text-stone-400 mb-0.5">زمان‌بندی</p>
+              <p className="text-stone-600 dark:text-stone-400 mb-0.5">زمان‌بندی</p>
               <p className="font-bold fa-nums text-stone-700 dark:text-stone-200">هر روز ~ ساعت {toFa(String(status.atHour).padStart(2, '0'))}:۳۰</p>
             </div>
             <div className="rounded-lg bg-surface-raised dark:bg-stone-800/60 p-2.5">
-              <p className="text-stone-500 dark:text-stone-400 mb-0.5">نگهداری</p>
+              <p className="text-stone-600 dark:text-stone-400 mb-0.5">نگهداری</p>
               <p className="font-bold fa-nums text-stone-700 dark:text-stone-200">{toFa(status.keep)} نسخه‌ی آخر</p>
             </div>
             <div className="rounded-lg bg-surface-raised dark:bg-stone-800/60 p-2.5">
-              <p className="text-stone-500 dark:text-stone-400 mb-0.5">آخرین اجرا</p>
+              <p className="text-stone-600 dark:text-stone-400 mb-0.5">آخرین اجرا</p>
               <p className="font-bold fa-nums text-stone-700 dark:text-stone-200" dir="ltr">
                 {status.lastRun ? new Date(status.lastRun).toLocaleString('fa-IR-u-nu-latn', { timeZone: 'Asia/Tehran' }) : '—'}
               </p>
@@ -230,7 +230,7 @@ export default function BackupsPage() {
               )}
             </div>
             <div className="rounded-lg bg-surface-raised dark:bg-stone-800/60 p-2.5">
-              <p className="text-stone-500 dark:text-stone-400 mb-0.5">Push خارجی</p>
+              <p className="text-stone-600 dark:text-stone-400 mb-0.5">Push خارجی</p>
               {status.push.enabled ? (
                 <>
                   <p className="font-bold text-stone-700 dark:text-stone-200 truncate" dir="ltr" title={status.push.target}>{status.push.target}</p>
@@ -241,7 +241,7 @@ export default function BackupsPage() {
                   )}
                 </>
               ) : (
-                <p className="text-stone-500 dark:text-stone-400">غیرفعال (BACKUP_PUSH_TARGET تنظیم نشده)</p>
+                <p className="text-stone-600 dark:text-stone-400">غیرفعال (BACKUP_PUSH_TARGET تنظیم نشده)</p>
               )}
             </div>
           </div>
@@ -255,9 +255,9 @@ export default function BackupsPage() {
           <span className="chip chip-default fa-nums text-xs">{toFa(items.length)} فایل</span>
         </div>
         {loading && items.length === 0 ? (
-          <p className="p-8 text-center text-stone-500 dark:text-stone-400 text-sm">{t.loading}</p>
+          <p className="p-8 text-center text-stone-600 dark:text-stone-400 text-sm">{t.loading}</p>
         ) : items.length === 0 ? (
-          <p className="p-8 text-center text-stone-500 dark:text-stone-400 text-sm">هنوز بکاپی گرفته نشده — با دکمه‌ی «بکاپ دستی الان» شروع کنید.</p>
+          <p className="p-8 text-center text-stone-600 dark:text-stone-400 text-sm">هنوز بکاپی گرفته نشده — با دکمه‌ی «بکاپ دستی الان» شروع کنید.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -306,7 +306,7 @@ export default function BackupsPage() {
           pngFileName="backup-history.png"
         />
         {(status?.history ?? []).length === 0 ? (
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-3">هنوز اجرایی در تاریخچه ثبت نشده است — هر بکاپ (روزانه/دستی/ایمنی) اینجا ثبت می‌شود.</p>
+          <p className="text-xs text-stone-600 dark:text-stone-400 mt-3">هنوز اجرایی در تاریخچه ثبت نشده است — هر بکاپ (روزانه/دستی/ایمنی) اینجا ثبت می‌شود.</p>
         ) : (
           <div className="mt-3 overflow-x-auto" role="region" aria-label="جدول جزئیات اجراهای بکاپ (قابل اسکرول افقی)" tabIndex={0}>
             <table className="w-full text-xs">

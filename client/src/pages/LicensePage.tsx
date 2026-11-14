@@ -127,23 +127,23 @@ export default function LicensePage() {
           {status && daysLeftBadge}
         </div>
         {loading ? (
-          <p className="text-stone-400 text-sm">{t.loading}</p>
+          <p className="text-stone-600 dark:text-stone-400 text-sm">{t.loading}</p>
         ) : status ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <div><p className="text-stone-400 text-xs mb-1">ثبت‌شده برای</p><p className="text-stone-700 dark:text-stone-200 font-medium truncate">{status.licensed_to || '—'}</p></div>
-            <div><p className="text-stone-400 text-xs mb-1">شروع</p><p className="text-stone-700 dark:text-stone-200 fa-nums">{fmtDate(status.starts_at)}</p></div>
-            <div><p className="text-stone-400 text-xs mb-1">پایان</p><p className="text-stone-700 dark:text-stone-200 fa-nums">{fmtDate(status.expires_at)}</p></div>
-            <div><p className="text-stone-400 text-xs mb-1">یادداشت</p><p className="text-stone-700 dark:text-stone-200 truncate">{status.notes || '—'}</p></div>
+            <div><p className="text-stone-600 dark:text-stone-400 text-xs mb-1">ثبت‌شده برای</p><p className="text-stone-700 dark:text-stone-200 font-medium truncate">{status.licensed_to || '—'}</p></div>
+            <div><p className="text-stone-600 dark:text-stone-400 text-xs mb-1">شروع</p><p className="text-stone-700 dark:text-stone-200 fa-nums">{fmtDate(status.starts_at)}</p></div>
+            <div><p className="text-stone-600 dark:text-stone-400 text-xs mb-1">پایان</p><p className="text-stone-700 dark:text-stone-200 fa-nums">{fmtDate(status.expires_at)}</p></div>
+            <div><p className="text-stone-600 dark:text-stone-400 text-xs mb-1">یادداشت</p><p className="text-stone-700 dark:text-stone-200 truncate">{status.notes || '—'}</p></div>
           </div>
         ) : (
-          <p className="text-coral text-sm">{error || t.noData}</p>
+          <p className="text-red-700 dark:text-coral-light text-sm">{error || t.noData}</p>
         )}
       </section>
 
       {/* ─────────── ورود کد لایسنس ─────────── */}
       <section className="card p-5">
         <h2 className="font-display text-base font-bold text-stone-900 dark:text-stone-50 mb-1">🔐 ورود کد لایسنس</h2>
-        <p className="text-xs text-stone-400 mb-3 leading-6">
+        <p className="text-xs text-stone-600 dark:text-stone-400 mb-3 leading-6">
           کد فعال‌سازی دریافتی از فروشنده را وارد کنید. اعتبارسنجی کاملاً محلی و آفلاین است (تأیید امضا با
           کلید عمومی داخل سامانه). سفارش کد و هرگونه درخواست (تمدید، استرداد، ابطال): M.Ijadi@Hotmail.com
         </p>
@@ -175,7 +175,7 @@ export default function LicensePage() {
               <p>اعتبار ورود کد: {preview.expires_in_days !== null ? `${preview.expires_in_days} روز` : '—'}</p>
               {preview.note && <p className="col-span-2">یادداشت: {preview.note}</p>}
             </div>
-            <p className="text-xs text-stone-400 pt-1">برای ثبت نهایی، دکمه‌ی «🔓 فعال‌سازی» را بزنید.</p>
+            <p className="text-xs text-stone-600 dark:text-stone-400 pt-1">برای ثبت نهایی، دکمه‌ی «🔓 فعال‌سازی» را بزنید.</p>
           </div>
         )}
       </section>
