@@ -20,6 +20,15 @@ export const t = {
   loginTitle: 'ورود به سامانه',
   loginBtn: 'ورود',
 
+  // تغییر رمز عبور ( خود کاربر + تغییر اجباری رمز پیش‌فرض )
+  changePasswordTitle: 'تغییر رمز عبور',
+  changePasswordHint: 'برای امنیت حساب، رمز پیش‌فرض یا موقت خود را با یک رمز شخصی عوض کنید.',
+  currentPassword: 'رمز فعلی',
+  confirmPassword: 'تکرار رمز جدید',
+  changePasswordBtn: 'ذخیره رمز جدید',
+  changePasswordMenu: 'تغییر رمز عبور',
+  changePasswordSessionsNote: 'با تغییر رمز، همه‌ی نشست‌های قبلی این حساب بسته می‌شوند.',
+
   // ناوبری
   navDashboard: 'داشبورد',
   navDevices: 'تجهیزات',

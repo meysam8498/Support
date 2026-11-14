@@ -64,7 +64,8 @@ export function seedDatabase() {
   const WEAK = new Set(['admin123', 'user123', 'warehouse123', 'sales123', 'tech123', 'password', '12345678']);
   const readPw = (name: string) => (process.env[name] ?? '').trim();
 
-  const roles: { u: string; env: string; fallback: string; name: string; role: 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer' }[] = [
+  // mustChange: رمزی که پیش‌فرض/ضعیف است باید در اولین ورود عوض شود
+  const roles: { u: string; env: string; fallback: string; name: string; role: 'admin' | 'warehouse' | 'sales' | 'tech' | 'viewer'; mustChange?: boolean }[] = [
     { u: process.env.ADMIN_USERNAME || 'admin',         env: 'ADMIN_PASSWORD',     fallback: 'admin123',     name: 'مدیر سیستم',           role: 'admin' },
     { u: process.env.WAREHOUSE_USERNAME || 'warehouse', env: 'WAREHOUSE_PASSWORD', fallback: 'warehouse123', name: 'انباردار (پیش‌فرض)',   role: 'warehouse' },
     { u: process.env.SALES_USERNAME || 'sales',         env: 'SALES_PASSWORD',     fallback: 'sales123',     name: 'کارشناس فروش (پیش‌فرض)', role: 'sales' },
@@ -92,18 +93,24 @@ export function seedDatabase() {
       console.warn(`⚠ حساب «${r.u}» ساخته نشد: ${r.env} تنظیم نشده یا رمز پیش‌فرض است (از UI می‌توانید بسازید).`);
       continue;
     }
+    // پرچم اجبار تغییر رمز صریحاً با ENV روشن می‌شود (اپ دسکتاپ آن را در زمان اجرا می‌دهد):
+    //   REQUIRE_PASSWORD_CHANGE=1 → رمز پیش‌فرض/موقت باید در اولین ورود عوض شود.
+    // در dev/تست روشن نیست تا smoke-testها و تست‌های API با رمز پیش‌فرض کار کنند؛
+    // در production هم بدون رمز قوی اصلاً بالا نمی‌آید (پس رمز پیش‌فرض وجود ندارد).
+    const mustChange = process.env.REQUIRE_PASSWORD_CHANGE === '1';
     if (provided) {
-      console.warn(`⚠ ${r.env} کوتاه/پیش‌فرض است («${r.u}») — در توسعه پذیرفته شد؛ برای استقرار رمز قوی بگذارید.`);
-      defaults.push({ ...r, fallback: provided });
+      console.warn(`⚠ ${r.env} کوتاه/پیش‌فرض است («${r.u}») — در توسعه پذیرفته شد${mustChange ? '؛ تغییر اجباری در اولین ورود' : ''}.`);
+      defaults.push({ ...r, fallback: provided, mustChange });
     } else {
       console.warn(`⚠ ${r.env} تنظیم نشده — رمز پیش‌فرض «${r.fallback}» برای حساب «${r.u}» استفاده شد (فقط توسعه/اپ دسکتاپ).`);
-      defaults.push(r);
+      defaults.push({ ...r, mustChange });
     }
   }
   for (const d of defaults) {
+    // رمز پیش‌فرض/ضعیف → کاربر باید در اولین ورود رمز را عوض کند (پرچم must_change_password)
     db.prepare(
-      `INSERT INTO users (username, password_hash, full_name, email, role) VALUES (?, ?, ?, ?, ?)`
-    ).run(d.u, hashPassword(d.fallback), d.name, `${d.u}@example.com`, d.role);
+      `INSERT INTO users (username, password_hash, full_name, email, role, must_change_password) VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(d.u, hashPassword(d.fallback), d.name, `${d.u}@example.com`, d.role, d.mustChange ? 1 : 0);
   }
 
   // ------------------------------------------------------------------

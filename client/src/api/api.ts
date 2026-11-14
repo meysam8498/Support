@@ -40,6 +40,19 @@ async function request<T>(
   }
 
   const data = await res.json().catch(() => ({}));
+
+  // ۴۲۸ = رمز باید عوض شود (رمز پیش‌فرض/بازنشانی‌شده). نشست پاک نمی‌شود؛
+  // کاربر با همان توکن به صفحه‌ی تغییر رمز می‌رود و بعد ادامه می‌دهد.
+  if (res.status === 428 && (data as { must_change_password?: boolean }).must_change_password) {
+    if (!window.location.pathname.startsWith('/change-password')) {
+      window.location.href = '/change-password';
+    }
+    const err = new Error(data.error || 'پیش از ادامه، رمز عبور خود را تغییر دهید.') as Error & { status?: number; mustChangePassword?: boolean };
+    err.status = 428;
+    err.mustChangePassword = true;
+    throw err;
+  }
+
   if (!res.ok) {
     // 402 = سقف نسخه‌ی آزمایشی — پیام ارتقا برجسته‌تر
     if (res.status === 402 && data.upgrade) {
@@ -87,7 +100,10 @@ export async function getWithHeaders<T>(
  * کند یا ریدایرکت شود (باگ قبلی: نمایش پیام اشتباه «نشست منقضی است» به‌جای
  * «نام کاربری یا رمز عبور نادرست است» هنگام رمز اشتباه).
  */
-export async function loginRequest(username: string, password: string): Promise<{ token: string; user: User }> {
+export async function loginRequest(
+  username: string,
+  password: string,
+): Promise<{ token: string; user: User; must_change_password?: boolean }> {
   const res = await fetch(`${BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -95,7 +111,7 @@ export async function loginRequest(username: string, password: string): Promise<
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
-  return data as { token: string; user: User };
+  return data as { token: string; user: User; must_change_password?: boolean };
 }
 
 export const api = {

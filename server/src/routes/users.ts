@@ -58,6 +58,8 @@ router.post('/', (req, res) => {
   const b = parsed.data;
   const db = getDb();
   try {
+    // رمز تعیین‌شده توسط ادمین مستقیم معتبر است (ادمین رمز را به کاربر تحویل می‌دهد)؛
+    // اجبار تغییر فقط برای رمزهای پیش‌فرض/بازنشانی‌شده اعمال می‌شود.
     const info = db.prepare(`
       INSERT INTO users (username, password_hash, full_name, email, role, active)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -100,6 +102,12 @@ router.put('/:id', (req, res) => {
       active    = COALESCE(?, active)
     WHERE id = ?
   `).run(b.full_name ?? null, b.email ?? null, b.role ?? null, b.active ?? null, id);
+
+  // تغییر نقش یا وضعیت باید نشست فعلی کاربر را باطل کند؛ وگرنه توکن قدیمی
+  // تا ۱۲ ساعت با نقش قبلی معتبر می‌ماند.
+  if (b.role !== undefined || b.active !== undefined) {
+    db.prepare(`UPDATE users SET token_version = token_version + 1 WHERE id = ?`).run(id);
+  }
   res.json({ ok: true });
 });
 
@@ -112,7 +120,10 @@ router.post('/:id/reset-password', (req, res) => {
   const id = Number(req.params.id);
   const exists = getDb().prepare(`SELECT id FROM users WHERE id = ?`).get(id);
   if (!exists) return res.status(404).json({ error: 'کاربر یافت نشد.' });
-  getDb().prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(hashPassword(parsed.data.new_password), id);
+  // بازنشانی رمز توسط ادمین: همه‌ی نشست‌های کاربر باطل و ورود بعدی با تغییر رمز اجباری است
+  getDb()
+    .prepare(`UPDATE users SET password_hash = ?, must_change_password = 1, token_version = token_version + 1 WHERE id = ?`)
+    .run(hashPassword(parsed.data.new_password), id);
   res.json({ ok: true });
 });
 

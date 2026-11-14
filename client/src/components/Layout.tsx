@@ -39,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
 
 /** آیتم‌های منوی کاربر — ابزارهای مدیریتی و اطلاعاتی */
 const USER_MENU_ITEMS: NavItem[] = [
+  { to: '/change-password', icon: '🔐', label: t.changePasswordMenu },
   { to: '/about', icon: 'ℹ️', label: 'درباره‌ی سامانه' },
   { to: '/issue', icon: '🧾', label: 'پنل ساخت لایسنس', roles: ['admin'] },
   { to: '/users', icon: '👥', label: t.navUsers, roles: ['admin'] },

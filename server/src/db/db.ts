@@ -86,6 +86,9 @@ const COLUMN_MIGRATIONS: ColumnMigration[] = [
   // users — active
   { table: 'users', column: 'active', ddl: "INTEGER NOT NULL DEFAULT 1" },
   { table: 'users', column: 'email', ddl: "TEXT" },
+  // ابطال نشست و اجبار تغییر رمز (۱.۳۵) — نصب‌های قدیمی هر دو ستون را ندارند
+  { table: 'users', column: 'token_version', ddl: "INTEGER NOT NULL DEFAULT 0" },
+  { table: 'users', column: 'must_change_password', ddl: "INTEGER NOT NULL DEFAULT 0" },
   // parts — اتصال به کاتالوگ قطعات
   { table: 'parts', column: 'catalog_id', ddl: "INTEGER REFERENCES part_catalog(id)" },
   // license_info — فعال‌سازی با کد لایسنس (1.17)

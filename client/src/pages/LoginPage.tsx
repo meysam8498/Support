@@ -46,7 +46,8 @@ export default function LoginPage() {
       localStorage.setItem('token', data.token);
       // نقش و نام کاربر بلافاصله در کل برنامه به‌روز شود (بدون نیاز به رفرش).
       setUser(data.user as User);
-      navigate('/');
+      // رمز پیش‌فرض/موقت → اول تغییر رمز، بعد ورود به برنامه
+      navigate(data.must_change_password ? '/change-password' : '/', { replace: data.must_change_password === true });
     } catch (err) {
       setError((err as Error).message);
     }

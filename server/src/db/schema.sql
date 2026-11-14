@@ -23,6 +23,10 @@ CREATE TABLE IF NOT EXISTS users (
   email         TEXT,
   role          TEXT NOT NULL CHECK (role IN ('admin', 'warehouse', 'sales', 'tech', 'viewer')) DEFAULT 'viewer',
   active        INTEGER NOT NULL DEFAULT 1,           -- 1 = فعال، 0 = غیرفعال
+  -- ابطال نشست: هر تغییر رمز/نقش/فعال‌سازی این مقدار را بالا می‌برد و توکن‌های قبلی باطل می‌شوند
+  token_version INTEGER NOT NULL DEFAULT 0,
+  -- 1 = کاربر باید پیش از هر کار دیگری رمز خود را عوض کند (رمز پیش‌فرض نصب)
+  must_change_password INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -247,6 +251,23 @@ CREATE TABLE IF NOT EXISTS procurement (
   FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE CASCADE,
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
+
+-- --------------------------------------------------------
+-- لاگ ممیزی کسب‌وکار — هر درخواست نوشتنیِ احراز‌شده (ماندگار، برخلاف حلقه‌ی لاگ سرور)
+-- فقط متادیتا: کاربر/مسیر/کد وضعیت/خلاصه‌ی بدنه‌ی بدون رمز و توکن
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS audit_log (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  at       TEXT NOT NULL DEFAULT (datetime('now')),
+  user_id  INTEGER,
+  username TEXT,
+  method   TEXT NOT NULL,
+  path     TEXT NOT NULL,
+  status   INTEGER,
+  summary  TEXT,
+  ip       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(id DESC);
 
 -- --------------------------------------------------------
 -- لایسنس سامانه (فقط یک ردیف id=1) — طرح/بازه/دارنده

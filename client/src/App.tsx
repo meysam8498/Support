@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import DevicesPage from './pages/DevicesPage';
 import DeviceFormPage from './pages/DeviceFormPage';
@@ -84,6 +85,8 @@ export function AppRoutes() {
     <React.Suspense fallback={<PageLoading />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* تغییر رمز — بیرون از Layout تا در حالت «تغییر اجباری» منوی کامل دیده نشود */}
+        <Route path="/change-password" element={<Protected><ChangePasswordPage /></Protected>} />
         <Route path="/" element={<Protected><Layout /></Protected>}>
           <Route index element={<DashboardPage />} />
           <Route path="devices" element={<DevicesPage />} />

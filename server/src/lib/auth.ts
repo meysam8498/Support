@@ -127,6 +127,8 @@ export interface JwtPayload {
   username: string;
   role: Role;
   fullName: string;
+  /** نسخه‌ی نشست — با تغییر رمز/نقش/غیرفعال‌سازی بالا می‌رود و توکن‌های قدیمی باطل می‌شوند */
+  tv: number;
 }
 
 /** صدور توکن احراز هویت */

@@ -138,6 +138,8 @@ fn spawn_server(debug: bool) -> std::io::Result<Child> {
         // اپ دسکتاپ: حساب اولیه با رمز پیش‌فرض ساخته می‌شود (ورود اولیه‌ی مشتری)؛
         // بدون این پرچم، گارد رمزهای پیش‌فرض در حالت production جلوی seed را می‌گیرد.
         ("DESKTOP_SHELL", "1".to_string()),
+        // امنیت: رمز پیش‌فرض نصب دسکتاپ باید در اولین ورود عوض شود (پرچم must_change_password)
+        ("REQUIRE_PASSWORD_CHANGE", "1".to_string()),
         // فرانت بیلدشده داخل رزورس‌ها — سرور همان را سرو می‌کند (پنجره به localhost ناوبری می‌کند)
         ("CLIENT_DIST", paths::resource_path("client").display().to_string()),
     ];
