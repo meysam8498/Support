@@ -1,0 +1,41 @@
+# به‌روزرسانی خودکار وابستگی‌ها — هفتگی، گروه‌بندی‌شده تا نویز کم باشد
+version: 2
+updates:
+  # سرور + کلاینت + ریشه (workspaces)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+    labels: [dependencies]
+
+  # اپ موبایل (پکیج مستقل)
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels: [dependencies, mobile]
+
+  # اپ دسکتاپ (Tauri / Rust)
+  - package-ecosystem: cargo
+    directory: /desktop/src-tauri
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels: [dependencies, desktop]
+
+  # اکشن‌های استفاده‌شده در workflowها
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencies, ci]

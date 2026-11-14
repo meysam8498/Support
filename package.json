@@ -5,6 +5,9 @@
   "author": "Meysam Ijadi <M.Ijadi@Hotmail.com>",
   "license": "LicenseRef-Proprietary-Commercial",
   "description": "سامانه‌ی مدیریت تجهیزات و قطعات یدکی - Equipment & Spare Parts Management System",
+  "engines": {
+    "node": ">=22.5 <25"
+  },
   "workspaces": [
     "server",
     "client"
