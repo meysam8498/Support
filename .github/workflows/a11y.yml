@@ -11,10 +11,9 @@
 # خروجی: reports/a11y-scan/REPORT.md + latest.json به‌عنوان artifact بارگذاری
 # می‌شود (حتی اگر اسکن مشکل پیدا کند) — گزارش همیشه در دسترس است.
 #
-# حساسیت: به‌طور پیش‌فرض گزارش‌دهی است (نقض → job قرمز نمی‌شود) چون هنوز
-# نقض‌های شناخته‌شده وجود دارد. با workflow_dispatch گزینه‌ی strict را می‌توان
-# روشن کرد تا هر نقض → exit 1 → قرمز؛ بعد از صفر شدن نقض‌ها در REPORT.md
-# می‌توانید strict را پیش‌فرض کنید و این کار را در merge گیت کنید.
+# حساسیت: strict است — هر نقض (axe، خطای JS، خطای شبکه، سرریز افقی) → exit 1
+# → job قرمز. برای دیدن گزارش بدون قرمز شدن، محلی با «npm run a11y:scan»
+# (بدون --strict) اجرا کنید؛ گزارش همیشه به‌عنوان artifact آپلود می‌شود.
 #
 # محیط ایزوله: دیتابیس/بکاپ/کلیدهای لایسنس همه در tmp/repos — DB واقعی و
 # keys/ پروژه هرگز لمس نمی‌شود (همان الگوی server/tests/helpers/spawn-server.ts).
@@ -26,11 +25,6 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-    inputs:
-      strict:
-        description: 'نقض دسترس‌پذیری → job قرمز شود (exit 1)؟'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -123,17 +117,11 @@ jobs:
           A11Y_API: http://localhost:4000
         run: node scripts/a11y-seed.mjs
 
-      - name: اسکن دسترس‌پذیری (۲۳ صفحه × تم روشن/تاریک)
+      - name: اسکن دسترس‌پذیری (۲۳ صفحه × تم روشن/تاریک) — strict
         env:
           A11Y_CLIENT: http://localhost:4000
           A11Y_API: http://localhost:4000
-          STRICT: ${{ inputs.strict || false }}
-        run: |
-          if [ "$STRICT" = "true" ]; then
-            node scripts/a11y-scan.mjs --strict
-          else
-            node scripts/a11y-scan.mjs
-          fi
+        run: node scripts/a11y-scan.mjs --strict
 
       - name: بارگذاری گزارش (artifact)
         if: always()
