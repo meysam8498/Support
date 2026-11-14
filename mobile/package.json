@@ -21,7 +21,7 @@
     "react-native-vision-camera": "^4.3.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.7",
+    "@babel/core": "^8.1.0",
     "@react-native-community/cli": "^13.2.0",
     "@react-native-community/cli-platform-android": "^13.2.0",
     "@react-native/babel-preset": "0.73.21",
