@@ -20,6 +20,7 @@ import { inspect } from 'node:util';
 import { getDb, applySchema, migrateSchema } from './db/db.js';
 import { seedIfEmpty } from './db/init.js';
 import { authRequired, requireRole, errorHandler } from './middleware/auth.js';
+import { auditMiddleware, listAudit } from './lib/audit.js';
 import { startBackupScheduler, backupOnce, backupStatus, backupHistory, listBackups, backupDir, prepareRestore, confirmRestore, restorePendingMarkerPath } from './lib/backup.js';
 import authRoutes from './routes/auth.js';
 import listsRoutes from './routes/lists.js';
@@ -100,11 +101,14 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], // tailwind inline style که در بیلد فرانت تولید می‌شود؛ و فونت‌هایگوگل که index.html لینک می‌کند
-      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+      // style attributes (۷ مورد style={{...}} در کامپوننت‌ها) بدون unsafe-inline کار نمی‌کنند؛
+      // اسکریپت اما هیچ inline‌ای لازم ندارد (index.html فقط اسکریپت خارجی ماژول دارد).
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      // فونت‌ها self-host‌اند (client/public/fonts) — دیگر دامنه‌ی گوگل لازم نیست
+      fontSrc: ["'self'", 'data:'],
       imgSrc: ["'self'", 'data:'],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // vite build با chunk inline کار می‌کند
-      connectSrc: ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'], // preconnect فونت‌هایگوگل در index.html
+      scriptSrc: ["'self'"],
+      connectSrc: ["'self'"],
     },
   },
   crossOriginResourcePolicy: { policy: 'same-site' },
@@ -127,11 +131,22 @@ if (CORS_ALLOWED.length > 0) {
 
 app.use(express.json({ limit: '5mb' }));
 
+// ──────────────────────────────────────────────────────────────
+// لاگ ممیزی (۱.۳۵) — هر POST/PUT/PATCH/DELETE احراز‌شده در جدول audit_log
+// ثبت می‌شود (بدون مقدار رمز/توکن/کد لایسنس). ماندگار و قابل جست‌وجو برای ادمین.
+// ──────────────────────────────────────────────────────────────
+app.use('/api', auditMiddleware);
+
 // ─────────────────────────────────────────────────────────────
 // rate limit (۱.۲۸.۰) — auto (مسیر login و بررسی/فعال‌سازی لایسنس)
 // ─────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'تلاش زیاد برای ورود — ۱۵ دقیقه صبر کنید.' } });
 const licenseLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'درخواست زیاد روی لایسنس — یک دقیقه صبر کنید.' } });
+// سقف کلیِ نرم برای بقیه‌ی APIها — پیش از این فقط login/license محدود بودند و
+// مسیرهای سنگین (جست‌وجو/واردات/گزارش) در برابر حلقه‌ی درخواست بی‌حفاظت بودند.
+// عدد بالا انتخاب شده تا اسکن a11y و کاربران عادی هیچ‌وقت به آن نخورند.
+const generalLimiter = rateLimit({ windowMs: 60 * 1000, limit: 1200, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'درخواست‌های زیاد — یک دقیقه صبر کنید.' } });
+app.use('/api', generalLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/license', licenseLimiter);
 
@@ -267,6 +282,12 @@ app.get('/api/backups/:file', authRequired, requireRole('admin'), (req, res) => 
   res.setHeader('Content-Disposition', `attachment; filename="${f}"`);
   res.setHeader('Cache-Control', 'no-store');
   res.sendFile(filePath);
+});
+// لاگ ممیزی — فقط ادمین؛ جدیدترین رخدادها اول
+app.get('/api/audit', authRequired, requireRole('admin'), (req, res) => {
+  const limit = parseInt(String(req.query.limit ?? ''), 10) || 100;
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ items: listAudit(limit) });
 });
 app.use('/api/reports', authRequired, reportsRoutes);
 app.use('/api/users', authRequired, usersRoutes); // فقط مدیر (درون روتر چک می‌شود)

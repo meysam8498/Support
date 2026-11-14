@@ -197,6 +197,14 @@ function createCatalogEntries(
 }
 
 /** تبدیل شماره‌ی ستون اکسل (۱-مبنا) به حرف: 1→A, 27→AA */
+// سقف ورودی (۱.۳۵): فایل/متن بزرگ حافظه و CPU را می‌بلعد و هیچ استفاده‌ی واقعی ندارد.
+// ۴ مگابایت ≈ چند ده هزار ردیف معمولی؛ عدد ردیف هم جداگانه سقف دارد تا ردیف‌های خیلی کوتاه
+// نتوانند با حجم کم، حلقه‌ی پردازش را بزرگ کنند.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 5000;
+const ROWS_LIMIT_MSG = `تعداد ردیف‌ها بیش از سقف ${MAX_IMPORT_ROWS} است — فایل را تقسیم کنید.`;
+const SIZE_LIMIT_MSG = 'حجم فایل بیش از ۴ مگابایت است — فایل کوچک‌تری بفرستید.';
+
 function colLetter(index1: number): string {
   let s = '';
   let n = index1;
@@ -313,6 +321,7 @@ function analyzeTextPayload(req: Request, res: Response): Analysis | null {
 
   const rows = textToColumnRows(text);
   if (rows.length === 0) { res.status(400).json({ error: 'متن خالی است — لیست را از اکسل کپی و اینجا بچسبانید.' }); return null; }
+  if (rows.length > MAX_IMPORT_ROWS) { res.status(400).json({ error: ROWS_LIMIT_MSG }); return null; }
 
   const rowTemplate = parseRowTemplate(rows);
   if (!rowTemplate) {
@@ -506,6 +515,10 @@ function analyzeUpload(body: Buffer, contentType: string, res: Response): Analys
     res.status(400).json({ error: 'فایل اکسل با نام «file» ارسال نشده است.' });
     return null;
   }
+  if (file.data.length > MAX_UPLOAD_BYTES) {
+    res.status(413).json({ error: SIZE_LIMIT_MSG });
+    return null;
+  }
 
   let workbook: XLSX.WorkBook;
   try {
@@ -521,6 +534,10 @@ function analyzeUpload(body: Buffer, contentType: string, res: Response): Analys
   }
 
   const rows = sheetToColumnRows(sheet);
+  if (rows.length > MAX_IMPORT_ROWS) {
+    res.status(400).json({ error: ROWS_LIMIT_MSG });
+    return null;
+  }
 
   // --- تشخیص قالب ردیف‌محور (نسخه‌ی ۲): هر ردیف = یک قطعه با سریال تجهیز مشخص ---
   // این قالب برای «یک سرور با چند قطعه» است: تفکیک صریح می‌گوید هر قطعه روی
@@ -1135,6 +1152,11 @@ function buildRowTemplatePreview(analysis: Analysis): Record<string, unknown> {
 }
 
 function handleUpload(body: Buffer, contentType: string, req: Request, res: Response): void {
+  // سقف خام بدنه — پیش از هر تجزیه‌ای (multipart/base64)
+  if (body.length > MAX_UPLOAD_BYTES + 64 * 1024) {
+    res.status(413).json({ error: SIZE_LIMIT_MSG });
+    return;
+  }
   const analysis = analyzeUpload(body, contentType, res);
   if (!analysis) return;
 
