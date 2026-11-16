@@ -6,6 +6,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, getPaged, type Device } from '../api/api';
+import { useListParams } from '../lib/useListParams';
+import SortTh from '../components/SortTh';
+import PaginationBar from '../components/PaginationBar';
 import { useAuth } from '../context/AuthContext';
 import { t } from '../i18n/fa';
 import { formatJalaliLong, toFa } from '../lib/date';
@@ -15,36 +18,27 @@ import Alert from '../components/Alert';
 
 export default function DevicesPage() {
   const { canWrite } = useAuth();
-  const PAGE_SIZE = 50;
+  const {
+    page, pageSize: PAGE_SIZE, q, sort, dir, get,
+    patch, goPage, toggleSort, searchInput, setSearchInput, queryString,
+  } = useListParams();
+  const statusFilter = get('status');
   const [devices, setDevices] = useState<Device[]>([]);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<{ total: number; byStatus: Record<string, number> } | null>(null);
-  const [search, setSearch] = useState('');
-  const [q, setQ] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [pageError, setPageError] = useState('');
-
-  // تایپ جست‌وجو → کوئری سمت سرور (۳۰۰ms تأخیر تا هر کلید یک درخواست نسازد)
-  useEffect(() => {
-    const timer = setTimeout(() => { setQ(search.trim()); setPage(0); }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   // شمارش‌های بج فیلتر از سرور می‌آید — فهرست صفحه‌بندی‌شده همه‌ی ردیف‌ها را ندارد
   useEffect(() => {
     api.get<{ total: number; byStatus: Record<string, number> }>('/devices/stats').then(setStats).catch(() => {});
   }, []);
 
-  const load = async (pageIdx = page) => {
+  const load = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(pageIdx * PAGE_SIZE) });
-      if (q) params.set('q', q);
-      if (statusFilter) params.set('status', statusFilter);
-      const r = await getPaged<Device>(`/devices?${params.toString()}`);
+      const r = await getPaged<Device>(`/devices?${queryString({ status: statusFilter })}`);
       setDevices(r.items);
       setTotal(r.total);
     } catch {
@@ -55,11 +49,11 @@ export default function DevicesPage() {
   };
 
   useEffect(() => {
-    load(page);
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, q, statusFilter]);
+  }, [page, q, statusFilter, sort, dir]);
 
-  const pickStatus = (value: string) => { setStatusFilter(value); setPage(0); };
+  const pickStatus = (value: string) => patch({ status: value || undefined, page: undefined });
 
   const remove = async (id: number) => {
     if (!confirm(t.confirmDelete)) return;
@@ -123,8 +117,8 @@ export default function DevicesPage() {
         <input
           className="input max-w-md"
           placeholder={t.search}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+                      value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
         />
         <div className="flex gap-2 flex-wrap">
           <button
@@ -173,12 +167,12 @@ export default function DevicesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-surface-card dark:bg-stone-800/80 text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-700">
-                  <th className="text-right px-3 py-3 font-semibold">پروژه</th>
-                  <th className="text-right px-3 py-3 font-semibold">سریال</th>
+                  <SortTh sortKey="project" label="پروژه" sort={sort} dir={dir} onToggle={toggleSort} />
+                  <SortTh sortKey="serial" label="سریال" sort={sort} dir={dir} onToggle={toggleSort} />
                   <th className="text-right px-3 py-3 font-semibold">نوع</th>
                   <th className="text-right px-3 py-3 font-semibold">برند</th>
                   <th className="text-right px-3 py-3 font-semibold">{t.status}</th>
-                  <th className="text-right px-3 py-3 font-semibold">تحویل مشتری</th>
+                  <SortTh sortKey="date" label="تحویل مشتری" sort={sort} dir={dir} onToggle={toggleSort} />
                   <th className="text-right px-3 py-3 font-semibold">پایان گارانتی</th>
                   <th className="text-right px-3 py-3 font-semibold">قطعات</th>
                   <th className="text-right px-3 py-3 font-semibold">{t.actions}</th>
@@ -246,31 +240,7 @@ export default function DevicesPage() {
         </div>
       )}
 
-      {total > 0 && (
-        <div className="flex items-center justify-between gap-3 flex-wrap text-xs text-stone-600 dark:text-stone-300">
-          <span className="fa-nums">
-            نمایش {toFa(page * PAGE_SIZE + 1)}–{toFa(Math.min(total, (page + 1) * PAGE_SIZE))} از {toFa(total)}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-secondary min-h-[32px] px-3 text-xs"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
-              قبلی
-            </button>
-            <button
-              type="button"
-              className="btn-secondary min-h-[32px] px-3 text-xs"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={(page + 1) * PAGE_SIZE >= total}
-            >
-              بعدی
-            </button>
-          </div>
-        </div>
-      )}
+      <PaginationBar page={page} pageSize={PAGE_SIZE} total={total} onPage={goPage} />
     </div>
   );
 }

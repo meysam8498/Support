@@ -126,7 +126,7 @@ async function spawnAt(port: number, env: Record<string, string> = {}): Promise<
     const text = await res.text();
     let data: unknown = null;
     try { data = JSON.parse(text); } catch { data = text; }
-    return { status: res.status, data: data as T };
+    return { status: res.status, data: data as T, headers: res.headers };
   }
 
   async function login(user = 'admin', pass = 'admin123') {

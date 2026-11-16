@@ -60,11 +60,33 @@ describe('صفحه‌بندی تجهیزات', () => {
     expect(defective.data[0].main_serial).toBe('PAG-002');
   });
 
+  it('مرتب‌سازی سریال صعودی/نزولی و پروژه', async () => {
+    const asc = await s.api<Dev[]>('GET', '/api/devices?sort=serial&dir=asc', { token });
+    expect(asc.data.map((d) => d.main_serial)).toEqual(['PAG-001', 'PAG-002', 'PAG-003']);
+    const desc = await s.api<Dev[]>('GET', '/api/devices?sort=serial&dir=desc', { token });
+    expect(desc.data.map((d) => d.main_serial)).toEqual(['PAG-003', 'PAG-002', 'PAG-001']);
+    // ستون نامعتبر → مرتب‌سازی پیش‌فرض (بدون خطا)
+    const bad = await s.api<Dev[]>('GET', '/api/devices?sort=;DROP TABLE devices--&dir=asc', { token });
+    expect(bad.status).toBe(200);
+    expect(bad.data.length).toBe(3);
+  });
+
   it('stats شمارش کل و به‌تفکیک وضعیت را برمی‌گرداند', async () => {
     const r = await s.api<{ total: number; byStatus: Record<string, number> }>('GET', '/api/devices/stats', { token });
     expect(r.data.total).toBe(3);
     expect(r.data.byStatus.active).toBe(2);
     expect(r.data.byStatus.defective).toBe(1);
+  });
+
+  it('X-Total-Count در صفحه‌ی معمولی، فیلترشده و صفحه‌ی خالی درست است', async () => {
+    const page = await s.api<Dev[]>('GET', '/api/devices?limit=2&offset=0', { token });
+    expect(page.headers.get('x-total-count')).toBe('3');
+    const filtered = await s.api<Dev[]>('GET', '/api/devices?limit=2&status=active', { token });
+    expect(filtered.headers.get('x-total-count')).toBe('2');
+    // offset فراتر از انتها: صفحه خالی است و شمارش از مسیر جایگزین می‌آید
+    const beyond = await s.api<Dev[]>('GET', '/api/devices?limit=2&offset=100', { token });
+    expect(beyond.data).toEqual([]);
+    expect(beyond.headers.get('x-total-count')).toBe('3');
   });
 
   it('limit معتبر نباید بیشتر از ۵۰۰ پذیرفته شود', async () => {
@@ -112,6 +134,13 @@ describe('صفحه‌بندی و تکراری‌های قطعات', () => {
     const r = await s.api<Part[]>('GET', '/api/parts?q=قطعه ج', { token });
     expect(r.data).toHaveLength(1);
     expect(r.data[0].title).toBe('قطعه ج');
+  });
+
+  it('مرتب‌سازی قطعات روی سریال در دو جهت', async () => {
+    const asc = await s.api<{ part_serial_number: string }[]>('GET', '/api/parts?sort=serial&dir=asc&limit=50', { token });
+    expect(asc.data.map((p) => p.part_serial_number)).toEqual(['SN-A', 'SN-B', 'SN-C']);
+    const desc = await s.api<{ part_serial_number: string }[]>('GET', '/api/parts?sort=serial&dir=desc&limit=50', { token });
+    expect(desc.data.map((p) => p.part_serial_number)).toEqual(['SN-C', 'SN-B', 'SN-A']);
   });
 
   it('stats وضعیت‌ها و تعداد پارت‌نامبر تکراری را می‌دهد', async () => {

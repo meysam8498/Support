@@ -6,8 +6,11 @@
 // (به‌روزرسانی گروهی tech_specs — بدون حذف داده).
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api, getPaged, type Part } from '../api/api';
+import { useListParams } from '../lib/useListParams';
+import SortTh from '../components/SortTh';
+import PaginationBar from '../components/PaginationBar';
 import { t } from '../i18n/fa';
 import { formatJalaliLong, toFa } from '../lib/date';
 import StatusBadge from '../components/StatusBadge';
@@ -21,19 +24,18 @@ type InlineField = 'part_serial_number' | 'part_number_1' | 'tech_specs';
 
 export default function PartsPage() {
   const { canWrite } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    page, pageSize: PAGE_SIZE, q, sort, dir, get,
+    patch, goPage, toggleSort, searchInput, setSearchInput, queryString,
+  } = useListParams();
   // فیلتر مرجع کاتالوگ از URL (لینک «نصب‌شده‌ها» در تب کاتالوگ)
-  const catalogFilter = searchParams.get('catalog') ?? '';
+  const catalogFilter = get('catalog');
+  const statusFilter = get('status');
+  const dupOnly = get('dup') === '1';
   const [catalogTitle, setCatalogTitle] = useState('');
-  const PAGE_SIZE = 50;
   const [parts, setParts] = useState<Part[]>([]);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<{ total: number; byStatus: Record<string, number>; dupPn: number } | null>(null);
-  const [search, setSearch] = useState('');
-  const [q, setQ] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dupOnly, setDupOnly] = useState(false);
-  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [descDialog, setDescDialog] = useState<{ pn: string; group: Part[] } | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -69,15 +71,12 @@ export default function PartsPage() {
     } catch { /* */ }
   };
 
-  const load = async (pageIdx = page) => {
+  const load = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(pageIdx * PAGE_SIZE) });
-      if (catalogFilter) params.set('catalog', catalogFilter);
-      if (statusFilter) params.set('status', statusFilter);
-      if (dupOnly) params.set('dup', '1');
-      if (q) params.set('q', q);
-      const r = await getPaged<Part>(`/parts?${params.toString()}`);
+      const r = await getPaged<Part>(
+        `/parts?${queryString({ catalog: catalogFilter, status: statusFilter, dup: dupOnly ? '1' : undefined })}`,
+      );
       setParts(r.items);
       setTotal(r.total);
       if (catalogFilter) {
@@ -93,20 +92,14 @@ export default function PartsPage() {
     }
   };
 
-  // تایپ جست‌وجو → کوئری سمت سرور (۳۰۰ms تأخیر)
-  useEffect(() => {
-    const timer = setTimeout(() => { setQ(search.trim()); setPage(0); }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
   useEffect(() => { loadStats(); }, []);
 
   useEffect(() => {
-    load(page);
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogFilter, page, q, statusFilter, dupOnly]);
+  }, [catalogFilter, page, q, statusFilter, dupOnly, sort, dir]);
 
-  const pickStatus = (value: string) => { setStatusFilter(value); setPage(0); };
+  const pickStatus = (value: string) => patch({ status: value || undefined, page: undefined });
 
   // جست‌وجوی فوری سریال — debounce ۲۵۰ms به سرور (سرور case/فاصله‌ناحساس)
   useEffect(() => {
@@ -194,7 +187,7 @@ export default function PartsPage() {
           </span>
           <button
             type="button"
-            onClick={() => setSearchParams({}, { replace: true })}
+            onClick={() => patch({ catalog: undefined, page: undefined })}
             className="btn-ghost min-h-[30px] text-xs"
           >
             ✕ حذف فیلتر
@@ -206,8 +199,8 @@ export default function PartsPage() {
         <input
           className="input max-w-md"
           placeholder={t.search}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
         />
         {/* جست‌وجوی فوری سریال — نتیجه‌ی آنی از سرور */}
         <div className="relative">
@@ -250,7 +243,7 @@ export default function PartsPage() {
             <input
               type="checkbox"
               checked={dupOnly}
-              onChange={(e) => { setDupOnly(e.target.checked); setPage(0); }}
+              onChange={(e) => patch({ dup: e.target.checked ? '1' : undefined, page: undefined })}
               className="w-4 h-4 accent-brand-500"
             />
             <span className="chip bg-gold/15 text-[#8a6d00] dark:text-gold-light border border-gold/40">
@@ -298,12 +291,12 @@ export default function PartsPage() {
               <tr className="bg-brand-50 dark:bg-brand-900/50 text-brand-800 dark:text-brand-200 border-b-2 border-dashed border-brand-100 dark:border-brand-800">
                 <th className="text-right px-3 py-3 font-bold">{t.partTitle}</th>
                 <th className="text-right px-3 py-3 font-bold">{t.partNumber1}</th>
-                <th className="text-right px-3 py-3 font-bold">{t.partSerial}</th>
+                <SortTh sortKey="serial" label={t.partSerial} sort={sort} dir={dir} onToggle={toggleSort} className="text-right px-3 py-3 font-bold" />
                 <th className="text-right px-3 py-3 font-bold">مشخصات فنی</th>
-                <th className="text-right px-3 py-3 font-bold">پروژه</th>
+                <SortTh sortKey="project" label="پروژه" sort={sort} dir={dir} onToggle={toggleSort} className="text-right px-3 py-3 font-bold" />
                 <th className="text-right px-3 py-3 font-bold">دستگاه</th>
                 <th className="text-right px-3 py-3 font-bold">{t.status}</th>
-                <th className="text-right px-3 py-3 font-bold">تاریخ فروش</th>
+                <SortTh sortKey="date" label="تاریخ فروش" sort={sort} dir={dir} onToggle={toggleSort} className="text-right px-3 py-3 font-bold" />
                 {canWrite && dupPnCount > 0 && <th className="text-right px-3 py-3 font-bold"><span className="sr-only">عملیات</span></th>}
               </tr>
             </thead>
@@ -429,30 +422,8 @@ export default function PartsPage() {
         </div>
       ) : null}
 
-      {total > 0 && !serialSearch.trim() && (
-        <div className="flex items-center justify-between gap-3 flex-wrap text-xs text-stone-600 dark:text-stone-300">
-          <span className="fa-nums">
-            نمایش {toFa(page * PAGE_SIZE + 1)}–{toFa(Math.min(total, (page + 1) * PAGE_SIZE))} از {toFa(total)}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-secondary min-h-[32px] px-3 text-xs"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
-              قبلی
-            </button>
-            <button
-              type="button"
-              className="btn-secondary min-h-[32px] px-3 text-xs"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={(page + 1) * PAGE_SIZE >= total}
-            >
-              بعدی
-            </button>
-          </div>
-        </div>
+      {!serialSearch.trim() && (
+        <PaginationBar page={page} pageSize={PAGE_SIZE} total={total} onPage={goPage} />
       )}
 
       {ownerDialog && (

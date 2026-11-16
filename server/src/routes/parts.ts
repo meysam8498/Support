@@ -9,6 +9,7 @@ import { getDb } from '../db/db.js';
 import { datePairFromJalali } from '../lib/date.js';
 import { requireRole } from '../middleware/auth.js';
 import { upsertCatalogEntry } from './partCatalog.js';
+import { orderBy, pageParams, readTotal } from '../lib/pagination.js';
 
 const router = Router();
 
@@ -107,10 +108,10 @@ router.get('/', (req, res) => {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   const pnQ = typeof req.query.pn === 'string' ? req.query.pn.trim() : '';
   const dupOnly = req.query.dup === '1' || req.query.dup === 'true';
-  const limitRaw = Number(req.query.limit);
-  const offsetRaw = Number(req.query.offset);
-  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null;
-  const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
+  // مرتب‌سازی سفارشی — فقط ستون‌های مجاز (whitelist)
+  const sortKey = typeof req.query.sort === 'string' ? req.query.sort : '';
+  const dir = req.query.dir === 'asc' ? 'ASC' : req.query.dir === 'desc' ? 'DESC' : '';
+  const { pageSql } = pageParams(req.query as Record<string, unknown>);
 
   const where: string[] = [];
   const params: (number | string)[] = [];
@@ -171,13 +172,24 @@ router.get('/', (req, res) => {
       ${whereSql}
     ) t`;
   const dupWhere = dupOnly ? "WHERE u.pn_key <> '' AND u.pn_count > 1" : '';
-  const total = (db
-    .prepare(`SELECT COUNT(*) AS c FROM (${winSql}) u ${dupWhere}`)
-    .get(...params) as { c: number }).c;
-  const pageSql = limit !== null ? ` LIMIT ${limit} OFFSET ${offset}` : '';
-  const rows = db
-    .prepare(`SELECT u.* FROM (${winSql}) u ${dupWhere} ORDER BY u.created_at DESC${pageSql}`)
-    .all(...params);
+  const orderSql = orderBy(
+    sortKey,
+    dir,
+    {
+      serial: 'u.part_serial_number COLLATE NOCASE',
+      date: 'u.sold_at_gregorian',
+      project: 'u.project_name COLLATE NOCASE',
+    },
+    { column: 'u.created_at', dir: 'DESC' },
+    'u.id',
+  );
+  const rawRows = db
+    .prepare(`SELECT COUNT(*) OVER () AS total_count, u.* FROM (${winSql}) u ${dupWhere} ${orderSql}${pageSql}`)
+    .all(...params) as ({ total_count: number } & Record<string, unknown>)[];
+  // شمارش کل از همان پرس‌وجو؛ اجرای دوباره‌ی window تنها وقتی صفحه خالی است
+  const { rows, total } = readTotal(rawRows, () =>
+    (db.prepare(`SELECT COUNT(*) AS c FROM (${winSql}) u ${dupWhere}`).get(...params) as { c: number }).c,
+  );
 
   res.setHeader('X-Total-Count', String(total));
   res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count');

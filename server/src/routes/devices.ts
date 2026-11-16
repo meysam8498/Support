@@ -10,6 +10,7 @@ import { datePairFromJalali, warrantyEndPair } from '../lib/date.js';
 import { requireRole } from '../middleware/auth.js';
 import { deviceLimitInfo, upgradeRequiredRes } from './license.js';
 import { buildWarehouseWorkbook, sendWorkbook, type WarehouseExportRow } from '../lib/warehouseExport.js';
+import { orderBy, pageParams, readTotal } from '../lib/pagination.js';
 
 const router = Router();
 
@@ -56,12 +57,12 @@ const deviceSchema = z.object({
  */
 router.get('/', (req, res) => {
   const db = getDb();
-  const limitRaw = Number(req.query.limit);
-  const offsetRaw = Number(req.query.offset);
-  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null;
-  const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
+  const { pageSql } = pageParams(req.query as Record<string, unknown>);
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   const status = typeof req.query.status === 'string' ? req.query.status : '';
+  // مرتب‌سازی سفارشی — فقط ستون‌های مجاز (whitelist) تا SQL تزریقی ممکن نباشد
+  const sortKey = typeof req.query.sort === 'string' ? req.query.sort : '';
+  const dir = req.query.dir === 'asc' ? 'ASC' : req.query.dir === 'desc' ? 'DESC' : '';
 
   const where: string[] = [];
   const params: (string | number)[] = [];
@@ -92,11 +93,21 @@ router.get('/', (req, res) => {
     LEFT JOIN technical_experts te ON te.id = d.technical_expert_id
     ${whereSql}`;
 
-  const total = (db.prepare(`SELECT COUNT(*) AS c ${fromSql}`).get(...params) as { c: number }).c;
-  const pageSql = limit !== null ? ` LIMIT ${limit} OFFSET ${offset}` : '';
+  const orderSql = orderBy(
+    sortKey,
+    dir,
+    {
+      serial: 'd.main_serial COLLATE NOCASE',
+      date: 'd.customer_delivery_gregorian',
+      project: 'p.name COLLATE NOCASE',
+    },
+    { column: 'd.created_at', dir: 'DESC' },
+    'd.id',
+  );
 
-  const rows = db.prepare(`
+  const rawRows = db.prepare(`
     SELECT
+      COUNT(*) OVER () AS total_count,
       d.id, d.main_serial, d.contract_number, d.description, d.part_number_1, d.part_number_2,
       d.warehouse_exit_jalali, d.warehouse_exit_gregorian,
       d.customer_delivery_jalali, d.customer_delivery_gregorian,
@@ -114,9 +125,13 @@ router.get('/', (req, res) => {
       (SELECT COUNT(*) FROM warranty_replacements WHERE device_id = d.id) AS replacements_count,
       (SELECT COUNT(*) FROM warranty_requests WHERE device_id = d.id) AS warranty_requests_count
     ${fromSql}
-    ORDER BY d.created_at DESC
+    ${orderSql}
   ${pageSql}
-  `).all(...params);
+  `).all(...params) as ({ total_count: number } & Record<string, unknown>)[];
+  // شمارش کل با همان پرس‌وجو می‌آید؛ پرس‌وجوی شمارش فقط برای صفحه‌ی خالی
+  const { rows, total } = readTotal(rawRows, () =>
+    (db.prepare(`SELECT COUNT(*) AS c ${fromSql}`).get(...params) as { c: number }).c,
+  );
 
   res.setHeader('X-Total-Count', String(total));
   res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count');
