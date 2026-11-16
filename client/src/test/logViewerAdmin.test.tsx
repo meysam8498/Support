@@ -177,7 +177,7 @@ describe('جریان غیرادمین — صفحه‌ی /logs', () => {
     expect(screen.queryByText(/بکاپ روزانه با موفقیت اجرا شد/)).toBeNull();
 
     // منوی کاربر: آیتم «لاگ سرور» برای نقش غیرادمین فیلتر شده است
-    await userEvent.setup().click(screen.getByRole('button', { name: 'منوی کاربر' }));
+    await userEvent.setup().click(screen.getByRole('button', { name: /^منوی کاربر/ }));
     expect(screen.queryByRole('link', { name: 'لاگ سرور' })).toBeNull();
   });
 });

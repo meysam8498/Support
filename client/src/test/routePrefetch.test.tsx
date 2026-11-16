@@ -77,7 +77,7 @@ describe('prefetch چانک صفحات lazy روی hover/focus منو', () => {
   it('منوی کاربر: hover روی «پنل ساخت لایسنس» → چانک پنل لایسنس گرم می‌شود', async () => {
     const load = spyChunk('/issue');
     renderApp('/');
-    fireEvent.click(screen.getByLabelText('منوی کاربر'));
+    fireEvent.click(screen.getByRole('button', { name: /^منوی کاربر/ }));
     const item = await screen.findByRole('menuitem', { name: /پنل ساخت لایسنس/ });
     fireEvent.mouseOver(item);
     expect(load).toHaveBeenCalledTimes(1);

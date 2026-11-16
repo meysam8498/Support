@@ -19,9 +19,11 @@ import { renderApp } from './renderApp';
 import { overrideRoute, clearRouteOverrides } from './apiMock';
 
 /** دکمه‌ی راه‌انداز منوی تم */
-const themeTrigger = () => screen.getByRole('button', { name: 'تغییر تم' });
+// نام دسترس‌پذیر شامل ایموجی و فلش دکمه هم هست؛ پیشوند ثابت آن کافی است
+const themeTrigger = () => screen.getByRole('button', { name: /^تغییر تم/ });
 /** دکمه‌ی راه‌انداز منوی کاربر — برچسب صریح برای صفحه‌خوان */
-const userTrigger = () => screen.getByRole('button', { name: 'منوی کاربر' });
+// نام دکمه شامل «منوی کاربر:» + نام کاربر + فلش است
+const userTrigger = () => screen.getByRole('button', { name: /^منوی کاربر/ });
 /** دکمه‌ی همبرگر موبایل */
 const burger = () => screen.getByRole('button', { name: 'منو' });
 
@@ -31,7 +33,7 @@ describe('تعامل کیبورد — ترتیب Tab در هدر', () => {
   it('Tab به‌ترتیب بصری/RTL: لوگو → لینک‌های ناوبری → همبرگر → جست‌وجو → بج لایسنس → تم → منوی کاربر', async () => {
     const u = userEvent.setup();
     renderApp('/');
-    await screen.findByRole('button', { name: 'تغییر تم' });
+    await screen.findByRole('button', { name: /^تغییر تم/ });
 
     // عناصر مورد انتظار به همان ترتیبی که در DOM/بصره چیده شده‌اند (شامل دو لینک نقش‌دار ادمین: لیست‌ها / ورود سریال)
     // لینک‌های ناوبری با title دقیقشان پیدا می‌شوند — nameشان با کارت‌های داشبورد مشترک است
