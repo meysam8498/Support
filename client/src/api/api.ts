@@ -76,6 +76,25 @@ async function request<T>(
 }
 
 /**
+ * GET صفحه‌بندی‌شده — تعداد کل از هدر `X-Total-Count` خوانده می‌شود.
+ * سرور برای درخواست بدون limit رفتار قبلی (همه‌ی ردیف‌ها) را نگه می‌دارد.
+ */
+export async function getPaged<T>(path: string): Promise<{ items: T[]; total: number }> {
+  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
+  if (res.status === 401) {
+    clearSessionAndRedirect();
+    throw new Error('نشست منقضی است؛ دوباره وارد شوید.');
+  }
+  const data = await res.json().catch(() => ([]));
+  if (!res.ok) throw toApiError(res.status, (data ?? {}) as { error?: string });
+  const total = Number(res.headers.get('X-Total-Count') ?? '');
+  return {
+    items: (Array.isArray(data) ? data : []) as T[],
+    total: Number.isFinite(total) ? total : (Array.isArray(data) ? data.length : 0),
+  };
+}
+
+/**
  * GET با هدر سفارشی — بدون دست‌کاری نشست.
  * برای /api/logs (لاگ سرور پشتیبانی) استفاده می‌شود: ۴۰۱ اینجا یعنی «توکن لاگ
  * نامعتبر است» و نباید مانند ۴۰۱ عادی، نشست کاربر را پاک یا به /login ریدایرکت کند.
@@ -233,6 +252,9 @@ export interface Part {
   sold_at_gregorian?: string;
   replaces_part_id?: number;
   created_at?: string;
+  /** تعداد ردیف‌های همین پارت‌نامبر/سریال — از سرور (برای فهرست صفحه‌بندی‌شده) */
+  pn_count?: number;
+  serial_count?: number;
   device_serial?: string;
   device_type_name?: string;
   brand_name?: string;

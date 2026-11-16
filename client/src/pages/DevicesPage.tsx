@@ -5,7 +5,7 @@
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, type Device } from '../api/api';
+import { api, getPaged, type Device } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import { t } from '../i18n/fa';
 import { formatJalaliLong, toFa } from '../lib/date';
@@ -15,17 +15,38 @@ import Alert from '../components/Alert';
 
 export default function DevicesPage() {
   const { canWrite } = useAuth();
+  const PAGE_SIZE = 50;
   const [devices, setDevices] = useState<Device[]>([]);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<{ total: number; byStatus: Record<string, number> } | null>(null);
   const [search, setSearch] = useState('');
+  const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [pageError, setPageError] = useState('');
 
-  const load = async () => {
+  // تایپ جست‌وجو → کوئری سمت سرور (۳۰۰ms تأخیر تا هر کلید یک درخواست نسازد)
+  useEffect(() => {
+    const timer = setTimeout(() => { setQ(search.trim()); setPage(0); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // شمارش‌های بج فیلتر از سرور می‌آید — فهرست صفحه‌بندی‌شده همه‌ی ردیف‌ها را ندارد
+  useEffect(() => {
+    api.get<{ total: number; byStatus: Record<string, number> }>('/devices/stats').then(setStats).catch(() => {});
+  }, []);
+
+  const load = async (pageIdx = page) => {
+    setLoading(true);
     try {
-      const d = await api.get<Device[]>('/devices');
-      setDevices(d);
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(pageIdx * PAGE_SIZE) });
+      if (q) params.set('q', q);
+      if (statusFilter) params.set('status', statusFilter);
+      const r = await getPaged<Device>(`/devices?${params.toString()}`);
+      setDevices(r.items);
+      setTotal(r.total);
     } catch {
       /* */
     } finally {
@@ -34,8 +55,11 @@ export default function DevicesPage() {
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    load(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, q, statusFilter]);
+
+  const pickStatus = (value: string) => { setStatusFilter(value); setPage(0); };
 
   const remove = async (id: number) => {
     if (!confirm(t.confirmDelete)) return;
@@ -59,29 +83,10 @@ export default function DevicesPage() {
     }
   };
 
-  const filtered = devices.filter((d) => {
-    if (statusFilter && d.status !== statusFilter) return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      (d.project_name || '').toLowerCase().includes(q) ||
-      (d.main_serial || '').toLowerCase().includes(q) ||
-      (d.part_number_1 || '').toLowerCase().includes(q) ||
-      (d.device_type_name || '').toLowerCase().includes(q) ||
-      (d.brand_name || '').toLowerCase().includes(q) ||
-      (d.contract_number || '').toLowerCase().includes(q)
-    );
-  });
-
   if (loading)
     return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.loading}</p>;
 
-  const statusCounts = {
-    active: devices.filter((d) => d.status === 'active').length,
-    defective: devices.filter((d) => d.status === 'defective').length,
-    replacing: devices.filter((d) => d.status === 'replacing').length,
-    replaced: devices.filter((d) => d.status === 'replaced').length,
-  };
+  const statusCounts = stats?.byStatus ?? { active: 0, defective: 0, replacing: 0, replaced: 0 };
 
   return (
     <div className="space-y-4 max-w-[1200px] mx-auto px-6">
@@ -90,7 +95,7 @@ export default function DevicesPage() {
           <span className="text-3xl">🖥️</span>
           <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">{t.deviceList}</h1>
           <span className="badge bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300">
-            {toFa(devices.length)} تجهیز
+            {toFa(total)} تجهیز
           </span>
         </div>
         <div className="flex gap-2">
@@ -124,35 +129,35 @@ export default function DevicesPage() {
         <div className="flex gap-2 flex-wrap">
           <button
             type="button"
-            onClick={() => setStatusFilter('')}
+            onClick={() => pickStatus('')}
             className={statusFilter === '' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
-            همه <span className="fa-nums">({toFa(devices.length)})</span>
+            همه <span className="fa-nums">({toFa(total)})</span>
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter('active')}
+            onClick={() => pickStatus('active')}
             className={statusFilter === 'active' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
             فعال <span className="fa-nums">({toFa(statusCounts.active)})</span>
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter('defective')}
+            onClick={() => pickStatus('defective')}
             className={statusFilter === 'defective' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
             معیوب <span className="fa-nums">({toFa(statusCounts.defective)})</span>
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter('replacing')}
+            onClick={() => pickStatus('replacing')}
             className={statusFilter === 'replacing' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
             در حال تعویض <span className="fa-nums">({toFa(statusCounts.replacing)})</span>
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter('replaced')}
+            onClick={() => pickStatus('replaced')}
             className={statusFilter === 'replaced' ? 'chip chip-active cursor-pointer' : 'chip chip-default cursor-pointer hover:bg-surface-raised dark:hover:bg-stone-700'}
           >
             تعویض‌شده <span className="fa-nums">({toFa(statusCounts.replaced)})</span>
@@ -160,7 +165,7 @@ export default function DevicesPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {devices.length === 0 ? (
         <p className="text-stone-500 text-center py-12 dark:text-stone-400">{t.noData}</p>
       ) : (
         <div className="card p-0 overflow-hidden">
@@ -180,7 +185,7 @@ export default function DevicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((d) => (
+                {devices.map((d) => (
                   <tr
                     key={d.id}
                     className="border-b border-dashed border-stone-100 dark:border-stone-700 hover:bg-brand-50/60 dark:hover:bg-brand-900/25 transition-colors"
@@ -237,6 +242,32 @@ export default function DevicesPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {total > 0 && (
+        <div className="flex items-center justify-between gap-3 flex-wrap text-xs text-stone-600 dark:text-stone-300">
+          <span className="fa-nums">
+            نمایش {toFa(page * PAGE_SIZE + 1)}–{toFa(Math.min(total, (page + 1) * PAGE_SIZE))} از {toFa(total)}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-secondary min-h-[32px] px-3 text-xs"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              قبلی
+            </button>
+            <button
+              type="button"
+              className="btn-secondary min-h-[32px] px-3 text-xs"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={(page + 1) * PAGE_SIZE >= total}
+            >
+              بعدی
+            </button>
           </div>
         </div>
       )}

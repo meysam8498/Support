@@ -7,7 +7,7 @@
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, type Part } from '../api/api';
+import { api, getPaged, type Part } from '../api/api';
 import { t } from '../i18n/fa';
 import { formatJalaliLong, toFa } from '../lib/date';
 import StatusBadge from '../components/StatusBadge';
@@ -25,10 +25,15 @@ export default function PartsPage() {
   // فیلتر مرجع کاتالوگ از URL (لینک «نصب‌شده‌ها» در تب کاتالوگ)
   const catalogFilter = searchParams.get('catalog') ?? '';
   const [catalogTitle, setCatalogTitle] = useState('');
+  const PAGE_SIZE = 50;
   const [parts, setParts] = useState<Part[]>([]);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<{ total: number; byStatus: Record<string, number>; dupPn: number } | null>(null);
   const [search, setSearch] = useState('');
+  const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dupOnly, setDupOnly] = useState(false);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [descDialog, setDescDialog] = useState<{ pn: string; group: Part[] } | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -58,10 +63,23 @@ export default function PartsPage() {
     }
   };
 
-  const load = async () => {
+  const loadStats = async () => {
     try {
-      const qs = catalogFilter ? `?catalog=${encodeURIComponent(catalogFilter)}` : '';
-      setParts(await api.get<Part[]>(`/parts${qs}`));
+      setStats(await api.get('/parts/stats'));
+    } catch { /* */ }
+  };
+
+  const load = async (pageIdx = page) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(pageIdx * PAGE_SIZE) });
+      if (catalogFilter) params.set('catalog', catalogFilter);
+      if (statusFilter) params.set('status', statusFilter);
+      if (dupOnly) params.set('dup', '1');
+      if (q) params.set('q', q);
+      const r = await getPaged<Part>(`/parts?${params.toString()}`);
+      setParts(r.items);
+      setTotal(r.total);
       if (catalogFilter) {
         // عنوان مرجع برای بج فیلتر
         api.get<{ title?: string }>(`/part-catalog/${catalogFilter}`).then((c) => setCatalogTitle(c.title || '')).catch(() => {});
@@ -75,9 +93,20 @@ export default function PartsPage() {
     }
   };
 
+  // تایپ جست‌وجو → کوئری سمت سرور (۳۰۰ms تأخیر)
   useEffect(() => {
-    load();
-  }, [catalogFilter]);
+    const timer = setTimeout(() => { setQ(search.trim()); setPage(0); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => { loadStats(); }, []);
+
+  useEffect(() => {
+    load(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogFilter, page, q, statusFilter, dupOnly]);
+
+  const pickStatus = (value: string) => { setStatusFilter(value); setPage(0); };
 
   // جست‌وجوی فوری سریال — debounce ۲۵۰ms به سرور (سرور case/فاصله‌ناحساس)
   useEffect(() => {
@@ -103,35 +132,18 @@ export default function PartsPage() {
     } catch (e) { setPageError((e as Error).message); }
   };
 
-  // قطعاتی که سریالشان با قطعه‌ی دیگرِ فهرست یکی است (درون همین صفحه)
-  const dupSerialIds = useMemo(() => {
-    const seen = new Map<string, number>();
-    const ids = new Set<number>();
-    for (const p of parts) {
-      const s = (p.part_serial_number || '').trim().toUpperCase();
-      if (!s) continue;
-      if (seen.has(s)) { ids.add(seen.get(s)!); ids.add(p.id); }
-      else seen.set(s, p.id);
-    }
-    return ids;
-  }, [parts]);
+  // تکرارها از سرور می‌آید (pn_count/serial_count) — فهرست صفحه‌بندی‌شده کل داده را ندارد
+  const dupPnCount = stats?.dupPn ?? 0;
 
-  // گروه‌بندی بر اساس پارت‌نامبر نرمال‌شده برای پیدا کردن تکراری‌ها
-  const pnGroups = useMemo(() => {
-    const g = new Map<string, Part[]>();
-    for (const p of parts) {
-      const pn = (p.part_number_1 || p.part_number_2 || '').replace(/\s+/g, '').toUpperCase();
-      if (!pn) continue;
-      if (!g.has(pn)) g.set(pn, []);
-      g.get(pn)!.push(p);
+  /** دیالوگ گروه — ردیف‌های همان پارت‌نامبر را در لحظه از سرور می‌گیریم */
+  const openDescGroup = async (pn: string) => {
+    try {
+      const group = await api.get<Part[]>(`/parts?pn=${encodeURIComponent(pn)}&limit=500`);
+      setDescDialog({ pn, group });
+    } catch (e) {
+      setPageError((e as Error).message);
     }
-    return g;
-  }, [parts]);
-
-  const dupPns = useMemo(
-    () => new Set([...pnGroups.entries()].filter(([, arr]) => arr.length > 1).map(([pn]) => pn)),
-    [pnGroups]
-  );
+  };
 
   // ---------- ویرایش درجا (سریال، پارت‌نامبر، مشخصات فنی) — فقط ادمین ----------
   /** ذخیره‌ی یک فیلد با PATCH /field + به‌روزرسانی محلی فهرست */
@@ -142,28 +154,10 @@ export default function PartsPage() {
     );
   };
 
-  const filtered = parts.filter((p) => {
-    if (statusFilter && p.status !== statusFilter) return false;
-    const pn = (p.part_number_1 || p.part_number_2 || '').replace(/\s+/g, '').toUpperCase();
-    if (dupOnly && !dupPns.has(pn)) return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      p.title.toLowerCase().includes(q) ||
-      (p.part_number_1 || '').toLowerCase().includes(q) ||
-      (p.part_serial_number || '').toLowerCase().includes(q) ||
-      (p.project_name || '').toLowerCase().includes(q)
-    );
-  });
-
   if (loading)
     return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.loading}</p>;
 
-  const statusCounts = {
-    active: parts.filter((p) => p.status === 'active').length,
-    replaced: parts.filter((p) => p.status === 'replaced').length,
-    defective: parts.filter((p) => p.status === 'defective').length,
-  };
+  const statusCounts = stats?.byStatus ?? { active: 0, replaced: 0, defective: 0 };
 
   return (
     <div className="space-y-4 max-w-[1200px] mx-auto px-6">
@@ -172,7 +166,7 @@ export default function PartsPage() {
           <span className="text-3xl">🔩</span>
           <h1 className="text-xl font-extrabold text-stone-900 dark:text-stone-50">فهرست قطعات</h1>
           <span className="badge bg-stone-100 text-stone-600 dark:bg-stone-700 dark:text-stone-300">
-            {toFa(parts.length)} قطعه
+            {toFa(total)} قطعه
           </span>
         </div>
         <div className="flex gap-2">
@@ -180,7 +174,7 @@ export default function PartsPage() {
             type="button"
             className="btn-secondary text-sm"
             onClick={exportExcel}
-            disabled={exporting || parts.length === 0}
+            disabled={exporting || total === 0}
             title="خروجی اکسل در قالب فهرست انبار — قابل بازخورد به ورود سریال"
           >
             {exporting ? '...' : '⬇ خروجی اکسل'}
@@ -232,7 +226,7 @@ export default function PartsPage() {
         {/* چایپ‌های فیلتر وضعیت — Ember Studio */}
         <div className="flex gap-2 flex-wrap">
           {([
-            ['', 'همه', parts.length],
+            ['', 'همه', total],
             ['active', 'فعال', statusCounts.active],
             ['replaced', 'تعویض‌شده', statusCounts.replaced],
             ['defective', 'معیوب', statusCounts.defective],
@@ -240,7 +234,7 @@ export default function PartsPage() {
             <button
               key={value}
               type="button"
-              onClick={() => setStatusFilter(value)}
+              onClick={() => pickStatus(value)}
               className={
                 statusFilter === value
                   ? 'chip chip-active cursor-pointer'
@@ -251,16 +245,16 @@ export default function PartsPage() {
             </button>
           ))}
         </div>
-        {dupPns.size > 0 && (
+        {dupPnCount > 0 && (
           <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
             <input
               type="checkbox"
               checked={dupOnly}
-              onChange={(e) => setDupOnly(e.target.checked)}
+              onChange={(e) => { setDupOnly(e.target.checked); setPage(0); }}
               className="w-4 h-4 accent-brand-500"
             />
             <span className="chip bg-gold/15 text-[#8a6d00] dark:text-gold-light border border-gold/40">
-              فقط تکراری‌ها ({toFa(dupPns.size)})
+              فقط تکراری‌ها ({toFa(dupPnCount)})
             </span>
           </label>
         )}
@@ -268,9 +262,9 @@ export default function PartsPage() {
 
       {pageError && <Alert variant="danger" className="mb-3">{pageError}</Alert>}
 
-      {dupPns.size > 0 && !dupOnly && (
+      {dupPnCount > 0 && !dupOnly && (
         <Alert variant="info">
-          {toFa(dupPns.size)} پارت‌نامبر با بیش از یک رکورد یافت شد — با فیلتر «فقط تکراری‌ها» بررسی و
+          {toFa(dupPnCount)} پارت‌نامبر با بیش از یک رکورد یافت شد — با فیلتر «فقط تکراری‌ها» بررسی و
           توضیح درست را انتخاب کنید.
         </Alert>
       )}
@@ -295,7 +289,7 @@ export default function PartsPage() {
         </div>
       )}
 
-      {filtered.length === 0 && !(serialSearch.trim()) ? (
+      {parts.length === 0 && !(serialSearch.trim()) ? (
         <p className="text-stone-500 dark:text-stone-400 text-center py-12">{t.noData}</p>
       ) : !serialSearch.trim() ? (
         <div className="overflow-x-auto card p-0">
@@ -310,14 +304,15 @@ export default function PartsPage() {
                 <th className="text-right px-3 py-3 font-bold">دستگاه</th>
                 <th className="text-right px-3 py-3 font-bold">{t.status}</th>
                 <th className="text-right px-3 py-3 font-bold">تاریخ فروش</th>
-                {canWrite && dupPns.size > 0 && <th className="text-right px-3 py-3 font-bold"><span className="sr-only">عملیات</span></th>}
+                {canWrite && dupPnCount > 0 && <th className="text-right px-3 py-3 font-bold"><span className="sr-only">عملیات</span></th>}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => {
+              {parts.map((p) => {
                 const pn = (p.part_number_1 || p.part_number_2 || '').replace(/\s+/g, '').toUpperCase();
-                const isDup = dupPns.has(pn);
-                const multiDesc = isDup && pnGroups.get(pn)!.some((x) => x.tech_specs && x.tech_specs !== p.tech_specs);
+                const isDup = (p.pn_count ?? 1) > 1;
+                // «چند توضیح متفاوت» فقط با دیدن کل گروه معلوم می‌شود؛ دکمه برای هر ردیف تکراری فعال است
+                const multiDesc = isDup;
                 return (
                   <tr
                     key={p.id}
@@ -362,7 +357,7 @@ export default function PartsPage() {
                             numeric
                             placeholder="سریال قطعه…"
                           />
-                          {dupSerialIds.has(p.id) && p.part_serial_number && (
+                          {(p.serial_count ?? 1) > 1 && p.part_serial_number && (
                             <button
                               type="button"
                               onClick={() => openSerialOwner(p.part_serial_number!)}
@@ -373,7 +368,7 @@ export default function PartsPage() {
                             </button>
                           )}
                         </div>
-                      ) : dupSerialIds.has(p.id) && p.part_serial_number ? (
+                      ) : (p.serial_count ?? 1) > 1 && p.part_serial_number ? (
                         <button
                           type="button"
                           onClick={() => openSerialOwner(p.part_serial_number!)}
@@ -414,11 +409,11 @@ export default function PartsPage() {
                     <td className="px-3 py-2 text-xs text-stone-500 dark:text-stone-400">
                       {formatJalaliLong(p.sold_at_jalali)}
                     </td>
-                    {canWrite && dupPns.size > 0 && (
+                    {canWrite && dupPnCount > 0 && (
                       <td className="px-3 py-2">
                         {isDup && (
                           <button
-                            onClick={() => setDescDialog({ pn, group: pnGroups.get(pn)! })}
+                            onClick={() => openDescGroup(pn)}
                             className="btn-secondary min-h-[32px] px-3 text-xs"
                           >
                             انتخاب توضیح
@@ -433,6 +428,32 @@ export default function PartsPage() {
           </table>
         </div>
       ) : null}
+
+      {total > 0 && !serialSearch.trim() && (
+        <div className="flex items-center justify-between gap-3 flex-wrap text-xs text-stone-600 dark:text-stone-300">
+          <span className="fa-nums">
+            نمایش {toFa(page * PAGE_SIZE + 1)}–{toFa(Math.min(total, (page + 1) * PAGE_SIZE))} از {toFa(total)}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-secondary min-h-[32px] px-3 text-xs"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              قبلی
+            </button>
+            <button
+              type="button"
+              className="btn-secondary min-h-[32px] px-3 text-xs"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={(page + 1) * PAGE_SIZE >= total}
+            >
+              بعدی
+            </button>
+          </div>
+        </div>
+      )}
 
       {ownerDialog && (
         <Modal open onClose={() => setOwnerDialog(null)} title={`صاحبان سریال — ${ownerDialog.serial}`}>
@@ -474,6 +495,7 @@ export default function PartsPage() {
           onClose={() => setDescDialog(null)}
           onSaved={() => {
             setDescDialog(null);
+            loadStats();
             load();
           }}
         />
