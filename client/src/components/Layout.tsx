@@ -185,10 +185,11 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
             ref={burgerRef}
             onClick={() => setMobileOpen(!mobileOpen)}
             className="lg:hidden btn-ghost min-h-[36px] px-2.5 shrink-0"
-            aria-label="منو"
+            aria-labelledby="burger-label"
             aria-expanded={mobileOpen}
           >
-            {mobileOpen ? '✕' : '☰'}
+            <span id="burger-label" className="sr-only">منو</span>
+            <span aria-hidden="true">{mobileOpen ? '✕' : '☰'}</span>
           </button>
 
           {/* جست‌وجوی سراسری */}
@@ -212,12 +213,14 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
               title={t.toggleTheme}
               aria-haspopup="menu"
               aria-expanded={themeMenuOpen}
+              aria-labelledby="theme-menu-label"
             >
-              {/* نام دسترس‌پذیر از محتوای دکمه ساخته می‌شود؛ aria-label جداگانه
-                  باعث label-content-name-mismatch در axe می‌شد. */}
-              <span className="sr-only">{t.toggleTheme}</span>
-              {themeMode === 'system' ? '🖥️' : isDark ? '☀️' : '🌙'}
-              <span className="text-[10px] text-stone-400 mr-0.5">{themeMenuOpen ? '▴' : '▾'}</span>
+              {/* نام دسترس‌پذیر دقیقاً «تغییر تم» است: متن sr-only منبع نام،
+                  آیکون و فلش تزئینی‌اند (aria-hidden) تا نام شامل ایموجی نشود.
+                  aria-label مستقیم باعث label-content-name-mismatch می‌شد. */}
+              <span id="theme-menu-label" className="sr-only">{t.toggleTheme}</span>
+              <span aria-hidden="true">{themeMode === 'system' ? '🖥️' : isDark ? '☀️' : '🌙'}</span>
+              <span aria-hidden="true" className="text-[10px] text-stone-400 mr-0.5">{themeMenuOpen ? '▴' : '▾'}</span>
             </button>
             {themeMenuOpen && (
               <div
@@ -264,17 +267,18 @@ function menuKeyboard(e: React.KeyboardEvent<HTMLDivElement>, onClose: () => voi
               }`}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
+              aria-labelledby="user-menu-label"
             >
-              {/* «منوی کاربر:» بخشی از محتوای دکمه است تا نام دسترس‌پذیر شامل
-                  متن دیده‌شدنی (نام کاربر و فلش) باشد. */}
-              <span className="sr-only">منوی کاربر: </span>
-              <span className="w-6.5 h-6.5 w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-[11px] font-bold text-white">
+              {/* نام دسترس‌پذیر «منوی کاربر» است (منبع: متن sr-only). نام کاربر،
+                  حرف اول و فلش تزئینی‌اند تا نام دکمه با تغییر کاربر عوض نشود. */}
+              <span id="user-menu-label" className="sr-only">منوی کاربر</span>
+              <span aria-hidden="true" className="w-6.5 h-6.5 w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-[11px] font-bold text-white">
                 {user?.fullName?.charAt(0) ?? '؟'}
               </span>
-              <span className="hidden sm:block max-w-[110px] truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
+              <span aria-hidden="true" className="hidden sm:block max-w-[110px] truncate text-xs font-semibold text-stone-700 dark:text-stone-200">
                 {user?.fullName}
               </span>
-              <span className="text-[10px] text-stone-400">{menuOpen ? '▴' : '▾'}</span>
+              <span aria-hidden="true" className="text-[10px] text-stone-400">{menuOpen ? '▴' : '▾'}</span>
             </button>
 
             {menuOpen && (
