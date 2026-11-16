@@ -15,6 +15,19 @@ import { join, dirname, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { dbFilePath } from '../db/db.js';
+import {
+  BACKUP_KEY_ENV,
+  decryptBuffer,
+  deleteBackupFiles,
+  encryptBuffer,
+  encryptionKey,
+  encryptionStatus,
+  isEncrypted,
+  keyId,
+  manifestPath,
+  verifyBackupManifest,
+  writeBackupManifest,
+} from './backupCrypto.js';
 
 /** نام فایل بکاپ: support-backup-YYYYMMDD-HHMMSS.db */
 export function backupFileName(now = new Date()): string {
@@ -43,6 +56,8 @@ export interface BackupResult {
   durationMs?: number;
   /** نتیجه‌ی push خودکار به مقصد خارجی (در صورت تنظیم BACKUP_PUSH_TARGET) */
   push?: PushResult;
+  /** آیا فایل با BACKUP_ENCRYPTION_KEY رمزگذاری شد؟ */
+  encrypted?: boolean;
 }
 
 // ============================================================
@@ -141,11 +156,15 @@ export function runBackup(db: DatabaseSync, dir: string = backupDir()): BackupRe
   const started = Date.now();
   try {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    const file = join(dir, backupFileName());
+    // نام یکتا حتی وقتی دو بکاپ در یک ثانیه گرفته می‌شود (بکاپ ایمنی بلافاصله پس از دستی)
+    let file = join(dir, backupFileName());
+    for (let n = 1; existsSync(file); n += 1) {
+      file = join(dir, backupFileName().replace(/\.db$/, `-${n}.db`));
+    }
     // VACUUM INTO: یک اسنپ‌شات یکپارچه حتی در حین تراکنش‌های فعال (WAL-safe)
     db.prepare(`VACUUM INTO ?`).run(file);
     if (!existsSync(file)) return { ok: false, error: 'فایل بکاپ ساخته نشد.' };
-    const sizeBytes = statSync(file).size;
+    let sizeBytes = statSync(file).size;
 
     // بررسی سلامت روی یک اتصال فقط‌خواندنیِ جدا (بدون لمس اتصال اصلی)
     let integrity = 'unknown';
@@ -162,8 +181,38 @@ export function runBackup(db: DatabaseSync, dir: string = backupDir()): BackupRe
       return { ok: false, error: `بکاپ ناسالم بود (${integrity}, ${sizeBytes} بایت) و حذف شد.`, durationMs: Date.now() - started };
     }
 
+    // رمزگذاری درجا (AES-256-GCM) + مانیفست هش — نام فایل ثابت می‌ماند و هدر SBK1
+    // مبنای تشخیص است. کلید نامعتبر/خطای رمزگذاری → فایل حذف می‌شود تا هرگز
+    // بکاپ بدون رمز (در حالت رمزنگاری‌شده) جا نماند.
+    const plain = readFileSync(file);
+    let onDisk: Buffer = plain;
+    let encrypted = false;
+    const key = encryptionKey();
+    if (key) {
+      try {
+        onDisk = encryptBuffer(plain, key);
+      } catch (e) {
+        try { unlinkSync(file); } catch { /* noop */ }
+        return { ok: false, error: `رمزگذاری بکاپ ناموفق بود: ${(e as Error).message}`, durationMs: Date.now() - started };
+      }
+      writeFileSync(file, onDisk);
+      sizeBytes = onDisk.length;
+      encrypted = true;
+    }
+    try {
+      writeBackupManifest(dir, file, {
+        encrypted,
+        keyId: encrypted ? keyId(key!) : undefined,
+        onDisk,
+        plaintext: plain,
+        integrity,
+      });
+    } catch (e) {
+      console.error('⚠ نوشتن مانیفست بکاپ ناموفق بود:', (e as Error).message);
+    }
+
     const deletedOld = applyRetention(dir);
-    return { ok: true, file, sizeBytes, integrity, deletedOld, durationMs: Date.now() - started };
+    return { ok: true, file, sizeBytes, integrity, deletedOld, encrypted, durationMs: Date.now() - started };
   } catch (e) {
     return { ok: false, error: (e as Error).message, durationMs: Date.now() - started };
   }
@@ -179,7 +228,7 @@ export function applyRetention(dir: string, keep: number = BACKUP_KEEP): string[
       .map((f) => ({ f, m: statSync(join(dir, f)).mtimeMs }))
       .sort((a, b) => b.m - a.m); // جدید → قدیمی
     for (const x of files.slice(keep)) {
-      try { unlinkSync(join(dir, x.f)); deleted.push(x.f); } catch { /* noop */ }
+      if (deleteBackupFiles(dir, x.f)) deleted.push(x.f); // بکاپ + مانیفستش
     }
   } catch { /* noop */ }
   return deleted;
@@ -319,9 +368,15 @@ export function backupHistory(db: DatabaseSync, limit = 120): { rows: BackupHist
 export function backupStatus(): {
   dir: string; keep: number; atHour: number; lastRun: string | null; lastResult: BackupResult | null; count: number;
   push: { target: string; enabled: boolean; last: (PushResult & { at: string; file: string }) | null };
+  encryption: { enabled: boolean; keyId?: string; error?: string };
 } {
   const target = pushTarget();
-  return { dir: backupDir(), keep: BACKUP_KEEP, atHour: BACKUP_AT, lastRun: state.lastRun, lastResult: state.lastResult, count: listBackups().length, push: { target, enabled: !!target, last: state.lastPush } };
+  return {
+    dir: backupDir(), keep: BACKUP_KEEP, atHour: BACKUP_AT, lastRun: state.lastRun, lastResult: state.lastResult,
+    count: listBackups().length,
+    push: { target, enabled: !!target, last: state.lastPush },
+    encryption: encryptionStatus(),
+  };
 }
 
 /** اجرای بکاپ + ثبت وضعیت + ثبت در تاریخچه + push خارجی (با قفل ضدتداخل) */
@@ -356,6 +411,11 @@ function hasRunToday(): boolean {
 
 /** حلقه‌ی زمان‌بند — هر ۳۰ دقیقه چک می‌کند؛ در اولین گذر از ساعت BACKUP_AT امروز بکاپ می‌گیرد */
 export function startBackupScheduler(db: DatabaseSync): void {
+  // وضعیت رمزنگاری در بوت — کلید نامعتبر باید صریح دیده شود، نه در سکوت
+  const enc = encryptionStatus();
+  if (enc.enabled) console.log(`🔐 رمزنگاری بکاپ فعال است (keyId: ${enc.keyId})`);
+  else if (enc.error) console.error(`🔐 ${enc.error} — تا اصلاح کلید، بکاپ رمزنگاری‌شده ساخته نمی‌شود.`);
+
   // بکاپ راه‌اندازی: اگر هیچ بکاپی نیست، بلافاصله یکی بگیر
   if (listBackups().length === 0) {
     void backupOnce(db, 'initial').then((r) => console.log(`🗄️ بکاپ اولیه: ${r.ok ? r.file : ('خطا: ' + r.error)}`));
@@ -394,14 +454,44 @@ export interface RestorePrepareResult {
   error?: string;
 }
 
+/**
+ * خواندن بایت‌های دیتابیس یک بکاپ — منبع واحد برای هر دو مرحله‌ی بازیابی:
+ * تأیید مانیفست (اگر وجود دارد) و رمزگشایی با کلید ENV.
+ * هیچ متنی بدون عبور از این مسیر روی دیسک نمی‌نشیند.
+ */
+function readBackupBytes(dir: string, file: string):
+  | { ok: true; bytes: Buffer }
+  | { ok: false; error: string } {
+  const path = join(dir, file);
+  if (!existsSync(path)) return { ok: false, error: 'فایل بکاپ یافت نشد.' };
+  // نبود مانیفست = بکاپ قدیمی (مجاز)؛ مانیفست نامطابق = رد فوری
+  if (existsSync(manifestPath(dir, file))) {
+    const check = verifyBackupManifest(dir, file);
+    if (!check.ok) return { ok: false, error: `بکاپ معتبر نیست: ${check.error}` };
+  }
+  const onDisk = readFileSync(path);
+  if (!isEncrypted(onDisk)) return { ok: true, bytes: onDisk };
+  const key = encryptionKey();
+  if (!key) return { ok: false, error: `این بکاپ رمزنگاری شده است ولی ${BACKUP_KEY_ENV} تنظیم نشده.` };
+  try {
+    return { ok: true, bytes: decryptBuffer(onDisk, key) };
+  } catch (e) {
+    return { ok: false, error: `رمزگشایی بکاپ ناموفق بود: ${(e as Error).message}` };
+  }
+}
+
 /** مرحله‌ی ۱ — اعتبارسنجی + بکاپ ایمنی + صدور توکن یک‌بارمصرف */
 export function prepareRestore(db: DatabaseSync, file: string, requestedBy: string): RestorePrepareResult {
-  if (!/^support-backup-\d{8}-\d{6}\.db$/.test(file)) return { ok: false, error: 'نام فایل بکاپ نامعتبر است.' };
-  const filePath = join(backupDir(), file);
-  if (!existsSync(filePath)) return { ok: false, error: 'فایل بکاپ یافت نشد.' };
-  // بررسی سلامت + وجود جداول حیاتی در فایل بکاپ
+  if (!/^support-backup-\d{8}-\d{6}(-\d+)?\.db$/.test(file)) return { ok: false, error: 'نام فایل بکاپ نامعتبر است.' };
+  const read = readBackupBytes(backupDir(), file);
+  if (!read.ok) return { ok: false, error: read.error };
+  const dbBytes = read.bytes;
+
+  // بررسی سلامت + وجود جداول حیاتی — روی متن رمزگشایی‌شده (در فایل موقت)
+  const tmpPath = join(backupDir(), `.restore-check-${randomBytes(6).toString('hex')}.db`);
   try {
-    const check = new DatabaseSync(filePath, { readOnly: true });
+    writeFileSync(tmpPath, dbBytes);
+    const check = new DatabaseSync(tmpPath, { readOnly: true });
     const ic = (check.prepare('PRAGMA integrity_check').get() as { integrity_check?: string } | undefined)?.integrity_check;
     const tbl = (check.prepare(`SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name IN ('devices','parts','users')`).get() as { c: number }).c;
     check.close();
@@ -409,6 +499,8 @@ export function prepareRestore(db: DatabaseSync, file: string, requestedBy: stri
     if (tbl < 3) return { ok: false, error: 'ساختار فایل بکاپ معتبر نیست (جداول حیاتی پیدا نشد).' };
   } catch (e) {
     return { ok: false, error: `خواندن فایل بکاپ ناموفق بود: ${(e as Error).message}` };
+  } finally {
+    try { unlinkSync(tmpPath); } catch { /* noop */ }
   }
   // بکاپ ایمنی از وضعیت فعلی (بدون push — نتیجه‌ی restore نباید مقصد خارجی را آلوده کند)
   const safety = runBackup(db);
@@ -439,14 +531,16 @@ export function confirmRestore(db: DatabaseSync, token: string): RestoreConfirmR
   if (Date.now() - p.requestedAt > RESTORE_TOKEN_TTL_MS) {
     return { ok: false, error: 'درخواست بازیابی منقضی شده (بیش از ۱۵ دقیقه) — دوباره آماده کنید.' };
   }
-  const src = join(backupDir(), p.file);
-  if (!existsSync(src)) return { ok: false, error: 'فایل بکاپ بین مراحل حذف شده است.' };
   try {
     // چک‌پوینت WAL و بستن اتصال تا فایل اصلی قابل جایگزینی باشد
+    // دفاع دوم: مانیفست و کلید دوباره بررسی می‌شوند (فایل بین دو مرحله قابل تعویض است)
+    const read = readBackupBytes(backupDir(), p.file);
+    if (!read.ok) return { ok: false, error: read.error };
+    const dbBytes = read.bytes;
     db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
     db.close();
     const dbPath = dbFilePath();
-    copyFileSync(src, dbPath);
+    writeFileSync(dbPath, dbBytes);
     writeFileSync(restorePendingMarkerPath(), JSON.stringify({ restoredFrom: p.file, at: new Date().toISOString(), by: p.by }));
     // خروج برنامه — در docker (restart: unless-stopped) کانتینر خودکار بالا می‌آید و دیتابیس بازیابی‌شده را باز می‌کند
     setTimeout(() => process.exit(50), 300);
