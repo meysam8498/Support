@@ -82,11 +82,20 @@ router.get('/serial-check', (req, res) => {
   res.json({ exists: !!dup, part_id: dup?.id ?? null, title: dup?.title ?? null, matches });
 });
 
+/** بیان نرمال‌شده‌ی پارت‌نامبر (بدون فاصله، حروف بزرگ) — برای تشخیص تکرار */
+const PN_KEY_SQL = "UPPER(REPLACE(COALESCE(NULLIF(TRIM(p.part_number_1), ''), p.part_number_2, ''), ' ', ''))";
+
 /** GET /api/parts — فهرست قطعات با اطلاعات دستگاه
  *  پارامترهای پرس‌وجوی اختیاری:
  *    ?device=X     → فقط قطعات دستگاه X
  *    ?status=active|replaced|defective → فقط قطعات با وضعیت دلخواه
  *    ?catalog=X    → فقط قطعات وصل به مرجع کاتالوگ X (لینک از تب کاتالوگ)
+ *    ?q=X          → جست‌وجوی سراسری (عنوان/پارت‌نامبر/سریال/پروژه/سریال تجهیز)
+ *    ?pn=X         → همه‌ی قطعات یک پارت‌نامبر نرمال‌شده (برای دیالوگ گروه)
+ *    ?dup=1        → فقط پارت‌نامبرهای تکراری
+ *    ?limit/?offset → صفحه‌بندی سمت سرور؛ بدون limit همه‌ی ردیف‌ها (سازگاری قبلی)
+ *  هر ردیف pn_count و serial_count هم دارد (تعداد ردیف‌های همان پارت‌نامبر/سریال) تا
+ *  کلاینت بدون داشتن کل فهرست، تکراری‌ها را نشان دهد. تعداد کل در هدر X-Total-Count.
  */
 router.get('/', (req, res) => {
   const db = getDb();
@@ -95,6 +104,13 @@ router.get('/', (req, res) => {
   const catalogId = req.query.catalog ? Number(req.query.catalog) : null;
   // جست‌وجوی فوری سریال (با شماره‌ی کامل یا بخشی از آن) — مقایسه‌ی case/فاصله‌ناحساس
   const serialQ = typeof req.query.serial === 'string' ? req.query.serial.trim() : '';
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  const pnQ = typeof req.query.pn === 'string' ? req.query.pn.trim() : '';
+  const dupOnly = req.query.dup === '1' || req.query.dup === 'true';
+  const limitRaw = Number(req.query.limit);
+  const offsetRaw = Number(req.query.offset);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null;
+  const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
 
   const where: string[] = [];
   const params: (number | string)[] = [];
@@ -114,25 +130,75 @@ router.get('/', (req, res) => {
     where.push('p.status = ?');
     params.push(status);
   }
+  if (pnQ) {
+    where.push(`${PN_KEY_SQL} = ?`);
+    params.push(pnQ.replace(/\s+/g, '').toUpperCase());
+  }
+  if (q) {
+    const like = `%${q.toUpperCase()}%`;
+    where.push(`(
+      UPPER(COALESCE(p.title, ''))             LIKE ? OR
+      UPPER(COALESCE(p.part_number_1, ''))      LIKE ? OR
+      UPPER(COALESCE(p.part_number_2, ''))      LIKE ? OR
+      UPPER(COALESCE(p.part_serial_number, '')) LIKE ? OR
+      UPPER(COALESCE(pr.name, ''))              LIKE ? OR
+      UPPER(COALESCE(d.main_serial, ''))        LIKE ?
+    )`);
+    params.push(like, like, like, like, like, like);
+  }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-  const rows = db.prepare(`
-    SELECT
-      p.id, p.title, p.tech_specs, p.part_number_1, p.part_number_2,
-      p.part_serial_number, p.status, p.sold_at_jalali, p.sold_at_gregorian,
-      p.replaces_part_id, p.created_at, p.catalog_id,
-      d.id AS device_id, d.main_serial AS device_serial,
-      dt.name AS device_type_name, b.name AS brand_name,
-      pr.name AS project_name
-    FROM parts p
-    LEFT JOIN devices d       ON d.id = p.device_id
-    LEFT JOIN device_types dt ON dt.id = d.device_type_id
-    LEFT JOIN brands b        ON b.id = d.brand_id
-    LEFT JOIN projects pr     ON pr.id = d.project_id
-    ${whereSql}
-    ORDER BY p.created_at DESC
-  `).all(...params);
+  // دو شمارشِ پنجره‌ای (پارت‌نامبر و سریال) در یک لایه — بدون O(n²)
+  const winSql = `
+    SELECT t.*,
+           COUNT(*) OVER (PARTITION BY t.pn_key)     AS pn_count,
+           COUNT(*) OVER (PARTITION BY t.serial_key) AS serial_count
+    FROM (
+      SELECT
+        p.id, p.title, p.tech_specs, p.part_number_1, p.part_number_2,
+        p.part_serial_number, p.status, p.sold_at_jalali, p.sold_at_gregorian,
+        p.replaces_part_id, p.created_at, p.catalog_id,
+        d.id AS device_id, d.main_serial AS device_serial,
+        dt.name AS device_type_name, b.name AS brand_name,
+        pr.name AS project_name,
+        ${PN_KEY_SQL} AS pn_key,
+        NULLIF(UPPER(TRIM(COALESCE(p.part_serial_number, ''))), '') AS serial_key
+      FROM parts p
+      LEFT JOIN devices d       ON d.id = p.device_id
+      LEFT JOIN device_types dt ON dt.id = d.device_type_id
+      LEFT JOIN brands b        ON b.id = d.brand_id
+      LEFT JOIN projects pr     ON pr.id = d.project_id
+      ${whereSql}
+    ) t`;
+  const dupWhere = dupOnly ? "WHERE u.pn_key <> '' AND u.pn_count > 1" : '';
+  const total = (db
+    .prepare(`SELECT COUNT(*) AS c FROM (${winSql}) u ${dupWhere}`)
+    .get(...params) as { c: number }).c;
+  const pageSql = limit !== null ? ` LIMIT ${limit} OFFSET ${offset}` : '';
+  const rows = db
+    .prepare(`SELECT u.* FROM (${winSql}) u ${dupWhere} ORDER BY u.created_at DESC${pageSql}`)
+    .all(...params);
+
+  res.setHeader('X-Total-Count', String(total));
+  res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count');
   res.json(rows);
+});
+
+/** GET /api/parts/stats — شمارش کل/وضعیت/پارت‌نامبرهای تکراری برای بج‌های فیلتر */
+router.get('/stats', (_req, res) => {
+  const db = getDb();
+  const rows = db.prepare(`SELECT status, COUNT(*) AS c FROM parts GROUP BY status`).all() as { status: string; c: number }[];
+  const byStatus: Record<string, number> = { active: 0, replaced: 0, defective: 0 };
+  let total = 0;
+  for (const r of rows) { total += r.c; byStatus[r.status] = r.c; }
+  const dup = db
+    .prepare(
+      `SELECT COUNT(*) AS c FROM (
+         SELECT ${PN_KEY_SQL} AS k, COUNT(*) AS n FROM parts p GROUP BY k HAVING n > 1 AND k <> ''
+       )`
+    )
+    .get() as { c: number };
+  res.json({ total, byStatus, dupPn: dup.c });
 });
 
 /** GET /api/parts/:id — جزئیات یک قطعه + مسیر کامل (timeline) از فروش تا تعویض‌ها */

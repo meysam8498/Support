@@ -47,9 +47,55 @@ const deviceSchema = z.object({
   sold_at_jalali: z.string().optional(),
 });
 
-/** GET /api/devices — فهرست همه‌ی تجهیزات با اطلاعات پیوندی */
-router.get('/', (_req, res) => {
-  const rows = getDb().prepare(`
+/**
+ * GET /api/devices — فهرست تجهیزات با اطلاعات پیوندی
+ * صفحه‌بندی سمت سرور (۱.۳۵): ?limit=50&offset=0 — تعداد کل در هدر X-Total-Count.
+ * بدون limit رفتار قبلی حفظ می‌شود (همه‌ی ردیف‌ها) تا مسیرهای قدیمی نشکنند.
+ * ?q=... جست‌وجوی سراسری روی پروژه/سریال/پارت‌نامبر/نوع/برند/قرارداد و
+ * ?status=active|defective|replacing|replaced فیلتر وضعیت است.
+ */
+router.get('/', (req, res) => {
+  const db = getDb();
+  const limitRaw = Number(req.query.limit);
+  const offsetRaw = Number(req.query.offset);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null;
+  const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+  if (['active', 'defective', 'replacing', 'replaced'].includes(status)) {
+    where.push('d.status = ?');
+    params.push(status);
+  }
+  if (q) {
+    const like = `%${q.toUpperCase()}%`;
+    where.push(`(
+      UPPER(COALESCE(p.name, ''))           LIKE ? OR
+      UPPER(COALESCE(d.main_serial, ''))     LIKE ? OR
+      UPPER(COALESCE(d.part_number_1, ''))   LIKE ? OR
+      UPPER(COALESCE(dt.name, ''))           LIKE ? OR
+      UPPER(COALESCE(b.name, ''))            LIKE ? OR
+      UPPER(COALESCE(d.contract_number, '')) LIKE ?
+    )`);
+    params.push(like, like, like, like, like, like);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const fromSql = `
+    FROM devices d
+    LEFT JOIN projects p          ON p.id  = d.project_id
+    LEFT JOIN sales_experts se    ON se.id = d.sales_expert_id
+    LEFT JOIN device_types dt     ON dt.id = d.device_type_id
+    LEFT JOIN device_models dm    ON dm.id = d.device_model_id
+    LEFT JOIN brands b            ON b.id  = d.brand_id
+    LEFT JOIN technical_experts te ON te.id = d.technical_expert_id
+    ${whereSql}`;
+
+  const total = (db.prepare(`SELECT COUNT(*) AS c ${fromSql}`).get(...params) as { c: number }).c;
+  const pageSql = limit !== null ? ` LIMIT ${limit} OFFSET ${offset}` : '';
+
+  const rows = db.prepare(`
     SELECT
       d.id, d.main_serial, d.contract_number, d.description, d.part_number_1, d.part_number_2,
       d.warehouse_exit_jalali, d.warehouse_exit_gregorian,
@@ -67,16 +113,31 @@ router.get('/', (_req, res) => {
       (SELECT COUNT(*) FROM parts WHERE device_id = d.id) AS parts_count,
       (SELECT COUNT(*) FROM warranty_replacements WHERE device_id = d.id) AS replacements_count,
       (SELECT COUNT(*) FROM warranty_requests WHERE device_id = d.id) AS warranty_requests_count
-    FROM devices d
-    LEFT JOIN projects p          ON p.id  = d.project_id
-    LEFT JOIN sales_experts se    ON se.id = d.sales_expert_id
-    LEFT JOIN device_types dt     ON dt.id = d.device_type_id
-    LEFT JOIN device_models dm    ON dm.id = d.device_model_id
-    LEFT JOIN brands b            ON b.id  = d.brand_id
-    LEFT JOIN technical_experts te ON te.id = d.technical_expert_id
+    ${fromSql}
     ORDER BY d.created_at DESC
-  `).all();
+  ${pageSql}
+  `).all(...params);
+
+  res.setHeader('X-Total-Count', String(total));
+  res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count');
   res.json(rows);
+});
+
+/**
+ * GET /api/devices/stats — شمارش کل و به‌تفکیک وضعیت برای بج‌های فیلتر
+ * (فهرست صفحه‌بندی‌شده دیگر همه‌ی ردیف‌ها را ندارد، پس شمارش‌ها از سرور می‌آید.)
+ */
+router.get('/stats', (_req, res) => {
+  const rows = getDb()
+    .prepare(`SELECT status, COUNT(*) AS c FROM devices GROUP BY status`)
+    .all() as { status: string; c: number }[];
+  const byStatus: Record<string, number> = { active: 0, defective: 0, replacing: 0, replaced: 0 };
+  let total = 0;
+  for (const r of rows) {
+    total += r.c;
+    byStatus[r.status] = r.c;
+  }
+  res.json({ total, byStatus });
 });
 
 /**
