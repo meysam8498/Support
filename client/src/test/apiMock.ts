@@ -121,8 +121,10 @@ const backupsFixture = {
   history_meta: { total: 2, keep: 500, capped: false },
 };
 
-/** [method, regex-path, response] — به‌ترتیب اولویت؛ اولین تطبیق برنده است */
-type Route = [method: string, path: RegExp, data: () => unknown];
+/** [method, regex-path, response] — به‌ترتیب اولویت؛ اولین تطبیق برنده است
+ * پاسخ می‌تواند Promise باشد تا تست بتواند فچ را عمداً معلق نگه دارد
+ * (مثلاً برای سنجیدن وضعیت حین درخواست). */
+type Route = [method: string, path: RegExp, data: () => unknown | Promise<unknown>];
 
 const ROUTES: Route[] = [
   ['GET', /^\/version$/, () => ({ version: '0.0.0-test', server_version: '1.0.0-test', support_only: false })],
@@ -180,7 +182,7 @@ export function clearApiCalls(): void {
 // همیشه «قبل از» ROUTES چک می‌شود؛ در afterEach با clearRouteOverrides پاک شود.
 const OVERRIDES: Route[] = [];
 
-export function overrideRoute(method: string, path: RegExp, data: () => unknown): void {
+export function overrideRoute(method: string, path: RegExp, data: () => unknown | Promise<unknown>): void {
   OVERRIDES.unshift([method, path, data]);
 }
 
@@ -188,7 +190,7 @@ export function clearRouteOverrides(): void {
   OVERRIDES.length = 0;
 }
 
-function lookup(method: string, path: string): unknown {
+function lookup(method: string, path: string): unknown | Promise<unknown> {
   for (const [m, re, data] of OVERRIDES) {
     if (m === method && re.test(path)) return data();
   }
@@ -205,7 +207,7 @@ export function installApiMock(): void {
     const path = url.replace(/^https?:\/\/[^/]+/, '').replace(/^\/api/, '');
     const method = (init?.method || 'GET').toUpperCase();
     CALLS.push(path);
-    const raw = lookup(method, path);
+    const raw = await lookup(method, path);
     // وضعیت غیر ۲۰۰: override می‌تواند { __status: 403, ... } برگرداند تا مسیرهای
     // بسته‌ی سرور (مثل GET /api/logs برای نقش غیرادمین) در تست شبیه‌سازی شوند
     let status = 200;
