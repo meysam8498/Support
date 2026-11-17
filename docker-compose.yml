@@ -54,6 +54,10 @@ services:
       # کلید عمومی امضای کد لایسنس — پیش‌فرض: کلید داخل image کافی است؛
       # فقط اگر کلید خودتان را چرخاندید، PEM کامل را در .env بگذارید (\n = newline)
       - LICENSE_PUBLIC_KEY=${LICENSE_PUBLIC_KEY:-}
+      # رمزنگاری بکاپ (README بخش ۱۰) — خالی = بکاپ بدون رمز؛ نامعتبر = بکاپ ساخته نمی‌شود
+      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY:-}
+      # مقصد push بکاپ بعد از هر بکاپ موفق (پوشه‌ی شبکه یا s3://...) — خالی = غیرفعال
+      - BACKUP_PUSH_TARGET=${BACKUP_PUSH_TARGET:-}
     volumes:
       - app-data:/app/server/data
       - backup-data:/app/server/backups
