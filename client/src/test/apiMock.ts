@@ -151,6 +151,7 @@ const ROUTES: Route[] = [
   ['GET', /^\/warranty\/requests/, () => ([{ id: 1, device_id: 1, device_serial: 'SN-0001', project_name: 'پروژه‌ی تست', description: 'درخواست تست', status: 'pending', request_jalali: '1404/07/02' }])],
   ['GET', /^\/procurement/, () => ([{ id: 1, part_id: 1, part_title: 'ماژول حافظه', source: 'internal', purchase_jalali: '1404/07/03', created_at: ISO_NOW }])],
   ['GET', /^\/parts\/stats$/, () => ({ total: 1, byStatus: { active: 1, replaced: 0, defective: 0 }, dupPn: 0 })],
+  ['GET', /^\/part-catalog\/(\d+)$/, () => ({ id: 2, title: 'کاتالوگ تست' })],
   ['GET', /^\/parts\/(\d+)$/, () => ({ part: partFixture, chain: [partFixture], replacements: [replacementFixture] })],
   ['GET', /^\/parts(\?|$)/, () => ([partFixture])],
   ['GET', /^\/devices\/(\d+)$/, () => ({ device: deviceFixture, parts: [partFixture], replacements: [replacementFixture], warrantyRequests: [] })],
@@ -159,6 +160,19 @@ const ROUTES: Route[] = [
   ['GET', /^\/users$/, () => ([adminUser])],
   ['GET', /^\/logs/, () => ({ version: 'test', total: 0, entries: [] })],
 ];
+
+// ─────────── ثبت درخواست‌ها برای تست‌هایی که پارامترهای ارسالی را می‌سنجند ───────────
+// مسیر + query هر درخواست (بدون دامنه و پیشوند /api) در همین فایل تست جمع می‌شود؛
+// تست به‌جای دور زدن fetch، با URLSearchParams روی همین ورودی‌ها assert می‌کند.
+const CALLS: string[] = [];
+
+export function apiCalls(): readonly string[] {
+  return CALLS;
+}
+
+export function clearApiCalls(): void {
+  CALLS.length = 0;
+}
 
 // ─────────── بازنویسی مسیر برای تست‌های ایزوله ───────────
 // بعضی تست‌ها باید فقط یک مسیر را طور دیگری ببینند (مثلاً مسیر خطای بکاپ) بدون
@@ -190,6 +204,7 @@ export function installApiMock(): void {
     const url = typeof input === 'string' ? input : String(input);
     const path = url.replace(/^https?:\/\/[^/]+/, '').replace(/^\/api/, '');
     const method = (init?.method || 'GET').toUpperCase();
+    CALLS.push(path);
     const raw = lookup(method, path);
     // وضعیت غیر ۲۰۰: override می‌تواند { __status: 403, ... } برگرداند تا مسیرهای
     // بسته‌ی سرور (مثل GET /api/logs برای نقش غیرادمین) در تست شبیه‌سازی شوند

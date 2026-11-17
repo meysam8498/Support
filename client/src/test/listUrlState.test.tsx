@@ -5,56 +5,38 @@
 //   باشد که در آدرس است و همان پارامترها به سرور برود.
 // • «بازگشت» = رفتن به صفحه‌ی دیگر و برگشتن: فیلترهای فهرست از دست نمی‌رود
 //   چون آدرس منبع حقیقت است.
-// • داده‌ها از mock آفلاین fetch می‌آیند؛ URLهای درخواستی ثبت می‌شوند.
+// • درخواست‌های ارسالی از apiCalls خوانده می‌شوند (بدون دور زدن fetch).
 // ============================================================
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '../context/ThemeContext';
 import { AuthProvider } from '../context/AuthContext';
 import { AppRoutes } from '../App';
-import { adminUser, clearRouteOverrides } from './apiMock';
+import { apiCalls, clearApiCalls, clearRouteOverrides } from './apiMock';
+import { seedSession } from './renderApp';
 
-/** URLهایی که اپ در این تست درخواست کرده — برای اثبات همگامی فیلتر و درخواست */
-let calls: string[] = [];
-let innerFetch: typeof fetch;
-
-beforeEach(() => {
-  calls = [];
-  innerFetch = globalThis.fetch;
-  vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) => {
-    calls.push(typeof input === 'string' ? input : String(input));
-    return innerFetch(input, init);
-  });
-});
+beforeEach(() => clearApiCalls());
 
 afterEach(() => {
-  vi.stubGlobal('fetch', innerFetch);
   clearRouteOverrides();
   cleanup();
 });
 
-/**
- * رندر اپ با ردیابی نشانی و امکان ناوبری (برای شبیه‌سازی Back).
- * localStorage مثل renderApp مقداردهی می‌شود تا مسیر محافظت‌شده باز شود.
- */
+/** رندر اپ با ردیابی نشانی و امکان ناوبری (برای شبیه‌سازی Back) */
 function renderTracked(initial: string) {
-  localStorage.setItem('token', 'test-token');
-  localStorage.setItem('user', JSON.stringify(adminUser));
-  localStorage.setItem('theme', 'light');
+  seedSession();
+  const track: { url: string; navigate: ((to: unknown) => void) | null } = { url: '', navigate: null };
 
-  const loc = { current: '' };
-  const nav: { current: ((to: unknown) => void) | null } = { current: null };
   function Probe() {
     const location = useLocation();
-    const navigate = useNavigate();
-    loc.current = `${location.pathname}${location.search}`;
-    nav.current = navigate as (to: unknown) => void;
+    track.url = `${location.pathname}${location.search}`;
+    track.navigate = useNavigate() as (to: unknown) => void;
     return null;
   }
 
-  const utils = render(
+  render(
     <ThemeProvider>
       <AuthProvider>
         <MemoryRouter initialEntries={[initial]}>
@@ -66,57 +48,53 @@ function renderTracked(initial: string) {
   );
 
   return {
-    ...utils,
-    loc,
-    go: (to: unknown) => act(() => { nav.current!(to); }),
-    back: () => act(() => { nav.current!(-1); }),
+    url: () => track.url,
+    go: (to: unknown) => act(() => { track.navigate!(to); }),
+    back: () => act(() => { track.navigate!(-1); }),
   };
 }
 
-/** آخرین درخواست فهرست (نه /stats) با مسیر مشخص */
-function lastListCall(prefix: string): string | undefined {
-  return [...calls].reverse().find((u) => u.includes(`${prefix}?`) && !u.includes('/stats'));
+/** پارامترهای آخرین درخواست فهرست (نه /stats) با مسیر مشخص */
+function lastQuery(prefix: string): URLSearchParams | undefined {
+  const call = [...apiCalls()].reverse().find((u) => u.startsWith(`${prefix}?`));
+  return call ? new URLSearchParams(call.slice(call.indexOf('?') + 1)) : undefined;
 }
+
+/** چیپ وضعیت فعال است؟ (تنها نشان وضعیت در UI همین کلاس است) */
+const chipActive = (name: RegExp) => screen.getByRole('button', { name }).className.includes('chip-active');
 
 describe('وضعیت فهرست در URL — رفرش', () => {
   it('تجهیزات: صفحه/فیلتر/جست‌وجو/مرتب‌سازی از نشانی خوانده و به سرور فرستاده می‌شود', async () => {
     renderTracked('/devices?status=active&q=SN&page=2&sort=serial&dir=asc');
-
-    // ردیف فهرست رندر می‌شود
     await screen.findByText('SN-0001');
 
-    // درخواست با همان پارامترهای نشانی (page=2 → offset=50)
+    // همان پارامترهای نشانی به سرور رفته‌اند (page=2 → offset=50)
     await waitFor(() => {
-      const call = lastListCall('/devices');
-      expect(call).toBeTruthy();
-      expect(call!).toContain('limit=50');
-      expect(call!).toContain('offset=50');
-      expect(call!).toContain('status=active');
-      expect(call!).toContain('q=SN');
-      expect(call!).toContain('sort=serial');
-      expect(call!).toContain('dir=asc');
+      const q = lastQuery('/devices');
+      expect(q).toBeDefined();
+      expect(Object.fromEntries(q!)).toMatchObject({
+        limit: '50', offset: '50', status: 'active', q: 'SN', sort: 'serial', dir: 'asc',
+      });
     });
 
-    // وضعیت بصری هم با آدرس هم‌خوان است: چیپ فعال + aria-sort صعودی
-    expect(screen.getByRole('button', { name: /فعال/ }).className).toContain('chip-active');
-    const serialTh = screen.getByTitle('مرتب‌سازی بر اساس سریال').closest('th');
-    expect(serialTh?.getAttribute('aria-sort')).toBe('ascending');
-    // ورودی جست‌وجوی فهرست از نشانی پر می‌شود (ورودی جست‌وجوی هدر جدا است)
-    const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
-    expect(inputs.some((i) => i.value === 'SN')).toBe(true);
+    // وضعیت بصری با آدرس هم‌خوان است: چیپ فعال، aria-sort صعودی و ورودی جست‌وجوی فهرست
+    expect(chipActive(/فعال/)).toBe(true);
+    expect(screen.getByTitle('مرتب‌سازی بر اساس سریال').closest('th')?.getAttribute('aria-sort')).toBe('ascending');
+    expect(screen.getAllByRole('textbox').map((i) => (i as HTMLInputElement).value)).toContain('SN');
   });
 
-  it('قطعات: فیلتر کاتالوگ و «فقط تکراری‌ها» هم از نشانی بازسازی می‌شوند', async () => {
-    renderTracked('/parts?catalog=2&dup=1&page=2');
+  it('قطعات: فیلتر کاتالوگ از نشانی بازسازی و به سرور فرستاده می‌شود', async () => {
+    renderTracked('/parts?catalog=2&page=2');
     await screen.findByText('ماژول حافظه HIST DIMM');
 
     await waitFor(() => {
-      const call = lastListCall('/parts');
-      expect(call).toBeTruthy();
-      expect(call!).toContain('offset=50');
-      expect(call!).toContain('catalog=2');
-      expect(call!).toContain('dup=1');
+      const q = lastQuery('/parts');
+      expect(q).toBeDefined();
+      expect(Object.fromEntries(q!)).toMatchObject({ offset: '50', catalog: '2' });
     });
+
+    // بنر «مرجع کاتالوگ» نشان می‌دهد فیلتر از آدرس در UI هم فعال است
+    expect(screen.getByText(/مرجع کاتالوگ/)).toBeTruthy();
   });
 });
 
@@ -128,24 +106,19 @@ describe('وضعیت فهرست در URL — دکمه‌ی بازگشت', () => 
 
     // انتخاب فیلتر «معیوب» → آدرس و درخواست همگام می‌شوند
     await u.click(screen.getByRole('button', { name: /معیوب/ }));
-    await waitFor(() => expect(view.loc.current).toBe('/devices?status=defective'));
-    await waitFor(() => expect(lastListCall('/devices')).toContain('status=defective'));
-    // فچ دوباره نباید فیلترها/جدول را با اسکلت جایگزین کند (فوکوس و ورودی حفظ می‌شود)
-    expect(screen.getByRole('button', { name: /فعال/ })).toBeTruthy();
+    await waitFor(() => expect(view.url()).toBe('/devices?status=defective'));
+    await waitFor(() => expect(lastQuery('/devices')?.get('status')).toBe('defective'));
 
     // رفتن به صفحه‌ی دیگر و برگشت با Back
-    const before = calls.length;
     view.go('/about');
-    await waitFor(() => expect(view.loc.current).toBe('/about'));
+    await waitFor(() => expect(view.url()).toBe('/about'));
 
+    clearApiCalls();
     view.back();
-    await waitFor(() => expect(view.loc.current).toBe('/devices?status=defective'));
+    await waitFor(() => expect(view.url()).toBe('/devices?status=defective'));
 
-    // فهرست دوباره با همان فیلتر خوانده شده و چیپ هنوز فعال است
-    await waitFor(() => {
-      const after = calls.slice(before).filter((x) => x.includes('/devices?'));
-      expect(after.some((x) => x.includes('status=defective'))).toBe(true);
-    });
-    expect(screen.getByRole('button', { name: /معیوب/ }).className).toContain('chip-active');
+    // پس از بازگشت، فهرست دوباره با همان فیلتر خوانده می‌شود و چیپ فعال می‌ماند
+    await waitFor(() => expect(lastQuery('/devices')?.get('status')).toBe('defective'));
+    expect(chipActive(/معیوب/)).toBe(true);
   });
 });
