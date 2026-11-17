@@ -17,6 +17,7 @@ import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { dbFilePath } from '../db/db.js';
 import {
   BACKUP_KEY_ENV,
+  BACKUP_KEY_FILE_ENV,
   decryptBuffer,
   deleteBackupFiles,
   encryptBuffer,
@@ -368,7 +369,7 @@ export function backupHistory(db: DatabaseSync, limit = 120): { rows: BackupHist
 export function backupStatus(): {
   dir: string; keep: number; atHour: number; lastRun: string | null; lastResult: BackupResult | null; count: number;
   push: { target: string; enabled: boolean; last: (PushResult & { at: string; file: string }) | null };
-  encryption: { enabled: boolean; keyId?: string; error?: string };
+  encryption: { enabled: boolean; keyId?: string; source?: 'env' | 'file'; error?: string };
 } {
   const target = pushTarget();
   return {
@@ -413,7 +414,10 @@ function hasRunToday(): boolean {
 export function startBackupScheduler(db: DatabaseSync): void {
   // وضعیت رمزنگاری در بوت — کلید نامعتبر باید صریح دیده شود، نه در سکوت
   const enc = encryptionStatus();
-  if (enc.enabled) console.log(`🔐 رمزنگاری بکاپ فعال است (keyId: ${enc.keyId})`);
+  if (enc.enabled) {
+    const from = enc.source === 'file' ? `، کلید از فایل ${process.env[BACKUP_KEY_FILE_ENV]}` : '';
+    console.log(`🔐 رمزنگاری بکاپ فعال است (keyId: ${enc.keyId}${from})`);
+  }
   else if (enc.error) console.error(`🔐 ${enc.error} — تا اصلاح کلید، بکاپ رمزنگاری‌شده ساخته نمی‌شود.`);
 
   // بکاپ راه‌اندازی: اگر هیچ بکاپی نیست، بلافاصله یکی بگیر
@@ -472,7 +476,12 @@ function readBackupBytes(dir: string, file: string):
   const onDisk = readFileSync(path);
   if (!isEncrypted(onDisk)) return { ok: true, bytes: onDisk };
   const key = encryptionKey();
-  if (!key) return { ok: false, error: `این بکاپ رمزنگاری شده است ولی ${BACKUP_KEY_ENV} تنظیم نشده.` };
+  if (!key) {
+    return {
+      ok: false,
+      error: `این بکاپ رمزنگاری شده است ولی ${BACKUP_KEY_ENV} یا ${BACKUP_KEY_FILE_ENV} تنظیم نشده.`,
+    };
+  }
   try {
     return { ok: true, bytes: decryptBuffer(onDisk, key) };
   } catch (e) {

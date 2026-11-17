@@ -14,6 +14,7 @@ import { basename, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
   BACKUP_KEY_ENV,
+  BACKUP_KEY_FILE_ENV,
   decryptBuffer,
   encryptBuffer,
   encryptionKey,
@@ -38,6 +39,7 @@ afterAll(() => {
 });
 
 beforeEach(() => {
+  delete process.env[BACKUP_KEY_FILE_ENV];
   dir = mkdtempSync(join(tmpdir(), 'sbk-'));
   // prepareRestore/verify مسیر بکاپ را از BACKUP_DIR می‌خوانند
   process.env.BACKUP_DIR = dir;
@@ -55,6 +57,7 @@ afterEach(() => {
   try { db.close(); } catch { /* noop */ }
   rmSync(dir, { recursive: true, force: true });
   delete process.env.BACKUP_DIR;
+  delete process.env[BACKUP_KEY_FILE_ENV];
   process.env[BACKUP_KEY_ENV] = HEX_KEY;
 });
 
@@ -96,6 +99,78 @@ describe('رمزنگاری بافر بکاپ', () => {
     expect(key.equals(raw)).toBe(true);
     expect(keyId(key)).toHaveLength(8);
     expect(encryptionStatus().keyId).toBe(keyId(raw));
+  });
+});
+
+describe('کلید از فایل secret (BACKUP_ENCRYPTION_KEY_FILE)', () => {
+  /** فایل کلید با \n پایانی مثل docker secret */
+  const writeKeyFile = (content: string) => {
+    const path = join(dir, 'backup-key');
+    writeFileSync(path, content);
+    return path;
+  };
+
+  it('کلید از فایل خوانده می‌شود (newline پایانی مشکلی ندارد) و منبع آن file است', () => {
+    delete process.env[BACKUP_KEY_ENV];
+    const path = writeKeyFile(`${HEX_KEY}\n`);
+    process.env[BACKUP_KEY_FILE_ENV] = path;
+
+    const key = encryptionKey()!;
+    expect(key.equals(Buffer.from(HEX_KEY, 'hex'))).toBe(true);
+    const st = encryptionStatus();
+    expect(st.enabled).toBe(true);
+    expect(st.source).toBe('file');
+    expect(st.keyId).toBe(keyId(key));
+  });
+
+  it('مقدار مستقیم ENV بر فایل اولویت دارد', () => {
+    const other = 'b'.repeat(64);
+    process.env[BACKUP_KEY_ENV] = HEX_KEY;
+    process.env[BACKUP_KEY_FILE_ENV] = writeKeyFile(other);
+
+    expect(encryptionKey()!.equals(Buffer.from(HEX_KEY, 'hex'))).toBe(true);
+    expect(encryptionStatus().source).toBe('env');
+  });
+
+  it('فایل ناموجود → خطای صریح با نام متغیر (و وضعیت غیرفعال با خطا)', () => {
+    delete process.env[BACKUP_KEY_ENV];
+    process.env[BACKUP_KEY_FILE_ENV] = join(dir, 'nope');
+    expect(() => encryptionKey()).toThrow(new RegExp(BACKUP_KEY_FILE_ENV));
+
+    const st = encryptionStatus();
+    expect(st.enabled).toBe(false);
+    expect(st.error).toMatch(new RegExp(BACKUP_KEY_FILE_ENV));
+  });
+
+  it('فایل خالی یا محتوای نامعتبر → خطای صریح', () => {
+    delete process.env[BACKUP_KEY_ENV];
+    process.env[BACKUP_KEY_FILE_ENV] = writeKeyFile('   \n');
+    expect(() => encryptionKey()).toThrow(/خالی/);
+
+    process.env[BACKUP_KEY_FILE_ENV] = writeKeyFile('too-short');
+    expect(() => encryptionKey()).toThrow(new RegExp(BACKUP_KEY_FILE_ENV));
+  });
+
+  it('بکاپ و بازیابی فقط با کلید فایلی کار می‌کند', () => {
+    delete process.env[BACKUP_KEY_ENV];
+    process.env[BACKUP_KEY_FILE_ENV] = writeKeyFile(`${HEX_KEY}\n`);
+
+    const r = runBackup(db, dir);
+    expect(r.ok).toBe(true);
+    expect(r.encrypted).toBe(true);
+    expect(verifyBackupManifest(dir, r.file!).manifest!.keyId).toBe(keyId(encryptionKey()!));
+
+    const prep = prepareRestore(db, basename(r.file!), 'u1');
+    expect(prep.ok).toBe(true);
+  });
+
+  it('برای بکاپ رمزشده‌ای که کلید ندارد، پیام خطا هر دو متغیر را نام می‌برد', () => {
+    const r = runBackup(db, dir);
+    delete process.env[BACKUP_KEY_ENV];
+    const prep = prepareRestore(db, basename(r.file!), 'u1');
+    expect(prep.ok).toBe(false);
+    expect(prep.error).toMatch(new RegExp(BACKUP_KEY_ENV));
+    expect(prep.error).toMatch(new RegExp(BACKUP_KEY_FILE_ENV));
   });
 });
 

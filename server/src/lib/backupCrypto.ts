@@ -2,8 +2,9 @@
 // رمزنگاری بکاپ — AES-256-GCM با کلید ENV + مانیفست هش
 // سامانه‌ی مدیریت تجهیزات و قطعات یدکی — طراح: میثم ایجادی / Meysam Ijadi
 // ----------------------------------------------------------------
-// • کلید: BACKUP_ENCRYPTION_KEY — ۳۲ بایت به‌صورت hex (۶۴ نویسه) یا base64.
-//   کلید فقط در ENV/secret می‌ماند؛ هرگز در فایل، لاگ یا بکاپ نوشته نمی‌شود.
+// • کلید: BACKUP_ENCRYPTION_KEY (۳۲ بایت hex/base64) یا مسیر فایلش در
+//   BACKUP_ENCRYPTION_KEY_FILE (برای docker secret و سوآرم). مقدار ENV مقدم است.
+//   کلید فقط در ENV/secret می‌ماند؛ هرگز در لاگ یا بکاپ نوشته نمی‌شود.
 // • قالب فایل: «SBK1» | نسخه (۱ بایت) | nonce (۱۲ بایت) | tag (۱۶ بایت) | ciphertext
 //   (کلمه‌ی SBK1 + نسخه به‌عنوان AAD به رمز بسته می‌شوند تا هدر قابل دستکاری نباشد)
 // • مانیفست: کنار هر بکاپ یک فایل `<file>.manifest.json` با sha256 فایل رمزشده،
@@ -14,8 +15,10 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
-/** کلید ENV — تنها منبع کلید */
+/** کلید به‌صورت مقدار مستقیم در ENV */
 export const BACKUP_KEY_ENV = 'BACKUP_ENCRYPTION_KEY';
+/** مسیر فایل کلید — برای docker secret / docker swarm secret */
+export const BACKUP_KEY_FILE_ENV = 'BACKUP_ENCRYPTION_KEY_FILE';
 /** امضای فایل رمزشده */
 export const MAGIC = Buffer.from('SBK1', 'ascii');
 /** نسخه‌ی قالب — با کلید/الگوریتم عوض شدنی بدون ابهام */
@@ -26,34 +29,66 @@ const TAG_LEN = 16;
 export interface EncryptionStatus {
   enabled: boolean;
   keyId?: string;
+  /** کلید از کجا آمد — برای تشخیص سریع در لاگ/پشتیبانی */
+  source?: 'env' | 'file';
   error?: string;
 }
 
-/**
- * خواندن و اعتبارسنجی کلید از ENV.
- * null = رمزنگاری غیرفعال (کلید تنظیم نشده). کلید نامعتبر → خطای صریح
- * (بکاپ نباید بی‌سروصدا بدون رمز ساخته شود).
- */
-export function encryptionKey(): Buffer | null {
-  const raw = (process.env[BACKUP_KEY_ENV] || '').trim();
-  if (!raw) return null;
+/** اعتبارسنجی متن کلید؛ `origin` فقط برای پیام خطا (هیچ‌وقت خود کلید) */
+function parseKey(raw: string, origin: string): Buffer {
   const hex = /^[0-9a-fA-F]{64}$/.test(raw) ? Buffer.from(raw, 'hex') : null;
   if (hex) return hex;
   // base64 استاندارد (با یا بدون padding) — باید دقیقاً ۳۲ بایت بدهد
   const b64 = /^[A-Za-z0-9+/_-]+={0,2}$/.test(raw) ? Buffer.from(raw, 'base64') : null;
   if (b64 && b64.length === 32) return b64;
-  throw new Error(
-    `${BACKUP_KEY_ENV} نامعتبر است — باید ۳۲ بایت (۶۴ نویسه‌ی hex یا base64) باشد.`,
-  );
+  throw new Error(`${origin} نامعتبر است — باید ۳۲ بایت (۶۴ نویسه‌ی hex یا base64) باشد.`);
+}
+
+/** خواندن متن کلید از فایل secret — خطاهای فایل هم صریح و بدون افشای محتوا */
+function keyFromFile(file: string): string {
+  let content: string;
+  try {
+    content = readFileSync(file, 'utf8');
+  } catch (e) {
+    throw new Error(
+      `${BACKUP_KEY_FILE_ENV}: فایل کلید «${file}» خوانده نشد (${(e as Error).message}).`,
+    );
+  }
+  // docker secret معمولاً با \n پایانی نوشته می‌شود
+  const trimmed = content.trim();
+  if (!trimmed) throw new Error(`${BACKUP_KEY_FILE_ENV}: فایل کلید «${file}» خالی است.`);
+  return trimmed;
+}
+
+/** منبع فعال کلید: مقدار ENV اولویت دارد، بعد فایل — null = تنظیم نشده */
+export function encryptionKeySource(): 'env' | 'file' | null {
+  if ((process.env[BACKUP_KEY_ENV] || '').trim()) return 'env';
+  if ((process.env[BACKUP_KEY_FILE_ENV] || '').trim()) return 'file';
+  return null;
+}
+
+/**
+ * خواندن و اعتبارسنجی کلید از ENV یا فایل secret.
+ * null = رمزنگاری غیرفعال (کلید تنظیم نشده). کلید/فایل نامعتبر → خطای صریح
+ * (بکاپ نباید بی‌سروصدا بدون رمز ساخته شود).
+ */
+export function encryptionKey(): Buffer | null {
+  const inline = (process.env[BACKUP_KEY_ENV] || '').trim();
+  if (inline) return parseKey(inline, BACKUP_KEY_ENV);
+
+  const file = (process.env[BACKUP_KEY_FILE_ENV] || '').trim();
+  if (!file) return null;
+  return parseKey(keyFromFile(file), `${BACKUP_KEY_FILE_ENV} (${file})`);
 }
 
 /** وضعیت رمزنگاری برای نمایش در API/لاگ — بدون افشای کلید */
 export function encryptionStatus(): EncryptionStatus {
+  const source = encryptionKeySource();
   try {
     const key = encryptionKey();
-    return key ? { enabled: true, keyId: keyId(key) } : { enabled: false };
+    return key ? { enabled: true, keyId: keyId(key), source: source ?? undefined } : { enabled: false };
   } catch (e) {
-    return { enabled: false, error: (e as Error).message };
+    return { enabled: false, source: source ?? undefined, error: (e as Error).message };
   }
 }
 

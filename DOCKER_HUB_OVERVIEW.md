@@ -119,6 +119,9 @@ volumes:
 | `TRIAL_DEVICE_LIMIT` | `25` | سقف تعداد تجهیزات در طرح آزمایشی (trial) |
 | `TRIAL_LIMIT_ENFORCE` | `0` | `1` = بلاک افزودن تجهیز/سریال پس از رسیدن به سقف آزمایشی (خطای ۴۰۲ + پیام ارتقا)؛ `0` = فقط گزارش در داشبورد |
 | `LICENSE_PUBLIC_KEY` | — | کلید عمومی PEM امضای کد لایسنس؛ خالی = کلید داخلی image (پس از چرخش کلید توسط طراح، مقدار جدید در .env) |
+| `BACKUP_ENCRYPTION_KEY` | خالی | کلید ۳۲ بایتی رمزنگاری بکاپ (۶۴ نویسه hex یا base64) — خالی = بکاپ بدون رمز |
+| `BACKUP_ENCRYPTION_KEY_FILE` | خالی | مسیر فایل کلید (docker secret / swarm) — اگر `BACKUP_ENCRYPTION_KEY` ست باشد نادیده گرفته می‌شود |
+| `BACKUP_PUSH_TARGET` | خالی | مقصد push بکاپ بعد از هر بکاپ موفق (پوشه‌ی شبکه یا `s3://…`) |
 
 ---
 
@@ -139,6 +142,69 @@ docker exec -i support-equipment-app tar xzf - < support-backup.tar.gz
 ```
 
 > کاربران پیش‌فرض فقط در **اولین راه‌اندازی** (خالی بودن دیتابیس) ساخته می‌شوند؛ در بکاپ‌های بعدی تغییرشان از داخل برنامه اعمال می‌شود.
+
+### 🔐 بکاپ رمزشده و کلید آن
+
+بکاپ‌های خودکار سامانه با **AES-256-GCM** رمز می‌شوند و کنار هر فایل یک مانیفست هش
+(`<نام بکاپ>.manifest.json`) نوشته می‌شود.
+
+> ⚠️ **بدون کلید، بازیابی بکاپ رمزشده ممکن نیست** — نه بازیابی رمز، نه کمک پشتیبانی.
+> کلید را **قبل از** فعال‌کردن رمزنگاری بسازید و جدا از بکاپ‌ها نگه دارید.
+
+**۱) ساخت کلید** (یک‌بار برای هر نصب):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+**۲) دادن کلید به کانتینر** — دو راه (راه دوم برای docker secret توصیه می‌شود):
+
+```dotenv
+# .env کنار docker-compose.yml — راه اول
+BACKUP_ENCRYPTION_KEY=<کلید ۶۴ نویسه‌ای>
+# راه دوم: مسیر فایل کلید
+BACKUP_ENCRYPTION_KEY_FILE=/run/secrets/backup_key
+```
+
+```bash
+# راه دوم: ساخت فایل کلید (دسترسی ۶۰۰) و ثبت به‌عنوان secret
+mkdir -p secrets
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" > secrets/backup_key.txt
+chmod 600 secrets/backup_key.txt
+```
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    secrets: [backup_key]
+    environment:
+      - BACKUP_ENCRYPTION_KEY_FILE=/run/secrets/backup_key
+
+secrets:
+  backup_key:
+    file: ./secrets/backup_key.txt
+```
+
+> در docker swarm: `docker secret create backup_key ./secrets/backup_key.txt` و در سرویس `secrets:` با `external: true`.
+> اگر هر دو متغیر ست باشند، `BACKUP_ENCRYPTION_KEY` مقدم است. کلید در هیچ فایل، لاگ یا مانیفستی نوشته نمی‌شود.
+> فایل نخواندنی / خالی / نامعتبر → بکاپ رمزشده ساخته نمی‌شود و دلیلش در لاگ کانتینر و `GET /api/backups` می‌آید.
+
+**۳) تأیید**: در لاگ کانتینر خط `🔐 رمزنگاری بکاپ فعال است (keyId: …)` (و در حالت فایل، مسیر آن) دیده می‌شود؛
+`GET /api/backups` مقدار `encryption: { enabled: true, keyId: "…", source: "env" | "file" }` را برمی‌گرداند.
+فایل بکاپ باید با هدر `SBK1` شروع شود، نه `SQLite format 3`.
+
+**۴) نگهداری و چرخش کلید**
+
+- کلید را در گاوصندوق/مدیر رمز و حداقل در دو نسخه نگه دارید و `keyId` هر بکاپ را کنارش یادداشت کنید.
+- `BACKUP_KEEP` (پیش‌فرض ۳۰ نسخه) تعیین می‌کند چند بکاپ بماند؛ کلید قدیمی را تا خروج آخرین بکاپِ
+  آن از چرخه دور نریزید.
+- برای چرخش: کلید فعلی را بایگانی کنید، متغیر (یا فایل secret) را عوض و کانتینر را ری‌استارت کنید،
+  یک بکاپ دستی بگیرید و یک بازیابی آزمایشی انجام دهید. نسخه‌ی فعلی فقط یک کلید می‌شناسد؛
+  بکاپ‌های پیش از چرخش فقط با کلید قبلی باز می‌شوند.
+
+**۵) بازیابی**: فایل بکاپ + مانیفست `….db.manifest.json` + همان کلید لازم است. کلید اشتباه یا خالی با
+پیام «رمزگشایی ناموفق بود» / «کلید تنظیم نشده» رد می‌شود و دیتابیس فعلی دست‌نخورده می‌ماند.
 
 ---
 
