@@ -147,7 +147,9 @@ export default function PartsPage() {
     );
   };
 
-  if (loading)
+  // اسکلت فقط وقتی هنوز داده‌ای نیست؛ در صفحه‌بندی/فیلتر بعدی، فیلترها و جست‌وجو
+  // سر جایشان می‌مانند (فوکوس ورودی از دست نمی‌رود).
+  if (loading && parts.length === 0)
     return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.loading}</p>;
 
   const statusCounts = stats?.byStatus ?? { active: 0, replaced: 0, defective: 0 };

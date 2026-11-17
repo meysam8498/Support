@@ -13,8 +13,6 @@ import { useSearchParams } from 'react-router-dom';
 
 export type SortDir = 'asc' | 'desc';
 
-export const PAGE_SIZE = 50;
-
 export interface ListParams {
   /** شماره‌ی صفحه از ۰ */
   page: number;
@@ -34,7 +32,7 @@ export interface ListParams {
   queryString: (extra?: Record<string, string | undefined>) => string;
 }
 
-export function useListParams(pageSize: number = PAGE_SIZE): ListParams {
+export function useListParams(pageSize = 50): ListParams {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(0, (Number(searchParams.get('page')) || 1) - 1);
   const q = searchParams.get('q') ?? '';

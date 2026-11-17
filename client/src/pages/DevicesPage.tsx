@@ -77,7 +77,9 @@ export default function DevicesPage() {
     }
   };
 
-  if (loading)
+  // اسکلت فقط وقتی هنوز داده‌ای نیست؛ در صفحه‌بندی/فیلتر بعدی، جدول و فیلترها
+  // سر جایشان می‌مانند تا فوکوس ورودی جست‌وجو از دست نرود.
+  if (loading && devices.length === 0)
     return <p className="text-stone-500 text-center mt-20 dark:text-stone-400">{t.loading}</p>;
 
   const statusCounts = stats?.byStatus ?? { active: 0, defective: 0, replacing: 0, replaced: 0 };
@@ -117,8 +119,8 @@ export default function DevicesPage() {
         <input
           className="input max-w-md"
           placeholder={t.search}
-                      value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
         />
         <div className="flex gap-2 flex-wrap">
           <button

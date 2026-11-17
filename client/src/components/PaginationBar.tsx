@@ -15,8 +15,11 @@ interface Props {
 
 export default function PaginationBar({ page, pageSize, total, onPage }: Props) {
   if (total <= 0) return null;
-  const from = page * pageSize + 1;
-  const to = Math.min(total, (page + 1) * pageSize);
+  // صفحه‌ی خارج از محدوده (مثلاً بعد از حذف آخرین ردیف) نباید «۵۱–۳ از ۳» نشان دهد
+  const lastPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+  const shown = Math.min(page, lastPage);
+  const from = shown * pageSize + 1;
+  const to = Math.min(total, (shown + 1) * pageSize);
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap text-xs text-stone-600 dark:text-stone-300">
       <span className="fa-nums">

@@ -150,9 +150,11 @@ const ROUTES: Route[] = [
   ['GET', /^\/warranty\/replacements/, () => ([replacementFixture])],
   ['GET', /^\/warranty\/requests/, () => ([{ id: 1, device_id: 1, device_serial: 'SN-0001', project_name: 'پروژه‌ی تست', description: 'درخواست تست', status: 'pending', request_jalali: '1404/07/02' }])],
   ['GET', /^\/procurement/, () => ([{ id: 1, part_id: 1, part_title: 'ماژول حافظه', source: 'internal', purchase_jalali: '1404/07/03', created_at: ISO_NOW }])],
+  ['GET', /^\/parts\/stats$/, () => ({ total: 1, byStatus: { active: 1, replaced: 0, defective: 0 }, dupPn: 0 })],
   ['GET', /^\/parts\/(\d+)$/, () => ({ part: partFixture, chain: [partFixture], replacements: [replacementFixture] })],
   ['GET', /^\/parts(\?|$)/, () => ([partFixture])],
   ['GET', /^\/devices\/(\d+)$/, () => ({ device: deviceFixture, parts: [partFixture], replacements: [replacementFixture], warrantyRequests: [] })],
+  ['GET', /^\/devices\/stats$/, () => ({ total: 1, byStatus: { active: 1, defective: 0, replacing: 0, replaced: 0 } })],
   ['GET', /^\/devices(\?|$)/, () => ([deviceFixture])],
   ['GET', /^\/users$/, () => ([adminUser])],
   ['GET', /^\/logs/, () => ({ version: 'test', total: 0, entries: [] })],
@@ -211,6 +213,11 @@ export function installApiMock(): void {
       ok: status >= 200 && status < 300,
       status,
       json: async () => data,
+      // هدر شمارش صفحه‌بندی: فهرست‌ها از X-Total-Count می‌خوانند
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === 'x-total-count' && Array.isArray(data) ? String(data.length) : null,
+      },
     } as unknown as Response;
   });
   vi.stubGlobal('fetch', mock);
